@@ -1,0 +1,10 @@
+<!doctype html><meta charset="utf-8"><body style="background:#0A1530;color:#EAF5FF;font:12px monospace;margin:8px">
+<script src="../js/data.js"></script><script src="../js/art.js"></script>
+<div id="g" style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px"></div>
+<script>
+OC.SPECIES.forEach(function(s){ var d=document.createElement('div'); d.style.cssText='background:#14294C;padding:4px;display:grid;justify-items:center;gap:2px';
+ var L=Math.max(18,Math.min(48,ART.sceneLen(s.max)*1.5|0)); var c=ART.fishImg(s.id,L,false,3,null,null,s.name); d.appendChild(c); var t=document.createElement('span'); t.textContent=s.name+' ('+s.max+' lb)'; d.appendChild(t); document.getElementById('g').appendChild(d); });
+var d=document.createElement('div'); d.style.cssText='background:#14294C;padding:4px;display:grid;justify-items:center;gap:2px'; d.appendChild(ART.fishImg('greenlandshark',48,false,3,null,{b:'#3A3E48',d:'#1E2028',bel:'#8A8E98',fin:'#2E323C',spot:'#5A5E68'},'Leviathan')); document.getElementById('g').appendChild(d);
+d=document.createElement('div'); d.style.cssText='background:#14294C;padding:4px;display:grid;justify-items:center;gap:2px'; d.appendChild(ART.fishImg('marlin',48,false,3,null,{b:'#E8F0F4',d:'#B0C0CC',bel:'#FFFFFF',fin:'#C8D8E4',spot:'#D8E8F0'},'Kona Ghost')); document.getElementById('g').appendChild(d);
+d=document.createElement('div'); d.style.cssText='background:#14294C;padding:4px'; d.appendChild(ART.spriteCanvas(A=ART.BIG_BOAT,ART.BIG_BOAT_MAP)); d.lastChild.style.width='162px'; d.appendChild(ART.spriteCanvas(ART.SMALL_BOAT,ART.SMALL_BOAT_MAP)); d.lastChild.style.width='90px'; var f=ART.fisherCanvas(OC.DEFAULT_OUTFIT); f.style.width='36px'; d.appendChild(f); ['hat_straw','hat_bucket','hat_captain','hat_crown'].forEach(function(h){ var f2=ART.fisherCanvas(Object.assign({},OC.DEFAULT_OUTFIT,{hat:h})); f2.style.width='36px'; d.appendChild(f2); }); document.getElementById('g').appendChild(d);
+</script></body>

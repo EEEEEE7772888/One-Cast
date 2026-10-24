@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<meta name="description" content="One Cast: an idle fishing game across the whole world. Cast a line, walk away, come back to a bite. Every spot hides one legendary fish only one player on Earth can own.">
+<meta name="theme-color" content="#0A1530">
+<title>One Cast</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%230A1530'/%3E%3Cpath d='M3 8h2v1H3zM5 7h2v3H5zM7 6h5v5H7zM12 7h1v3h-1zM10 7h1v1h-1z' fill='%23FFC94A'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+<div class="game" id="game">
+  <canvas id="scene" aria-hidden="true"></canvas>
+
+  <div class="ui">
+    <header class="hud">
+      <div class="brand">
+        <h1 class="logo">ONE <b>CAST</b></h1>
+        <div class="chips">
+          <span class="chip money" id="coinChip"><span class="coin"></span><span id="coinTxt">$0</span></span>
+          <button class="chip btn" id="whereChip" type="button" title="Open the world map"><span class="k">AT</span><span class="t" id="whereTxt">Bass Lake</span></button>
+          <span class="chip" id="timeChip" title="Local time at this spot"><span class="k">LOCAL</span><span id="timeTxt">--:--</span></span>
+        </div>
+      </div>
+      <div class="hud-btns">
+        <button class="pbtn" id="mapBtn" type="button">MAP</button>
+        <button class="pbtn" id="menuBtn" type="button">MENU<span class="badge" id="menuBadge" hidden>!</span></button>
+      </div>
+    </header>
+
+    <div class="center" id="center" aria-live="polite">
+      <div class="clock" id="clock">00:00:00</div>
+      <div class="status" id="status">Pick a bait and cast.</div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <section class="panel" id="panel" aria-label="Fishing console">
+      <div>
+        <div class="lbl-row"><span class="lbl">LINES</span><span class="desc" id="linesDesc"></span></div>
+        <div class="holes" id="holes"></div>
+      </div>
+      <div id="sonar" class="sonar" hidden><span class="sweep"></span><div class="s-head"><span>FISH FINDER</span><span id="sonarSub"></span></div><div class="s-msg" id="sonarMsg"></div></div>
+      <button class="loadout" id="tackleBtn" type="button"><canvas id="baitIcon" class="px" width="8" height="8"></canvas><span class="lo-t" id="loadoutTxt">WORMS</span><span class="lo-c">CHANGE</span></button>
+      <button class="go" id="goBtn" type="button">CAST</button>
+    </section>
+  </div>
+
+  <div class="coach" id="coach" hidden><p id="coachTxt"></p><div class="coach-btns"><button class="pbtn" id="coachSkip" type="button">SKIP TUTORIAL</button><button class="pbtn gold" id="coachNext" type="button">GOT IT</button></div></div>
+  <div class="toast" id="toast" hidden role="status"></div>
+  <div class="offline" id="offline" hidden>Can't reach the One Cast server. Retrying...</div>
+
+  <!-- boot / name -->
+  <div class="overlay" id="bootOv"><div class="dialog" style="text-align:center"><h2 class="d-title">ONE CAST</h2><p class="note" id="bootMsg">Casting a line to the server...</p><button class="pbtn gold" id="bootRetry" type="button" hidden>TRY AGAIN</button></div></div>
+  <div class="overlay" id="nameOv" hidden>
+    <div class="dialog">
+      <h2 class="d-title">WELCOME TO ONE CAST</h2>
+      <p class="note">Pick an angler name. It shows up on the world leaderboard, so <b>don't use your real name</b>. Letters, numbers and _ only. You get a #tag so friends can find you.</p>
+      <input class="field" id="nameIn" maxlength="16" autocomplete="off" spellcheck="false" placeholder="ReelDeal">
+      <p class="err" id="nameErr"></p>
+      <button class="go" id="nameGo" type="button">START FISHING</button>
+      <p class="note">Already play on another device? <button class="pbtn" id="nameHaveCode" type="button" style="font-size:8px">PASTE SAVE CODE</button></p>
+      <div id="codeBox" hidden><textarea class="field code" id="codeIn" placeholder="OC1...."></textarea><button class="pbtn gold" id="codeGo" type="button">LOAD MY GAME</button></div>
+    </div>
+  </div>
+
+  <!-- menu -->
+  <div class="overlay" id="menuOv" hidden><div class="dialog wide">
+    <div class="d-head"><h2 class="d-title">MENU</h2><div class="d-tools"><button class="pbtn" id="alertBtn" type="button" title="Fish alert window">ALERT</button><button class="x" data-close type="button" aria-label="Close">X</button></div></div>
+    <div class="wallet"><span class="lbl">WALLET</span><span class="v"><span class="coin"></span><span id="menuCoins">$0</span></span></div>
+    <div class="daily" id="dailyBox"></div>
+    <div class="menu-list cols" id="menuList"></div>
+    <p class="note" id="menuFoot"></p>
+  </div></div>
+
+  <!-- tackle -->
+  <div class="overlay" id="tackleOv" hidden><div class="dialog">
+    <div class="d-head"><h2 class="d-title">TACKLE BOX</h2><button class="x" data-close type="button" aria-label="Close">X</button></div>
+    <p class="note" id="tackleNote"></p>
+    <div class="baits" id="baitPick"></div>
+    <div class="sonar" style="color:var(--muted)"><div class="s-msg" id="baitInfo"></div></div>
+    <button class="go alt" id="toBaitShop" type="button">BAIT SHOP</button>
+  </div></div>
+
+  <!-- shops -->
+  <div class="overlay" id="baitOv" hidden><div class="dialog"><div class="d-head"><h2 class="d-title">BAIT SHOP</h2><button class="x" data-close type="button" aria-label="Close">X</button></div><ul class="rows" id="baitRows"></ul></div></div>
+  <div class="overlay" id="gearOv" hidden><div class="dialog"><div class="d-head"><h2 class="d-title">GEAR SHOP</h2><button class="x" data-close type="button" aria-label="Close">X</button></div><div id="gearRows" class="rows"></div></div></div>
+  <div class="overlay" id="shopOv" hidden><div class="dialog">
+    <div class="d-head"><h2 class="d-title">CLOTHES SHOP</h2><button class="x" data-close type="button" aria-label="Close">X</button></div>
+    <div class="dress"><canvas id="dressPreview" class="px"></canvas><div class="info"><span class="try" id="dressTry"></span><span class="iname" id="dressName"></span><span class="iprice" id="dressPrice"></span></div></div>
+    <div class="tabs" id="shopTabs"></div>
+    <div class="items" id="shopItems"></div>
+    <div class="buybar"><button class="go" id="shopAct" type="button">WEAR</button></div>
+  </div></div>
+
+  <!-- inventory -->
+  <div class="overlay" id="bucketOv" hidden><div class="dialog wide">
+    <div class="d-head"><h2 class="d-title">YOUR FISH</h2><div class="d-tools"><select id="bucketSort" class="field small"><option value="new">Newest</option><option value="big">Biggest</option><option value="value">Most valuable</option><option value="sp">By species</option></select><button class="x" data-close type="button" aria-label="Close">X</button></div></div>
+    <div class="sumbar"><span class="v" id="bucketSum"></span><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pbtn" id="sellSmall" type="button">SELL SMALL FRY</button><button class="pbtn gold" id="sellAll" type="button">SELL ALL</button></div></div>
+    <div class="grid inv" id="bucketGrid"></div>
+    <button class="pbtn" id="bucketMore" type="button" hidden>SHOW MORE</button>
+  </div></div>
+  <div class="overlay" id="fishOv" hidden><div class="dialog inspect"><div class="d-head"><h2 class="d-title" id="fishTitle">FISH</h2><button class="x" data-close type="button" aria-label="Close">X</button></div><div id="fishBody" style="display:grid;gap:10px;justify-items:center;width:100%"></div></div></div>
+
+  <!-- catch card -->
+  <div class="overlay" id="cardOv" hidden><div class="dialog catch"><div class="sparks" id="sparks"></div><div id="cardBody" style="display:grid;gap:10px;justify-items:center;width:100%"></div></div></div>
+
+  <!-- journal, legends, achievements, boards -->
+  <div class="overlay" id="journalOv" hidden><div class="dialog wide"><div class="d-head"><h2 class="d-title">FISH JOURNAL</h2><div class="d-tools"><select id="journalRegion" class="field small"></select><button class="x" data-close type="button" aria-label="Close">X</button></div></div><p class="note" id="journalNote"></p><div id="journalBody" class="grid"></div></div></div>
+  <div class="overlay" id="legendOv" hidden><div class="dialog wide"><div class="d-head"><h2 class="d-title">LEGENDS</h2><div class="d-tools"><select id="legendFilter" class="field small"><option value="all">All spots</option><option value="free">Still out there</option><option value="owned">Owned</option><option value="mine">Mine</option></select><button class="x" data-close type="button" aria-label="Close">X</button></div></div><p class="note">One of each. The first angler on Earth to land it owns it. The clues are in the journal: right spot, right bait, right time, and a long wait. Odds double every two weeks a legend stays free.</p><div id="legendBody" style="display:grid;gap:8px"></div></div></div>
+  <div class="overlay" id="achOv" hidden><div class="dialog wide"><div class="d-head"><h2 class="d-title">ACHIEVEMENTS</h2><button class="x" data-close type="button" aria-label="Close">X</button></div><p class="note" id="achNote"></p><ul class="ach" id="achList"></ul></div></div>
+  <div class="overlay" id="boardOv" hidden><div class="dialog wide">
+    <div class="d-head"><h2 class="d-title">WORLD LEADERBOARD</h2><button class="x" data-close type="button" aria-label="Close">X</button></div>
+    <div class="lb-tools"><select id="lbPeriod" class="field small"><option value="all">All time</option><option value="season">This season</option><option value="week">This week</option></select><select id="lbRegion" class="field small"></select><select id="lbSpecies" class="field small"></select></div>
+    <p class="season-note" id="seasonNote"></p>
+    <ol class="lb" id="lbList"></ol>
+    <div class="me-line" id="lbMe"></div>
+    <button class="pbtn" id="hallBtn" type="button">HALL OF FAME</button><div id="hallBox" hidden></div>
+  </div></div>
+
+  <!-- social -->
+  <div class="overlay" id="friendsOv" hidden><div class="dialog wide">
+    <div class="d-head"><h2 class="d-title">FRIENDS</h2><button class="x" data-close type="button" aria-label="Close">X</button></div>
+    <p class="note">Add a friend by their name and #tag. Both of you have to accept. Friends can trade and react to each other's catches. Your tag: <b id="myTag"></b></p>
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) 90px auto;gap:6px"><input class="field small" id="frName" placeholder="Name" maxlength="16"><input class="field small" id="frTag" placeholder="#tag" maxlength="4" inputmode="numeric"><button class="pbtn gold" id="frAdd" type="button">ADD</button></div>
+    <p class="err" id="frErr"></p>
+    <div id="friendList" style="display:grid;gap:6px"></div>
+    <div id="openTrades" style="display:grid;gap:6px"></div>
+    <button class="pbtn" id="tradeHistBtn" type="button">TRADE HISTORY</button><div id="tradeHist" hidden style="display:grid;gap:6px"></div>
+  </div></div>
+  <div class="overlay" id="tradeOv" hidden><div class="dialog wide">
+    <div class="d-head"><h2 class="d-title" id="tradeTitle">TRADE</h2><button class="x" id="tradeClose" type="button" aria-label="Close">X</button></div>
+    <p class="note" id="tradeNote"></p>
+    <div class="trade-sides"><div class="side" id="sideMe"></div><div class="side" id="sideThem"></div></div>
+    <div class="three"><button class="go alt" id="tradeEdit" type="button">EDIT OFFER</button><button class="go" id="tradeReady" type="button">READY</button><button class="go reel" id="tradeConfirm" type="button">CONFIRM</button></div>
+    <button class="pbtn danger" id="tradeCancel" type="button">CANCEL TRADE</button>
+    <div id="tradePick" hidden style="display:grid;gap:8px"><p class="note">Tap fish to add them to your offer, then set coins.</p><div style="display:flex;gap:8px;align-items:center"><span class="lbl">COINS</span><input class="field small" id="tradeCoins" type="number" min="0" value="0" style="width:140px"></div><div class="grid inv" id="tradeFishGrid"></div><button class="go" id="tradePickDone" type="button">UPDATE OFFER</button></div>
+  </div></div>
+  <div class="overlay" id="profileOv" hidden><div class="dialog wide"><div class="d-head"><h2 class="d-title">ANGLER</h2><button class="x" data-close type="button" aria-label="Close">X</button></div><div id="profileBody" style="display:grid;gap:10px"></div></div></div>
+  <div class="overlay" id="newsOv" hidden><div class="dialog wide"><div class="d-head"><h2 class="d-title">WORLD NEWS</h2><button class="x" data-close type="button" aria-label="Close">X</button></div><ul class="news" id="newsList"></ul></div></div>
+
+  <!-- map -->
+  <div class="overlay" id="mapOv" hidden><div class="dialog full">
+    <div class="map-head"><h2 class="d-title">WORLD MAP</h2><div class="d-tools"><button class="pbtn" id="mapWorld" type="button">WORLD</button><button class="pbtn" id="mapList" type="button">LIST</button><button class="x" data-close type="button" aria-label="Close">X</button></div></div>
+    <div class="map-wrap" id="mapWrap"><canvas id="mapCanvas"></canvas><div class="pins" id="pins"></div></div>
+    <div class="map-foot" id="mapFoot"></div>
+  </div></div>
+  <div class="overlay" id="travelOv" hidden><div class="dialog"><div class="travel-scene"><canvas id="travelCanvas" class="px"></canvas></div><p class="travel-text" id="travelTxt"></p></div></div>
+
+  <!-- save, help, settings, confirm, away -->
+  <div class="overlay" id="saveOv" hidden><div class="dialog">
+    <div class="d-head"><h2 class="d-title">SAVE CODE</h2><button class="x" data-close type="button" aria-label="Close">X</button></div>
+    <p class="note">Your game lives on the server. This code is the key to it. Paste it on another device to keep playing there. <b>Keep it private:</b> anyone with the code can play as you.</p>
+    <textarea class="field code" id="saveOut" readonly></textarea>
+    <button class="go alt" id="copySave" type="button">COPY CODE</button>
+    <p class="note">Load a different game here:</p>
+    <textarea class="field code" id="saveIn" placeholder="Paste a code"></textarea>
+    <p class="err" id="saveErr"></p>
+    <button class="go" id="loadSave" type="button">LOAD</button>
+    <p class="note">Played Below Zero? Paste its save code (starts with BZ1) to earn the Founder cap.</p>
+    <div class="reset-row"><button class="pbtn danger" id="reset" type="button">START OVER</button><span id="resetAsk" hidden>Really start a new game here? Your current game stays on the server if you have its code. <button class="pbtn danger" id="resetYes" type="button">YES</button></span></div>
+  </div></div>
+  <div class="overlay" id="helpOv" hidden><div class="dialog"><div class="d-head"><h2 class="d-title">HOW TO PLAY</h2><button class="x" data-close type="button" aria-label="Close">X</button></div>
+    <ol class="help">
+      <li><b>Cast</b> a line and walk away. Bites come at random: worms in a minute, suckers in hours. The longer you wait before the bite, the bigger the fish can be.</li>
+      <li>When a line shows <b>BITE!</b>, press REEL. The fish stays hooked until you do, even overnight.</li>
+      <li><b>Sell</b> fish for coins. Buy better bait, more lines, stronger line (so big fish don't snap it) and a boat.</li>
+      <li>Open the <b>MAP</b>. The first trip to a region costs a ticket; after that you can go there any time for free. Each spot runs on its own local time: dawn and dusk are prime time.</li>
+      <li>Every spot hides one <b>legend</b>. Only one player on Earth can own it. Read its clue in the Legends screen: right bait, right time of day, a long wait, and line strong enough to hold it.</li>
+      <li>Add <b>friends</b> by name#tag to trade fish and coins. Legends can be traded but never sold.</li>
+      <li>Turn on the <b>fish alert</b> in the menu to get a little window that pops up when something bites, even while you work.</li>
+    </ol>
+    <p class="note">Be kind: no real names, and use the report button if someone's name is a problem.</p>
+  </div></div>
+  <div class="overlay" id="confirmOv" hidden><div class="dialog cf"><h2 class="d-title" id="cfTitle">ARE YOU SURE?</h2><div id="cfBody" style="display:grid;gap:8px;justify-items:center;width:100%"></div><p class="note" id="cfNote"></p><div class="cf-btns"><button class="go alt" id="cfNo" type="button">KEEP IT</button><button class="go reel" id="cfYes" type="button">SELL</button></div></div></div>
+  <div class="overlay" id="awayOv" hidden><div class="dialog" style="text-align:center"><h2 class="d-title">WELCOME BACK</h2><div class="away-main" id="awayBody"></div><button class="go" data-close type="button">LET'S SEE</button></div></div>
+  <div class="overlay" id="reportOv" hidden><div class="dialog"><div class="d-head"><h2 class="d-title">REPORT</h2><button class="x" data-close type="button" aria-label="Close">X</button></div><p class="note" id="reportWho"></p><div id="reportReasons" style="display:grid;gap:6px"></div></div></div>
+  <div class="overlay" id="suggestOv" hidden><div class="dialog"><div class="d-head"><h2 class="d-title">SUGGEST A LAKE</h2><button class="x" data-close type="button" aria-label="Close">X</button></div><p class="note">Know a famous lake or pond that should be on the map? Public, well-known places only, never someone's house or school.</p><input class="field small" id="sgLake" placeholder="Lake name" maxlength="60"><input class="field small" id="sgPlace" placeholder="Where is it?" maxlength="60"><p class="err" id="sgErr"></p><button class="go" id="sgGo" type="button">SEND</button></div></div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/art.js"></script>
+<script src="js/map.js"></script>
+<script src="js/net.js"></script>
+<script src="js/scenes.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

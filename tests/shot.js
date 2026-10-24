@@ -1,0 +1,2 @@
+const { chromium } = require('playwright');
+(async()=>{ const [,, url, out, w, h]=process.argv; const b=await chromium.launch(); const p=await b.newPage({viewport:{width:+w||1100,height:+h||900}}); p.on('pageerror',e=>console.log('PAGEERROR',e.message)); p.on('console',m=>{ if(m.type()==='error') console.log('CONSOLE',m.text()); }); await p.goto(url); await p.waitForTimeout(800); await p.screenshot({path:out,fullPage:true}); await b.close(); })();

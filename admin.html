@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>One Cast Admin</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
+<link rel="stylesheet" href="css/game.css">
+<style>
+body{overflow:auto;padding:16px}
+.wrap{max-width:760px;margin:0 auto;display:grid;gap:14px}
+.box{display:grid;gap:10px;padding:14px;background:var(--panel);border:4px solid var(--edge)}
+.k{font:9px/1 var(--pixel);color:var(--gold)}
+.stat{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px}
+.line{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 10px;background:var(--panel-lo);border:3px solid var(--edge)}
+.line .b{display:flex;gap:6px;flex-wrap:wrap}
+.line .pbtn{font-size:8px;padding:7px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="logo">ONE <b>CAST</b> ADMIN</h1>
+  <div class="box" id="keyBox"><span class="k">ADMIN KEY</span><p class="note">The key is at the top of your setup.sql file. It stays in this browser only.</p><input class="field small" id="key" type="password" placeholder="oc-admin-..."><button class="go" id="go">OPEN</button><p class="err" id="err"></p></div>
+  <div class="box" id="over" hidden>
+    <span class="k">OVERVIEW</span><div class="stat" id="stats"></div>
+    <span class="k">POST A NOTICE TO THE WORLD NEWS</span><div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px"><input class="field small" id="notice" maxlength="160" placeholder="Season 2 starts Friday!"><button class="pbtn gold" id="postNotice">POST</button></div>
+    <span class="k">FIND A PLAYER</span><div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px"><input class="field small" id="q" placeholder="name, #tag or id"><button class="pbtn" id="find">FIND</button></div><div id="found" style="display:grid;gap:6px"></div>
+    <span class="k">OPEN REPORTS</span><div id="reports" style="display:grid;gap:6px"></div>
+    <span class="k">LAKE SUGGESTIONS</span><div id="sugg" style="display:grid;gap:6px"></div>
+    <span class="k">RECENTLY SEEN</span><div id="recent" style="display:grid;gap:6px"></div>
+  </div>
+</div>
+<script src="js/data.js"></script>
+<script src="js/net.js"></script>
+<script>
+(function(){
+var N=window.NET, key=localStorage.getItem('onecast.admin')||'';
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function rpc(fn,args){ args.p_key=key; return N.rpc(fn,args); }
+function playerLine(p){ var d=document.createElement('div'); d.className='line'; d.innerHTML='<div><b>'+esc(p.name)+'#'+p.tag+'</b> · $'+Number(p.coins).toLocaleString()+' · '+(p.catches||0)+' catches'+(p.hidden?' · <span style="color:var(--red-hi)">HIDDEN</span>':'')+(p.banned?' · <span style="color:var(--red-hi)">BANNED</span>':'')+'<br><small style="color:var(--muted)">'+p.pid+' · seen '+new Date(p.seen).toLocaleString()+'</small></div>';
+  var b=document.createElement('div'); b.className='b';
+  [['RENAME','rename',function(){ return prompt('New name (letters, numbers, _):'); }],[p.hidden?'UNHIDE':'HIDE','hide',function(){ return String(!p.hidden); }],[p.banned?'UNBAN':'BAN','ban',function(){ return String(!p.banned); }],['+COINS','coins',function(){ return prompt('Coins to add (negative to take):','1000'); }]].forEach(function(a){ var btn=document.createElement('button'); btn.className='pbtn'+(a[1]==='ban'?' danger':''); btn.textContent=a[0]; btn.onclick=function(){ var v=a[2](); if(v==null||v==='') return; rpc('admin_player',{p_pid:p.pid,p_action:a[1],p_value:v}).then(load).catch(function(e){ alert(e.message); }); }; b.appendChild(btn); });
+  d.appendChild(b); return d; }
+function load(){
+  rpc('admin_overview',{}).then(function(o){
+    localStorage.setItem('onecast.admin',key); $('keyBox').hidden=true; $('over').hidden=false;
+    $('stats').innerHTML=[['PLAYERS',o.players],['ONLINE NOW',o.online],['FISH KEPT',o.fish],['LEGENDS CAUGHT',o.legendsCaught]].map(function(s){ return '<div class="fact"><span class="k">'+s[0]+'</span><span class="v">'+s[1]+'</span></div>'; }).join('');
+    var r=$('reports'); r.innerHTML=o.reports.length?'':'<p class="note">No open reports.</p>'; o.reports.forEach(function(x){ var d=document.createElement('div'); d.className='line'; d.innerHTML='<div><b>'+esc(x.target)+'</b> reported by '+esc(x.reporter)+' for <b>'+esc(x.reason)+'</b><br><small style="color:var(--muted)">'+new Date(x.at).toLocaleString()+'</small></div>'; var b=document.createElement('div'); b.className='b';
+      [['HIDE','hide','true'],['BAN','ban','true'],['RENAME','rename',null]].forEach(function(a){ var btn=document.createElement('button'); btn.className='pbtn'+(a[1]==='ban'?' danger':''); btn.textContent=a[0]; btn.onclick=function(){ var v=a[2]||prompt('New name:'); if(!v) return; rpc('admin_player',{p_pid:x.targetPid,p_action:a[1],p_value:v}).then(load).catch(function(e){ alert(e.message); }); }; b.appendChild(btn); });
+      var ok=document.createElement('button'); ok.className='pbtn'; ok.textContent='DISMISS'; ok.onclick=function(){ rpc('admin_report',{p_id:x.id,p_handled:true}).then(load); }; b.appendChild(ok); d.appendChild(b); r.appendChild(d); });
+    var s=$('sugg'); s.innerHTML=o.suggestions.length?'':'<p class="note">No suggestions waiting.</p>'; o.suggestions.forEach(function(x){ var d=document.createElement('div'); d.className='line'; d.innerHTML='<div><b>'+esc(x.lake)+'</b> · '+esc(x.place)+'<br><small style="color:var(--muted)">from '+esc(x.by)+'</small></div>'; var b=document.createElement('div'); b.className='b'; ['approved','rejected'].forEach(function(st){ var btn=document.createElement('button'); btn.className='pbtn'+(st==='approved'?' gold':''); btn.textContent=st.toUpperCase(); btn.onclick=function(){ rpc('admin_suggestion',{p_id:x.id,p_status:st}).then(load); }; b.appendChild(btn); }); d.appendChild(b); s.appendChild(d); });
+    var rc=$('recent'); rc.innerHTML=''; o.recent.slice(0,30).forEach(function(p){ rc.appendChild(playerLine(p)); });
+  }).catch(function(e){ $('err').textContent=e.message; $('keyBox').hidden=false; });
+}
+$('go').onclick=function(){ key=$('key').value.trim(); load(); };
+$('find').onclick=function(){ rpc('admin_find',{p_q:$('q').value.trim()}).then(function(list){ var f=$('found'); f.innerHTML=list.length?'':'<p class="note">Nobody found.</p>'; list.forEach(function(p){ f.appendChild(playerLine(p)); }); }).catch(function(e){ alert(e.message); }); };
+$('postNotice').onclick=function(){ var t=$('notice').value.trim(); if(!t) return; rpc('admin_news',{p_text:t}).then(function(){ $('notice').value=''; alert('Posted.'); }).catch(function(e){ alert(e.message); }); };
+if(key){ $('key').value=key; load(); }
+})();
+</script>
+</body>
+</html>
