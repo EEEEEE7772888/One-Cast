@@ -16,6 +16,12 @@ N.saveId=function(id){ try{ localStorage.setItem(ID_KEY,JSON.stringify(id)); }ca
 N.clearId=function(){ try{ localStorage.removeItem(ID_KEY); localStorage.removeItem(CACHE_KEY); }catch(e){} N.id=null; };
 N.code=function(){ return N.id?'OC1.'+N.id.pid+'.'+N.id.secret:''; };
 N.parseCode=function(c){ c=(c||'').trim(); var m=/^OC1\.([0-9a-f-]{36})\.([0-9a-f]{20,80})$/i.exec(c); return m?{pid:m[1].toLowerCase(),secret:m[2]}:null; };
+/* Moving house: the old address sends its player here as #move=OC1.<pid>.<secret>. Take it, keep any other save on this device aside, and wipe the code from the address bar. */
+N.takeMove=function(){ try{ var m=/^#move=(.+)$/.exec(location.hash||''); if(!m) return false; history.replaceState(null,'',location.pathname+location.search);
+  var id=N.parseCode(decodeURIComponent(m[1])); if(!id) return false; var had=N.loadId();
+  if(had&&had.pid!==id.pid) localStorage.setItem(ID_KEY+'.before-move',JSON.stringify(had));
+  if(!had||had.pid!==id.pid){ localStorage.removeItem(CACHE_KEY); N.saveId(id); } return true; }catch(e){ return false; } };
+N.moved=N.takeMove();
 N.cache=function(state){ try{ localStorage.setItem(CACHE_KEY,JSON.stringify({at:Date.now(),state:state})); }catch(e){} };
 N.cached=function(){ try{ return JSON.parse(localStorage.getItem(CACHE_KEY)||'null'); }catch(e){ return null; } };
 function headers(){ var h={'Content-Type':'application/json',apikey:N.SERVER.key}; if(/^eyJ/.test(N.SERVER.key)) h.Authorization='Bearer '+N.SERVER.key; return h; }
