@@ -269,7 +269,7 @@ begin
       t := lpad((floor(random() * 10000))::int::text, 4, '0'); tries := tries + 1;
       exit when not exists (select 1 from players where lower(name) = lower(p_name) and tag = t) or tries > 50;
     end loop;
-    insert into players (pid, secret, name, tag) values (p_pid, p_secret, p_name, t) returning * into p;
+    insert into players (pid, secret, name, tag, coins) values (p_pid, p_secret, p_name, t, 50) returning * into p; -- $50 welcome bonus
   end if;
   p := oc_auth(p_pid, p_secret);
   return oc_state(p);

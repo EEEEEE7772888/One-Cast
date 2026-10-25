@@ -56,7 +56,7 @@ G.refresh=function(force){
   if(!N.id||G.busy&&!force) return Promise.resolve();
   if(!force&&Date.now()-lastRefresh<15000) return Promise.resolve();
   lastRefresh=Date.now();
-  return N.me('get_state').then(function(s){ var openTrade=G.tradeId; G.apply(s); UI.afterRefresh&&UI.afterRefresh(); if(openTrade) G.tradeId=openTrade; }).catch(function(e){ if(!e.offline) G.fail(e); });
+  return N.me('get_state').then(function(s){ var openTrade=G.tradeId; G.apply(s); UI.afterRefresh&&UI.afterRefresh(); if(openTrade) G.tradeId=openTrade; if($('cardOv').hidden) setTimeout(G.checkAch,1500); /* new stats: award achievements right away */ }).catch(function(e){ if(!e.offline) G.fail(e); });
 };
 G.setBait=function(id){ G.bait=id; var pb=Object.assign({},G.s.prefs.bait||{}); pb[G.s.spot]=id; G.prefs({bait:pb}); G.renderPanel(); };
 
@@ -293,7 +293,7 @@ $('nameGo').onclick=function(){
   var n=$('nameIn').value.trim(), err=$('nameErr'); err.textContent='';
   if(!/^[A-Za-z0-9_]{2,16}$/.test(n)){ err.textContent='2 to 16 letters, numbers or _ please.'; return; }
   var id=N.id&&!G.s?N.id:N.newId(); N.saveId(id); $('nameGo').disabled=true;
-  N.rpc('login',{p_pid:id.pid,p_secret:id.secret,p_name:n}).then(function(s){ $('nameGo').disabled=false; start(s); G.toast('Welcome, '+s.name+'#'+s.tag+'! That tag is how friends find you.',4000,'good'); })
+  N.rpc('login',{p_pid:id.pid,p_secret:id.secret,p_name:n}).then(function(s){ $('nameGo').disabled=false; start(s); G.toast('Welcome, '+s.name+'#'+s.tag+'! Here is $50 to get you started. Your #tag is how friends find you.',5000,'good'); })
     .catch(function(e){ $('nameGo').disabled=false; err.textContent=e.message==='bad name'?"That name isn't allowed. Try another.":e.offline?"Can't reach the server. Try again in a moment.":e.message; });
 };
 $('nameIn').addEventListener('keydown',function(e){ if(e.key==='Enter') $('nameGo').click(); });

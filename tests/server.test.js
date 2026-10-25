@@ -16,7 +16,7 @@ const A={pid:uuid(),secret:'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'}, B={pid:uuid(),secr
 console.log('login');
 let sA=rpc('login',[A.pid,A.secret,'ReelDeal']);
 ok(sA&&sA.name==='ReelDeal'&&/^\d{4}$/.test(sA.tag),'new player created with a tag');
-ok(sA.coins===0&&sA.baits.length===1&&sA.spot==='basslake','starts with worms at Bass Lake');
+ok(sA.coins===50&&sA.baits.length===1&&sA.spot==='basslake','starts with $50, worms, at Bass Lake');
 ok(rpc('login',[uuid(),'cccccccccccccccccccccccccccccc','fuckface']).error==='bad name','bad word rejected');
 ok(rpc('login',[uuid(),'short','Nice']).error==='bad secret','short secret rejected');
 ok(rpc('get_state',[A.pid,'wrongwrongwrongwrongwrongwrong']).error==='not your game','wrong secret rejected');

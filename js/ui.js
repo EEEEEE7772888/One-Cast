@@ -81,7 +81,7 @@ function renderBaitShop(){
     li.appendChild(el('div','ic')).appendChild(A.spriteCanvas(art.rows,art.map)); li.lastChild.firstChild.style.width='32px'; li.lastChild.firstChild.style.height='32px';
     var where=b.water==='fresh'?'Freshwater':b.water==='salt'?'Saltwater':b.water==='troll'?'Ocean trolling':'Deep drop';
     li.appendChild(el('div',null,'<div class="nm">'+esc(b.name)+'</div><div class="sub">'+esc(b.desc)+' · <b>'+where+'</b> · bites '+b.rate.toLowerCase()+'</div>'));
-    var act=el('div'); if(own) act.innerHTML='<span class="own">OWNED</span>'; else { var btn=el('button','pbtn'+(G.s.coins>=b.price?' gold':''),D.money(b.price)); btn.type='button'; btn.disabled=G.s.coins<b.price; btn.onclick=function(){ buy('bait',b.id,b.name); }; act.appendChild(btn); }
+    var act=el('div'); if(own) act.innerHTML='<span class="own">OWNED</span>'; else { var btn=el('button','pbtn buy'+(G.s.coins>=b.price?' gold':''),(G.s.coins>=b.price?'BUY ':'')+D.money(b.price)); btn.type='button'; btn.disabled=G.s.coins<b.price; btn.onclick=function(){ buy('bait',b.id,b.name); }; act.appendChild(btn); }
     li.appendChild(act); ul.appendChild(li); });
 }
 function buy(kind,id,name){
@@ -97,7 +97,7 @@ function renderGear(){
       var next=x.kind==='method'||x.kind==='comfort'||(G.s.gear[x.kind]||(x.kind==='lines'?1:0))===x.lvl-1;
       var li=el('div','row'+(own?' selected':'')+(!own&&!next?' dim':'')); li.appendChild(el('div','ic')).appendChild(icon(x.kind==='lines'?'spool':x.kind==='line'?'spool':x.kind==='reel'?'tackle':x.kind==='finder'?'news':x.kind==='method'?'boat':'heater'));
       li.appendChild(el('div',null,'<div class="nm">'+esc(x.name)+'</div><div class="sub">'+esc(x.desc)+'</div>'));
-      var act=el('div'); if(own) act.innerHTML='<span class="own">OWNED</span>'; else if(!next) act.innerHTML='<span class="sub">'+D.money(x.price)+'</span>'; else { var btn=el('button','pbtn'+(G.s.coins>=x.price?' gold':''),D.money(x.price)); btn.type='button'; btn.disabled=G.s.coins<x.price; btn.onclick=function(){ buy('gear',x.id,x.name); }; act.appendChild(btn); }
+      var act=el('div'); if(own) act.innerHTML='<span class="own">OWNED</span>'; else if(!next) act.innerHTML='<span class="sub">'+D.money(x.price)+'</span>'; else { var btn=el('button','pbtn buy'+(G.s.coins>=x.price?' gold':''),(G.s.coins>=x.price?'BUY ':'')+D.money(x.price)); btn.type='button'; btn.disabled=G.s.coins<x.price; btn.onclick=function(){ buy('gear',x.id,x.name); }; act.appendChild(btn); }
       li.appendChild(act); box.appendChild(li); }); });
 }
 
@@ -112,7 +112,7 @@ function renderDock(){
     var t=el('div','dock-info','<div class="nm">'+esc(b.name.toUpperCase())+(b.id===cur?' <span class="tag green">TAKEN OUT</span>':'')+'</div><div class="sub">'+esc(b.desc)+'</div><div class="sub"><b>Water:</b> '+waterText(b)+(perkText(b)?' · <b>Bonus:</b> '+perkText(b):'')+'</div>'); row.appendChild(t);
     var act=el('div','dock-act');
     if(has){ if(b.id!==cur){ var go=el('button','pbtn gold','TAKE OUT'); go.type='button'; go.onclick=function(){ N.me('set_boat',{p_boat:b.id}).then(function(r){ G.s.gear=r.gear; G.toast('Took out the '+b.name+'.',2200,'good'); renderDock(); G.renderAll(); }).catch(G.fail); }; act.appendChild(go); } }
-    else if(prevOwned){ var buyb=el('button','pbtn'+(G.s.coins>=b.price?' gold':''),D.money(b.price)); buyb.type='button'; buyb.disabled=G.s.coins<b.price; buyb.onclick=function(){ UI.confirm({title:'BUY THE '+b.name.toUpperCase()+'?',note:D.money(b.price)+'. You will take it out right away. '+waterText(b)+'.',yes:'BUY IT',no:'NOT YET',danger:false}).then(function(v){ if(v) buy('gear',b.id,b.name).then(function(){ renderDock(); }); }); }; act.appendChild(buyb); }
+    else if(prevOwned){ var buyb=el('button','pbtn buy'+(G.s.coins>=b.price?' gold':''),(G.s.coins>=b.price?'BUY ':'')+D.money(b.price)); buyb.type='button'; buyb.disabled=G.s.coins<b.price; buyb.onclick=function(){ UI.confirm({title:'BUY THE '+b.name.toUpperCase()+'?',note:D.money(b.price)+'. You will take it out right away. '+waterText(b)+'.',yes:'BUY IT',no:'NOT YET',danger:false}).then(function(v){ if(v) buy('gear',b.id,b.name).then(function(){ renderDock(); }); }); }; act.appendChild(buyb); }
     else act.appendChild(el('span','sub',D.money(b.price)));
     row.appendChild(act); box.appendChild(row); });
 }
@@ -371,7 +371,7 @@ function regionView(rid){ var sp=D.SPOTS.filter(function(s){ return s.region===r
   var r=$('mapWrap').getBoundingClientRect(), asp=r.width/Math.max(1,r.height), w=lon1-lon0, h=lat0-lat1; if(w/h<asp) w=h*asp; var c=(lon0+lon1)/2, cy=(lat0+lat1)/2-(footOpen?h*0.12:0);
   if(r.width/w<11){ var focus=D.SPOT_BY_ID[pickedSpot]&&D.SPOT_BY_ID[pickedSpot].region===rid?D.SPOT_BY_ID[pickedSpot]:sp[0]; w=r.width/13; c=focus.lon; cy=focus.lat-w/asp*0.18; } return clampView({lon0:c-w/2,lon1:c+w/2,lat0:cy+w/asp/2,lat1:cy-w/asp/2}); }
 function loadWorld(){ if(G.world&&Date.now()-worldAt<30000) return Promise.resolve(G.world); return N.rpc('get_world',{}).then(function(w){ G.world=w; worldAt=Date.now(); return w; }); }
-function renderMap(){ view=view?clampView(view):worldView(); mapList=false; pickedSpot=pickedSpot||G.s.spot; footOpen=isZoomed(); drawMap(); renderMapFoot(); clearInterval(mapTimer); mapTimer=setInterval(function(){ if($('mapOv').hidden){ clearInterval(mapTimer); return; } drawMap(); },60000);
+function renderMap(){ view=view?clampView(view):(G.s.regions.length<=1?regionView(G.spot().region):worldView()); /* new players start zoomed on Home waters */ mapList=false; pickedSpot=pickedSpot||G.s.spot; footOpen=isZoomed(); drawMap(); renderMapFoot(); clearInterval(mapTimer); mapTimer=setInterval(function(){ if($('mapOv').hidden){ clearInterval(mapTimer); return; } drawMap(); },60000);
   loadWorld().then(function(){ drawPins(); renderMapFoot(); }).catch(function(){}); }
 function isZoomed(){ var r=$('mapWrap').getBoundingClientRect(); return r.width/(view.lon1-view.lon0)>9; }
 function toXY(lon,lat,w,h){ return [(lon-view.lon0)/(view.lon1-view.lon0)*w,(view.lat0-lat)/(view.lat0-view.lat1)*h]; }

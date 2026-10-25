@@ -455,4 +455,13 @@ a{color:var(--frost)}
 .crew-invite{border-color:var(--gold);background:linear-gradient(90deg,#2A2208,var(--panel-lo) 70%)}
 
 /* toasts sit under the HUD so they never cover the CAST / REEL button */
-@media (max-width:600px){.toast{top:calc(env(safe-area-inset-top,0px) + 112px)}}
+@media (max-width:600px){.toast{top:calc(env(safe-area-inset-top,0px) + 112px);left:12px;right:12px;transform:none;max-width:none;margin:0 auto;width:fit-content}}
+/* phones: a compact tutorial box so the lake and the line stay visible */
+@media (max-width:600px){
+  .coach{font:17px/1.08 var(--term);padding:7px 9px 6px;gap:4px;width:calc(100% - 24px)}
+  .coach-btns{gap:6px}
+  .coach .pbtn{font-size:7px;padding:6px 7px}
+}
+/* shop buy buttons: say BUY and give fingers a real target */
+.pbtn.buy{font-size:10px;padding:11px 12px;min-width:92px;min-height:40px;white-space:nowrap}
+.pbtn.buy:disabled{opacity:.75}

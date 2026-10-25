@@ -25,6 +25,7 @@ async function run(dev, viewport, mobile) {
   };
   const click = async (sel, label) => { const el = page.locator(sel).first(); if (!(await el.count()) || !(await el.isVisible())) { note(dev, 'could not find/see ' + (label || sel)); return false; } await el.click(); await page.waitForTimeout(400); return true; };
 
+  await page.addInitScript(() => { window.__toasts = []; new MutationObserver(() => { const t = document.getElementById('toast'); if (t && !t.hidden && t.textContent && window.__toasts[window.__toasts.length - 1] !== t.textContent) window.__toasts.push(Math.round(performance.now() / 100) / 10 + 's ' + t.textContent); }).observe(document, { subtree: true, childList: true, attributes: true, characterData: true }); });
   await page.goto(BASE + '/?server=' + BASE + '&key=test'); await page.waitForTimeout(1200);
   await shot('first-load'); await overflow('first load');
   if (!(await page.locator('#nameOv').isVisible())) note(dev, 'name screen did not appear for a new player');
@@ -33,6 +34,8 @@ async function run(dev, viewport, mobile) {
   await shot('start'); await overflow('start');
   const coach = await page.locator('#coach').isVisible(); if (!coach) note(dev, 'tutorial box not showing at start');
   const pid = await page.evaluate(() => G.s.pid);
+  note(dev, 'starting coins: ' + await page.evaluate(() => G.s.coins));
+  const cb = await page.locator('#coach').boundingBox(); if (cb) note(dev, 'tutorial box size: ' + Math.round(cb.width) + 'x' + Math.round(cb.height) + ' on a ' + viewport.width + 'x' + viewport.height + ' screen');
   // cast with worms
   await click('#castBtn, button:has-text("CAST")', 'CAST button'); await page.waitForTimeout(800); await shot('after-cast'); await overflow('after cast');
   sql(`update lines set bite_at=now()-interval '3 seconds', cast_at=now()-interval '5 minutes' where pid='${pid}'`);
@@ -44,6 +47,7 @@ async function run(dev, viewport, mobile) {
   const coinsAfter = await page.evaluate(() => G.s.coins);
   if (!(coinsAfter > coinsBefore)) note(dev, 'selling from the catch card did not add coins (' + coinsBefore + ' -> ' + coinsAfter + ')');
   await shot('after-sell'); await overflow('after sell');
+  await page.waitForTimeout(3500); await shot('after-sell-wait');
   note(dev, 'tutorial step after selling: ' + (await page.evaluate(() => (G.s.prefs.tut || 0))) + ', coach text: ' + (await page.locator('#coachTxt').textContent()).slice(0, 60));
   // give coins to explore shops
   sql(`update players set coins=20000 where pid='${pid}'`); await page.evaluate(() => G.refresh(true)); await page.waitForTimeout(800);
@@ -69,6 +73,7 @@ async function run(dev, viewport, mobile) {
   const go = page.locator('#mapOv button:has-text("TRAVEL HERE")').first();
   if (ok && await go.count()) { await go.click(); await page.waitForTimeout(3500); await shot('traveled'); note(dev, 'spot after travel: ' + await page.evaluate(() => G.s.spot)); }
   else note(dev, 'could not travel from the map by clicking (pin found: ' + ok + ')');
+  note(dev, 'messages shown: ' + (await page.evaluate(() => window.__toasts)).join(' | '));
   // reload: does the player come back?
   await page.reload(); await page.waitForTimeout(2000); await shot('reloaded');
   if (await page.locator('#nameOv').isVisible()) note(dev, 'after reload the game asked for a name again');
