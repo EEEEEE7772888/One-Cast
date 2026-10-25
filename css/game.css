@@ -395,3 +395,7 @@ a{color:var(--frost)}
 @media (max-height:660px){.center{margin-top:4px}.go{min-height:50px}.coach{bottom:200px}}
 @media (max-width:420px){.logo{font-size:12px}.pbtn{padding:9px 8px 8px;font-size:9px}}
 @media (prefers-reduced-motion: reduce){.catch,.go.arm,.sonar .sweep,.sparks i,.chip.bump,.hole-chip.on,.pin.here i,.fish-on.legend{animation:none}.sonar .sweep{display:none}}
+
+.mbtn.on{border-color:var(--sonar-dim);background:#0E2A1E}
+#hudAlert.on{background:var(--sonar-dim);box-shadow:inset 0 3px 0 #3FB06A,inset 0 -3px 0 #1A5230}
+@media (max-width:420px){#hudAlert{display:none}}

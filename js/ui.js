@@ -14,7 +14,8 @@ UI.afterRefresh=function(){ if(!$('menuOv').hidden) renderMenu(); if(!$('friends
 document.querySelectorAll('[data-close]').forEach(function(b){ b.addEventListener('click',UI.closeAll); });
 document.querySelectorAll('.overlay').forEach(function(o){ o.addEventListener('click',function(e){ if(e.target===o&&o.id!=='nameOv'&&o.id!=='bootOv'&&o.id!=='confirmOv'&&o.id!=='travelOv'&&o.id!=='cardOv') UI.closeAll(); }); });
 $('menuBtn').onclick=function(){ UI.open('menuOv'); }; $('mapBtn').onclick=function(){ UI.open('mapOv'); }; $('whereChip').onclick=function(){ UI.open('mapOv'); }; $('tackleBtn').onclick=function(){ UI.open('tackleOv'); };
-$('alertBtn').onclick=function(){ G.openAlert(); };
+$('alertBtn').onclick=function(){ G.openAlert().then(function(){ G.renderAlertBtn(); }); };
+$('hudAlert').onclick=function(){ G.openAlert().then(function(){ G.renderAlertBtn(); }); };
 
 /* ---------- confirm ---------- */
 var cfResolve=null;

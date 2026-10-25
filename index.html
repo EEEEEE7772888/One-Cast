@@ -26,6 +26,7 @@
         </div>
       </div>
       <div class="hud-btns">
+        <button class="pbtn" id="hudAlert" type="button" title="Get a little pop-up when a fish bites">ALERT</button>
         <button class="pbtn" id="mapBtn" type="button">MAP</button>
         <button class="pbtn" id="menuBtn" type="button">MENU<span class="badge" id="menuBadge" hidden>!</span></button>
       </div>
@@ -69,8 +70,9 @@
 
   <!-- menu -->
   <div class="overlay" id="menuOv" hidden><div class="dialog wide">
-    <div class="d-head"><h2 class="d-title">MENU</h2><div class="d-tools"><button class="pbtn" id="alertBtn" type="button" title="Fish alert window">ALERT</button><button class="x" data-close type="button" aria-label="Close">X</button></div></div>
+    <div class="d-head"><h2 class="d-title">MENU</h2><div class="d-tools"><button class="x" data-close type="button" aria-label="Close">X</button></div></div>
     <div class="wallet"><span class="lbl">WALLET</span><span class="v"><span class="coin"></span><span id="menuCoins">$0</span></span></div>
+    <button class="mbtn" id="alertBtn" type="button"><canvas id="alertIcon" class="px" width="8" height="8"></canvas><span><span class="t" id="alertT">FISH ALERT</span><span class="s" id="alertS">A tiny window that pops up when a fish bites, even over your schoolwork</span></span><span class="arrow">></span></button>
     <div class="daily" id="dailyBox"></div>
     <div class="menu-list cols" id="menuList"></div>
     <p class="note" id="menuFoot"></p>
