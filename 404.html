@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>One Cast</title>
+<style>html,body{margin:0;height:100%;background:#0b1630;color:#eaf5ff;font:16px/1.5 monospace}main{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;text-align:center}h1{color:#ffc94a;font-size:22px;margin:0}a{color:#8ed0ee}</style></head>
+<body><main><h1>NOTHING BITING HERE</h1><p><a href="/">Back to the game</a></p></main>
+<script>
+/* Old links had /One-Cast/ in them. Drop it and go to the same page here. */
+var m=/^\/one-cast(\/.*)?$/i.exec(location.pathname);
+if(m) location.replace((m[1]||'/')+location.search+location.hash);
+</script></body></html>
