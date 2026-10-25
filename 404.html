@@ -15,9 +15,12 @@ a{color:#8ed0ee}
 <script>
 /* The new home of the game. Your save travels in the part after #, which never leaves your browser. */
 var NEW='https://onecast.github.io/';
+/* Any page other than the game itself (like admin.html) goes to the same page there. */
+var rest=location.pathname.replace(/^\/one-cast\/?/i,'');
+if(rest&&rest!=='index.html'){ location.replace(NEW+rest+location.search); }
 var url=NEW;
 try{ var v=JSON.parse(localStorage.getItem('onecast.id')||'null'); if(v&&v.pid&&v.secret) url=NEW+'#move='+encodeURIComponent('OC1.'+v.pid+'.'+v.secret); }catch(e){}
 document.getElementById('go').href=url;
-location.replace(url);
+if(!rest||rest==='index.html') location.replace(url);
 </script>
 </body></html>
