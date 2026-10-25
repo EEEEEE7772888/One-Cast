@@ -174,7 +174,7 @@ function openFish(id){
 }
 function facts(list){ var g=el('div','facts'+(list.length%3?' two-col':'')); list.forEach(function(p){ g.appendChild(el('div','fact','<span class="k">'+p[0]+'</span><span class="v">'+esc(p[1])+'</span>')); }); return g; }
 function sellFish(ids){
-  var fish=G.s.fish.filter(function(f){ return ids.indexOf(f.id)>=0&&sellable(f); }), bests=fish.filter(isBest), total=0; fish.forEach(function(f){ total+=f.value||0; });
+  var fish=G.s.fish.filter(function(f){ return ids.indexOf(f.id)>=0&&sellable(f); }), bests=fish.filter(function(f){ return isBest(f)&&((f.value||0)>=1000||f.variant); }), total=0; /* only warn for bests worth keeping, not every first bluegill */ fish.forEach(function(f){ total+=f.value||0; });
   if(!fish.length) return Promise.resolve(false);
   var p=Promise.resolve(true);
   if(bests.length){ var body=el('div','stand'); body.appendChild(A.fishImg(bests[0].sp,40,false,2,bests[0].variant,null,'')); p=UI.confirm({title:'SELL YOUR BEST?',body:body,note:(bests.length===1?'That '+D.fmtWeight(bests[0].lb)+' '+D.SP_BY_ID[bests[0].sp].name.toLowerCase()+' is your biggest of its kind':bests.length+' of these are your biggest of their kind')+'. Sold fish leave the leaderboard.',yes:'SELL ANYWAY',no:'KEEP'}); }

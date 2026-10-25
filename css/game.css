@@ -104,7 +104,7 @@ a{color:var(--frost)}
 .s-legend{color:var(--gold);animation:pulse .8s steps(2) infinite}
 
 /* Toast */
-.toast{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);z-index:30;max-width:min(90%,440px);padding:10px 14px;
+.toast{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 58px);transform:translateX(-50%);z-index:30;max-width:min(90%,440px);padding:10px 14px;
   background:var(--red);color:#fff;border:3px solid #3A0A0C;font:20px/1.1 var(--term);text-align:center;box-shadow:0 4px 0 var(--edge)}
 .toast.good{background:var(--gold);color:var(--gold-ink);border-color:var(--gold-ink)}
 .toast.info{background:var(--panel);color:var(--ice);border-color:var(--edge)}
@@ -198,7 +198,7 @@ a{color:var(--frost)}
 .items{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
 .item{cursor:pointer;display:grid;gap:5px;justify-items:center;padding:8px 4px 7px;background:var(--panel-lo);border:3px solid var(--edge);color:var(--ice);min-width:0}
 .item canvas{width:36px;height:54px}
-.item .in{font:16px/1 var(--term);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.item .in{font:16px/1 var(--term);text-align:center;overflow-wrap:break-word;hyphens:auto;max-width:100%;min-height:2em;display:flex;align-items:center}
 .item .ip{font:16px/1 var(--term);color:var(--gold)}
 .item .ip.own{color:var(--muted)}
 .item .ip.worn{color:var(--sonar)}
@@ -453,3 +453,6 @@ a{color:var(--frost)}
 .dock-act .sub{font:18px var(--term);color:var(--muted)}
 @media (max-width:560px){.dock-row{grid-template-columns:minmax(0,1fr) auto}.dock-pic{grid-column:1/-1}}
 .crew-invite{border-color:var(--gold);background:linear-gradient(90deg,#2A2208,var(--panel-lo) 70%)}
+
+/* toasts sit under the HUD so they never cover the CAST / REEL button */
+@media (max-width:600px){.toast{top:calc(env(safe-area-inset-top,0px) + 112px)}}

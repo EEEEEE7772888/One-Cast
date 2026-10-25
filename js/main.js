@@ -215,7 +215,7 @@ var TUT=[
  {id:'cast',t:'Welcome to One Cast! Pick a bait in the TACKLE BOX, then press CAST. Worms get bites in about a minute.'},
  {id:'wait',t:'Now wait. The line stays in the water even if you close this tab. When it says BITE!, come back and reel.'},
  {id:'reel',t:'FISH ON! Press REEL IN. The longer a fish waited before biting, the bigger it can be.'},
- {id:'sell',t:'Nice. Open the MENU and sell your fish for coins. Then buy minnows in the BAIT SHOP for bigger fish.'},
+ {id:'sell',t:'This is how you make money: every fish is worth coins. Press SELL on the catch card, or KEEP it and sell later from MENU, then YOUR FISH. Spend coins on minnows and a second line to earn faster.'},
  {id:'map',t:'Open the MAP. Home waters has ten famous lakes to try for free. Farther regions need a one-time ticket.'},
  {id:'legend',t:'Every spot hides one LEGEND only one player on Earth can own. Read its clue in the Legends screen. Good luck out there.'}
 ];
