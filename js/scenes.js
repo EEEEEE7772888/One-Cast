@@ -156,7 +156,7 @@ function splash(x,y,big,ice){
   if(!reduceMotion){ shakeUntil=performance.now()+(big?550:300); shakeAmp=big?2:1; }
 }
 function sparkle(x,y,L){ for(var i=0;i<28;i++) parts.push({k:'spark',x:x+(Math.random()-0.5)*18,y:y+Math.random()*L,vx:(Math.random()-0.5)*8,vy:(Math.random()-0.5)*8,g:0,c:i%3?'#FFC94A':'#FFFFFF',sz:1,life:0.6+Math.random()}); }
-function drawHero(cs,x,y,th){ ctx.save(); ctx.translate(x+0.5,y); ctx.rotate(-Math.PI/2+th); ctx.drawImage(cs,-(cs.width-2),-(Math.floor(cs.height/2)+1)); ctx.restore(); }
+function drawHero(cs,x,y,th){ var r=A.rotated(cs,-Math.PI/2+th), p=r._pivot(cs.width-2.5,Math.floor(cs.height/2)+1); ctx.drawImage(r,Math.round(x-p[0]),Math.round(y-p[1])); }
 function drawCrane(cx,baseY,tx,ty,dk,ms){
   var cabY=baseY-A.CRANE_CAB.length, px0=cx+3, py0=cabY+3, dx=tx-px0, dy=ty-py0, len=Math.max(1,Math.sqrt(dx*dx+dy*dy)), nx=-dy/len, ny=dx/len;
   var Rc=shade('#D93A3A',dk*0.6), rc=shade('#8E2430',dk*0.6);
