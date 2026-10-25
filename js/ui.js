@@ -229,7 +229,7 @@ function legendCard(l,mine){
   var sp=D.SP_BY_ID[l.sp], spot=D.SPOT_BY_ID[l.spot], c=el('div','legend-card'+(l.owner?'':' free'));
   var pic=el('div','pic'); pic.appendChild(A.fishImg(l.sp,44,l.owner&&!mine?false:false,2,null,l.colors,l.name)); c.appendChild(pic);
   var t=el('div'); t.innerHTML='<div class="ln">'+esc(l.name)+'<span class="tier '+l.tier+'">'+l.tier.toUpperCase()+'</span></div><div class="ls">A '+esc(sp.name.toLowerCase())+' of about '+Math.round(l.lb)+' lb · '+esc(spot.name)+', '+esc(D.REGION_BY_ID[spot.region].name)+'</div><div class="lc">'+esc(l.clue)+'</div>'+
-    (l.owner?'<div class="lo taken">OWNED BY '+esc(l.ownerName||'someone')+(l.caughtAt?' · since '+new Date(l.caughtAt).toLocaleDateString():'')+(mine?' (THAT IS YOU)':'')+'</div>':'<div class="lo">STILL OUT THERE · 1 in '+Number(l.odds).toLocaleString()+' per qualifying bite'+(l.history.length?' · released before':'')+'</div>');
+    (l.owner?'<div class="lo taken">OWNED BY '+esc(l.ownerName||'someone')+(l.caughtAt?' · since '+new Date(l.caughtAt).toLocaleDateString():'')+(mine?' (THAT IS YOU)':'')+'</div>':'<div class="lo">STILL OUT THERE · 1 in '+Number(l.odds).toLocaleString()+' per qualifying bite'+(l.tier==='mythic'?' · never gets easier':'')+(l.history.length?' · released before':'')+'</div>');
   if(l.owner&&!mine&&l.ownerName){ var b=el('button','pbtn','SEE OWNER'); b.type='button'; b.style.cssText='font-size:7px;padding:6px;margin-top:6px'; b.onclick=function(){ UI.profile(l.owner); }; t.appendChild(b); }
   if(l.history&&l.history.length>1) t.appendChild(el('div','ls','History: '+l.history.map(function(h){ return esc(h.name)+' ('+h.how+')'; }).join(' → ')));
   c.appendChild(t); return c;

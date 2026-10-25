@@ -116,6 +116,8 @@ create or replace function public.oc_legend_odds(l public.legends) returns numer
 declare base numeric; d numeric;
 begin
   base := case l.tier when 'findable' then 2000 when 'rare' then 20000 else 100000 end;
+  -- Only Findable and Rare legends get easier over time. Mythic legends never do.
+  if l.tier = 'mythic' then return base; end if;
   d := extract(epoch from (now() - l.created_at)) / 86400.0;
   return greatest(50, base / power(2, floor(d / 14)));
 end $$;
