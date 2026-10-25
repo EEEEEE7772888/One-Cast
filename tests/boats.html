@@ -1,5 +1,0 @@
-<!doctype html><meta charset="utf-8"><body style="background:#163468;margin:0;padding:10px;font:12px monospace;color:#fff">
-<script src="../js/data.js"></script><script src="../js/art.js"></script><script src="../js/boats.js"></script>
-<script>OC.BOATS.forEach(function(b){ var bb=ART.boat(b.id), s=4, c=document.createElement('canvas'); c.width=(bb.w+4)*s; c.height=(bb.h+20)*s; var x=c.getContext('2d'); x.imageSmoothingEnabled=false;
- x.fillStyle='#2F84A0'; x.fillRect(0,(20+bb.water)*s,c.width,c.height); var f=ART.fisherCanvas(OC.DEFAULT_OUTFIT); x.drawImage(f,(2+bb.stand)*s,(20+bb.deck-18)*s,f.width*s,f.height*s); x.drawImage(ART.boatCanvas(b.id),2*s,20*s,bb.w*s,bb.h*s);
- var d=document.createElement('div'); d.style.cssText='display:inline-block;margin:6px;vertical-align:bottom;text-align:center'; d.appendChild(c); d.appendChild(document.createElement('br')); d.appendChild(document.createTextNode(b.name)); document.body.appendChild(d); });</script></body>
