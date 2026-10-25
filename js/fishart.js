@@ -40,7 +40,8 @@ var PLAN={
  toothfish:{tail:'square',dorsal:'spiny',mouth:0.16,jaw:1}, icefish:{tail:'round',dorsal:'spiny',beak:2}, tilapia:{tail:'square',dorsal:'spiny'},
  sharptooth:{tail:'round',dorsal:'eel',whisk:1,flathead:2}, grayling:{tail:'fork',dorsal:'sail',adipose:1}, dolly:{tail:'square',dorsal:'soft',adipose:1},
  rockfish:{tail:'square',dorsal:'spiny'}, amberjack:{tail:'crescent',dorsal:'soft'}, gag:{tail:'square',dorsal:'spiny',mouth:0.16,jaw:1},
- silverperch:{tail:'fork',dorsal:'spiny'}, notothen:{tail:'round',dorsal:'spiny',mouth:0.14}, snakehead:{tail:'round',dorsal:'eel',mouth:0.14}
+ silverperch:{tail:'fork',dorsal:'spiny'}, notothen:{tail:'round',dorsal:'spiny',mouth:0.14}, snakehead:{tail:'round',dorsal:'eel',mouth:0.14},
+ herring:{tail:'deepfork',dorsal:'soft'}, sculpin:{tail:'round',dorsal:'spiny',mouth:0.18,jaw:1}, polarcod:{tail:'square',dorsal:'triple'}, opelu:{tail:'deepfork',dorsal:'spiny',finlets:1}, silverfish:{tail:'fork',dorsal:'long'}
 };
 A.PLAN=PLAN;
 

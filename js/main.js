@@ -28,8 +28,15 @@ function pump(){ if(toastBusy||!toastQ.length) return; toastBusy=true; G.toast(t
 G.money=D.money;
 G.bump=function(){ var c=$('coinChip'); c.classList.remove('bump'); void c.offsetWidth; c.classList.add('bump'); };
 G.fail=function(e){ if(e&&e.offline){ G.toast("Can't reach the server right now. Try again in a moment."); } else G.toast((e&&e.message)||'Something went wrong.'); };
-G.baitWorksHere=function(bait,spot){ spot=spot||G.spot(); return D.METHOD_BAITS[spot.method].indexOf(bait)>=0&&D.speciesWeights(spot.id,bait,99999,null).some(function(x){ return x.w>0; }); };
-G.needGear=function(spot){ spot=spot||G.spot(); var g=D.METHOD_GEAR[spot.method]; return g&&!(G.s.gear.methods||[]).some(function(m){ return m===g; })?g:null; };
+/* What you can do at a spot with the boat you have out (or your host's boat if you're riding along). */
+G.boatId=function(){ return (G.s.crew&&G.s.crew.guest&&G.s.crew.boat)||G.s.gear.boat||'paddle'; };
+G.hasRig=function(){ return (G.s.gear.methods||[]).indexOf('deeprig')>=0; };
+G.access=function(spot){ spot=spot||G.spot(); var b=D.GEAR_BY_ID[G.boatId()]||D.GEAR_BY_ID.paddle, lvl=b.lvl;
+  var blocked=spot.method==='boat'&&lvl<spot.need?(spot.need===1?'kayak':'skiff'):null;
+  var small=(spot.method==='troll'&&lvl<5)||(spot.method==='deep'&&!G.hasRig());
+  return {boat:b,lvl:lvl,blocked:blocked,small:small,why:small?(spot.method==='troll'?'Small fish only: the big ones need a sportfisher.':'Small fish only: the giants need the deep-drop rig.'):''}; };
+G.baitWorksHere=function(bait,spot){ spot=spot||G.spot(); var ac=G.access(spot); if(D.METHOD_BAITS[spot.method].indexOf(bait)<0) return false; if(bait==='deepbait'&&!G.hasRig()) return false; if(bait==='lure'&&ac.lvl<5) return false; return D.speciesWeights(spot.id,bait,99999,null,ac.small).some(function(x){ return x.w>0; }); };
+G.needGear=function(spot){ var ac=G.access(spot); return ac.blocked; };
 G.lineTest=function(){ return D.LINE_TESTS[G.s.gear.line||0]; };
 G.bestOf=function(sp){ var b=null; G.s.fish.forEach(function(f){ if(f.sp===sp&&!f.legend&&!f.released&&(!b||f.lb>b.lb)) b=f; }); return b; };
 G.prefs=function(patch){ Object.assign(G.s.prefs,patch); N.me('set_prefs',{p_prefs:patch}).catch(function(){}); };
@@ -79,7 +86,7 @@ G.renderPanel=function(){
   $('tackleBtn').disabled=!!l;
   go.className='go'; go.disabled=false;
   if(SC.busy()){ go.textContent='...'; go.disabled=true; }
-  else if(!l){ if(need){ go.textContent='NEED: '+D.GEAR_BY_ID[need].name.toUpperCase(); go.className='go alt'; go.onclick=function(){ UI.open('gearOv'); }; }
+  else if(!l){ if(need){ go.textContent='TAKE OUT A '+(need==='kayak'?'KAYAK':'SKIFF')+' OR BIGGER'; go.className='go alt'; go.onclick=function(){ UI.open('dockOv'); }; }
     else if(!G.baitWorksHere(G.bait)){ go.textContent='NOTHING HERE TAKES '+b.name.toUpperCase(); go.className='go alt'; go.onclick=function(){ UI.open('tackleOv'); }; }
     else { go.textContent='CAST'; go.onclick=G.cast; } }
   else if(G.hooked(l)){ go.textContent='REEL IN!'; go.className='go reel arm'; go.onclick=G.reel; }
@@ -103,10 +110,10 @@ G.renderStatus=function(){
   if(l){ var sec=(N.now()-Date.parse(l.castAt))/1000; clock.textContent=D.fmtClock(sec); clock.classList.toggle('ready',G.hooked(l));
     if(G.hooked(l)) st.innerHTML='<span class="n">FISH ON!</span> Something took the '+D.BAIT_BY_ID[l.bait].name.toLowerCase()+'. Reel it in.';
     else st.innerHTML=D.BAIT_BY_ID[l.bait].name+' in the water at <span class="n">'+sp.name+'</span>. '+todLine(sp,per); }
-  else { clock.textContent=G.clockAt(sp); clock.classList.remove('ready'); st.innerHTML='<span class="n">'+sp.name+'</span>. '+todLine(sp,per); }
+  else { clock.textContent=G.clockAt(sp); clock.classList.remove('ready'); var ac=G.access(sp); st.innerHTML='<span class="n">'+sp.name+'</span>. '+(ac.small?ac.why+' ':'')+todLine(sp,per); }
 };
 function todLine(sp,per){
-  var list=D.spotSpecies(sp.id).sort(function(a,b){ return D.ACT_PROFILES[b.act][per]-D.ACT_PROFILES[a.act][per]; }).slice(0,2).map(function(s){ return s.name.toLowerCase(); });
+  var small=G.access(sp).small, list=D.spotSpecies(sp.id).filter(function(s){ return !small||s.small; }).sort(function(a,b){ return D.ACT_PROFILES[b.act][per]-D.ACT_PROFILES[a.act][per]; }).slice(0,2).map(function(s){ return s.name.toLowerCase(); });
   var lead={dawn:'Prime time: trophies bite at dawn.',day:'Midday: steady bites, smaller fish.',dusk:'Prime time: trophies bite at dusk.',night:'Night: catfish and the big ones prowl.'}[per];
   return lead+(list.length?' Biting now: '+list.join(', ')+'.':'');
 }
@@ -146,7 +153,7 @@ G.reel=function(){
     if(r.daily) G.s.daily=r.daily;
   }).catch(function(e){ G.fail(e); if(!e.offline) G.refresh(true); }).then(function(){ G.busy=false; G.renderPanel(); });
 };
-SC.hooks={state:function(){ return G.s; },sel:function(){ return G.sel; },selLine:function(){ return G.line(); },lines:G.lines,lineCount:G.lineCount,method:G.method,spot:G.spot,hourAt:G.hourAt,outfit:function(){ return G.s.outfit; },bait:function(){ return G.bait; },afterCatch:function(){ G.renderPanel(); G.refresh(true); }};
+SC.hooks={state:function(){ return G.s; },sel:function(){ return G.sel; },selLine:function(){ return G.line(); },lines:G.lines,lineCount:G.lineCount,method:G.method,spot:G.spot,hourAt:G.hourAt,outfit:function(){ return G.s.outfit; },boat:function(){ return G.boatId(); },crew:function(){ var c=G.s.crew; if(!c||!c.members) return []; return c.members.filter(function(x){ return x.pid!==G.s.pid&&c.spot===G.s.spot; }); },bait:function(){ return G.bait; },afterCatch:function(){ G.renderPanel(); G.refresh(true); }};
 
 /* ---------- travel ---------- */
 G.travelTo=function(spotId){
@@ -272,7 +279,7 @@ $('bootRetry').onclick=function(){ clearTimeout(retryTimer); boot(); };
 function start(s){
   hideBoot(); $('nameOv').hidden=true;
   var cached=N.cached();
-  G.apply(s); G.renderAlertBtn();
+  G.apply(s); G.renderAlertBtn(); UI.crewTick(); UI.startCrewPoll();
   if(!loopStarted){ loopStarted=true; SC.init($('scene'),$('game')); SC.layout(); requestAnimationFrame(loop); window.addEventListener('resize',function(){ SC.layout(); }); }
   else SC.layout();
   N.listeners.push(function(on){ $('offline').hidden=on; });

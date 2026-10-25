@@ -97,10 +97,19 @@ D.BAITS=[
  {id:'deepbait',name:'Deep-drop rig',price:200000,tau:900,capMax:1,minBite:20,biteMean:480,rate:'VERY LOW',water:'deep',desc:'Bottom monsters',timing:'A bite every 8 hours. The things that live in the dark are enormous.'}
 ];
 /* Which baits each method can use. */
-D.METHOD_BAITS={ice:['worm','minnow','cut','sucker'],shore:['worm','minnow','cut','sucker','shrimp','mullet'],boat:['worm','minnow','cut','sucker','shrimp','squid','mullet'],troll:['lure'],deep:['squid','deepbait']};
+D.METHOD_BAITS={ice:['worm','minnow','cut','sucker'],shore:['worm','minnow','cut','sucker','shrimp','mullet'],boat:['worm','minnow','cut','sucker','shrimp','squid','mullet'],troll:['worm','minnow','cut','shrimp','squid','lure'],deep:['worm','minnow','cut','sucker','shrimp','squid','deepbait']};
 D.METHOD_NAME={ice:'Ice hole',shore:'Shore',boat:'Small boat',troll:'Ocean trolling',deep:'Deep drop'};
 /* Gear needed to fish each method. */
-D.METHOD_GEAR={ice:null,shore:null,boat:'boat',troll:'offshore',deep:'deeprig'};
+D.METHOD_GEAR={ice:null,shore:null,boat:null,troll:null,deep:'deeprig'};
+/* Open-water spots you can fish without the big gear. Without it you fish plain bait over the side and only small sea fish bite. */
+D.OPEN_WATER={troll:1,deep:1};
+/* Baits that only work with special gear. */
+D.BAIT_GEAR={deepbait:'deeprig'};
+D.BAIT_BOAT={lure:5};
+D.CREW_BONUS=0.9; D.CREW_MAX=3;
+/* What kind of water each spot is, and which boat level you need to fish it. */
+var SALT={everglades:1,keysflats:1,gulfreefs:1,gbr:1}, WATER_OF={kona:'troll',openpacific:'troll',gulfofalaska:'deep',arcticdeep:'deep',rosssea:'deep',greenland:'polar'};
+D.SPOTS.forEach(function(s){ s.water=WATER_OF[s.id]||(SALT[s.id]?'salt':'fresh'); s.need=s.method==='boat'?(s.water==='salt'?2:1):s.method==='troll'?5:0; });
 
 /* ---------- Activity by time of day. Dawn and dusk double the trophy chance for every fish. ---------- */
 D.ACT_PROFILES={
@@ -208,6 +217,12 @@ sp({id:'gag',name:'Gag grouper',min:3,max:80,k:13,rate:54,act:'any',look:'gag',m
 sp({id:'silverperch',name:'Silver perch',min:0.5,max:16,k:12.5,rate:105,act:'day',look:'silverperch',minWait:2,maxWait:400,baits:{worm:5,minnow:1},spots:{murray:5}});
 sp({id:'notothen',name:'Antarctic rockcod',min:1,max:12,k:12.5,rate:900,act:'deep',look:'notothen',minWait:20,maxWait:500,baits:{squid:5,deepbait:2},spots:{rosssea:5}});
 sp({id:'northernsnakehead',name:'Giant snakehead',min:2,max:40,k:15,rate:61,act:'day',look:'snakehead',minWait:20,maxWait:900,baits:{minnow:4,cut:3},spots:{thaipark:4}});
+/* small sea fish: what bites on plain bait over the side when you don't have the big rig */
+sp({id:'herring',name:'Pacific herring',small:true,min:0.1,max:1.5,k:12.5,rate:60,act:'any',look:'herring',minWait:0,maxWait:240,baits:{worm:3,minnow:2,cut:4,shrimp:5,squid:3},spots:{gulfofalaska:6,arcticdeep:3}});
+sp({id:'sculpin',name:'Shorthorn sculpin',small:true,min:0.2,max:4,k:11,rate:70,act:'deep',look:'sculpin',minWait:1,maxWait:300,baits:{worm:4,minnow:3,cut:4,shrimp:3,squid:3},spots:{arcticdeep:5,gulfofalaska:3}});
+sp({id:'polarcod',name:'Polar cod',small:true,min:0.1,max:1.2,k:12.8,rate:120,act:'deep',look:'polarcod',minWait:0,maxWait:240,baits:{worm:3,minnow:4,cut:3,shrimp:5,squid:4},spots:{arcticdeep:6}});
+sp({id:'opelu',name:'Mackerel scad',small:true,min:0.2,max:2,k:12.5,rate:90,act:'day',look:'opelu',minWait:0,maxWait:240,baits:{worm:2,minnow:3,cut:4,shrimp:5,squid:4},spots:{kona:6,openpacific:5}});
+sp({id:'silverfish',name:'Antarctic silverfish',small:true,min:0.05,max:0.8,k:13,rate:400,act:'deep',look:'silverfish',minWait:0,maxWait:240,baits:{worm:2,minnow:4,cut:3,shrimp:5,squid:4},spots:{rosssea:7}});
 /* Southern Ocean */
 sp({id:'toothfish',name:'Antarctic toothfish',min:20,max:300,k:13.5,rate:2500,act:'deep',look:'toothfish',minWait:300,maxWait:0,baits:{deepbait:6,squid:3},spots:{rosssea:7}});
 sp({id:'icefish',name:'Mackerel icefish',min:0.5,max:7,k:14,rate:900,act:'deep',look:'icefish',minWait:20,maxWait:600,baits:{squid:6,deepbait:1},spots:{rosssea:6}});
@@ -232,9 +247,15 @@ D.GEAR=[
  {id:'finder2',name:'Sonar finder',price:5000,kind:'finder',lvl:2,desc:'Shows the exact weight of the fish on your hook.'},
  {id:'finder3',name:'Legend finder',price:50000,kind:'finder',lvl:3,desc:'Glows when a legend is nearby while you wait.'},
  {id:'comfort',name:'Heater and cooler',price:2500,kind:'comfort',lvl:1,desc:'Bites come 25% sooner everywhere.'},
- {id:'boat',name:'Small boat',price:2500,kind:'method',lvl:1,desc:'Needed for small-boat spots: big lakes, rivers, the Everglades and the flats.'},
- {id:'offshore',name:'Offshore boat and rods',price:40000,kind:'method',lvl:1,desc:'Needed for ocean trolling. Rod holders, outriggers and a cooler full of ice.'},
- {id:'deeprig',name:'Deep-drop rig',price:150000,kind:'method',lvl:1,desc:'Needed for deep drop: an electric reel and 1,000 feet of braided line.'}
+ {id:'paddle',name:'Paddleboard',price:0,kind:'boat',lvl:0,perk:{},desc:'Where every angler starts. Fine for ponds and lakes from the shore.'},
+ {id:'kayak',name:'Fishing kayak',price:600,kind:'boat',lvl:1,perk:{},desc:'Gets you onto big lakes and rivers. Freshwater only.'},
+ {id:'skiff',name:'Dinghy skiff',price:2500,kind:'boat',lvl:2,perk:{},desc:'A little outboard skiff. Handles rivers, swamps, flats and reefs.'},
+ {id:'bassboat',name:'Bass boat',price:9000,kind:'boat',lvl:3,perk:{fresh:0.85},desc:'Fast and low. Bites come 15% sooner on freshwater.'},
+ {id:'console',name:'Center console',price:30000,kind:'boat',lvl:4,perk:{salt:0.85,troll:0.9},desc:'A real saltwater boat. Bites come 15% sooner on salt water.'},
+ {id:'sportfisher',name:'Sportfisher',price:60000,kind:'boat',lvl:5,perk:{troll:0.8,salt:0.9},desc:'Outriggers and a fighting chair. Needed to troll for tuna and marlin. Trolling bites 20% sooner.'},
+ {id:'trawler',name:'Expedition trawler',price:250000,kind:'boat',lvl:6,perk:{deep:0.8,polar:0.8,troll:0.85},desc:'An ice-class steel boat with a crane. Deep-drop and polar bites come 20% sooner.'},
+ {id:'yacht',name:'Golden mega yacht',price:1500000,kind:'boat',lvl:7,perk:{all:0.78},desc:'The flex. Bites come 22% sooner everywhere, and everyone can see it.'},
+ {id:'deeprig',name:'Deep-drop rig',price:150000,kind:'method',lvl:1,desc:'An electric reel and 1,000 feet of braided line. Without it, deep-drop spots only give you small fish near the surface.'}
 ];
 
 /* ---------- Clothes shop (cosmetic). ---------- */
@@ -323,11 +344,14 @@ D.SPOT_BY_ID={}; D.SPOTS.forEach(function(s){ D.SPOT_BY_ID[s.id]=s; });
 D.REGION_BY_ID={}; D.REGIONS.forEach(function(r){ D.REGION_BY_ID[r.id]=r; });
 D.BAIT_BY_ID={}; D.BAITS.forEach(function(b){ D.BAIT_BY_ID[b.id]=b; });
 D.GEAR_BY_ID={}; D.GEAR.forEach(function(g){ D.GEAR_BY_ID[g.id]=g; });
+D.BOATS=D.GEAR.filter(function(g){ return g.kind==='boat'; });
+D.boatPerk=function(boatId,spot){ var b=D.GEAR_BY_ID[boatId]; if(!b) return 1; var p=b.perk||{}; return p.all||p[spot.water]||(spot.region==='arctic'||spot.region==='southern'?p.polar:0)||1; };
 D.ITEM_BY_ID={}; D.ITEMS.forEach(function(i){ D.ITEM_BY_ID[i.id]=i; });
 D.spotSpecies=function(spotId){ return S.filter(function(s){ return s.spots[spotId]>0; }); };
-D.speciesWeights=function(spotId,bait,minutes,period){
+D.speciesWeights=function(spotId,bait,minutes,period,smallOnly){
   return S.map(function(s){
     var w=(s.spots[spotId]||0)*(s.baits[bait]||0);
+    if(smallOnly&&!s.small) w=0;
     if(minutes<s.minWait) w=0;
     else if(s.maxWait&&minutes>s.maxWait) w*=Math.exp(-(minutes-s.maxWait)/s.maxWait);
     if(period) w*=D.ACT_PROFILES[s.act][period];
@@ -336,8 +360,8 @@ D.speciesWeights=function(spotId,bait,minutes,period){
 };
 D.sizeCap=function(minutes,bait){ var b=D.BAIT_BY_ID[bait]; return (0.12+0.88*(1-Math.exp(-minutes/b.tau)))*b.capMax; };
 /* The same roll the server makes, for the simulator. rnd() gives numbers in [0,1). */
-D.rollCatch=function(rnd,spotId,bait,minutes,period){
-  var list=D.speciesWeights(spotId,bait,minutes,period), total=0; list.forEach(function(x){ total+=x.w; });
+D.rollCatch=function(rnd,spotId,bait,minutes,period,smallOnly){
+  var list=D.speciesWeights(spotId,bait,minutes,period,smallOnly), total=0; list.forEach(function(x){ total+=x.w; });
   if(total<=0) return null;
   var pick=rnd()*total, chosen=null;
   for(var i=0;i<list.length;i++){ var x=list[i]; if(x.w<=0) continue; chosen=x; pick-=x.w; if(pick<=0) break; }
@@ -350,9 +374,9 @@ D.rollCatch=function(rnd,spotId,bait,minutes,period){
   return {id:s.id,lb:lb,inches:inches,bonus:bonus,variant:variant};
 };
 D.fishValue=function(id,lb,variant){ var s=D.SP_BY_ID[id]; if(!s||s.protected) return 0; return Math.max(1,Math.round(lb*s.rate*(D.VARIANT_MULT[variant]||1))); };
-D.biteMinutes=function(rnd,spotId,bait,comfort){
+D.biteMinutes=function(rnd,spotId,bait,comfort,smallOnly){
   var b=D.BAIT_BY_ID[bait], first=Infinity;
-  S.forEach(function(s){ if((s.spots[spotId]||0)*(s.baits[bait]||0)>0) first=Math.min(first,s.minWait); });
+  S.forEach(function(s){ if((!smallOnly||s.small)&&(s.spots[spotId]||0)*(s.baits[bait]||0)>0) first=Math.min(first,s.minWait); });
   if(first===Infinity) return Infinity;
   return Math.max(b.minBite,first)-Math.log(1-rnd())*b.biteMean*(comfort?0.75:1);
 };

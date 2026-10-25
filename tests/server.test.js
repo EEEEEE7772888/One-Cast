@@ -71,13 +71,20 @@ let b=rpc('buy',[A.pid,A.secret,'bait','minnow']); ok(b.baits.includes('minnow')
 ok(rpc('buy',[A.pid,A.secret,'bait','minnow']).error==='you already own that','no double buy');
 b=rpc('buy',[A.pid,A.secret,'gear','hole2']); ok(b.gear.lines===2,'second line');
 b=rpc('buy',[A.pid,A.secret,'gear','line1']); b=rpc('buy',[A.pid,A.secret,'gear','line2']); ok(b.gear.line===2,'line upgrades in order');
-b=rpc('buy',[A.pid,A.secret,'gear','boat']); ok(b.gear.methods.includes('boat'),'bought a boat');
+ok(rpc('buy',[A.pid,A.secret,'gear','skiff']).error==='buy the boat before this one first','boats are bought in order');
+b=rpc('buy',[A.pid,A.secret,'gear','kayak']); ok(b.gear.boats.includes('kayak')&&b.gear.boat==='kayak','bought a kayak and took it out');
+b=rpc('buy',[A.pid,A.secret,'gear','skiff']); ok(b.gear.boats.includes('skiff')&&b.gear.boat==='skiff','bought a skiff');
+ok(rpc('set_boat',[A.pid,A.secret,'yacht']).error==='you do not own that boat','cannot take out a boat you do not own');
+ok(rpc('set_boat',[A.pid,A.secret,'paddle']).gear.boat==='paddle','switched back to the paddleboard');
 b=rpc('buy',[A.pid,A.secret,'item','hat_cap']); ok(b.items.includes('hat_cap'),'bought a hat');
 ok(rpc('set_outfit',[A.pid,A.secret,{hat:'hat_crown'}]).error==='you do not own that','cannot wear unowned hat');
 ok(rpc('set_outfit',[A.pid,A.secret,{hat:'hat_cap'}]).hat==='hat_cap','wears the cap');
 ok(rpc('travel',[A.pid,A.secret,'everglades']).error==='you need a ticket to that region first','no travel without ticket');
 b=rpc('buy',[A.pid,A.secret,'region','everglades']); ok(b.regions.includes('everglades'),'bought Everglades ticket');
 ok(rpc('buy',[A.pid,A.secret,'region','everglades']).error==='you already have that ticket','ticket is one-time');
+rpc('travel',[A.pid,A.secret,'everglades']); rpc('buy',[A.pid,A.secret,'bait','shrimp']);
+ok(rpc('cast_line',[A.pid,A.secret,0,'shrimp']).error==='take out a skiff or bigger boat to fish this salt water','paddleboard cannot fish the Everglades from a boat');
+rpc('travel',[A.pid,A.secret,'basslake']); ok(rpc('set_boat',[A.pid,A.secret,'skiff']).gear.boat==='skiff','took out the skiff');
 let t=rpc('travel',[A.pid,A.secret,'everglades']); ok(t.spot==='everglades'&&t.legendsHere[0].name==='The Swamp King','traveled to the Everglades, Swamp King waiting');
 ok(rpc('travel',[A.pid,A.secret,'basslake']).spot==='basslake','going home is free'); rpc('travel',[A.pid,A.secret,'everglades']);
 ok(rpc('cast_line',[A.pid,A.secret,0,'worm']).error==='nothing here bites on that','nothing in the Everglades takes worms');
@@ -102,7 +109,7 @@ ok(r.result==='legend'&&r.fish.legend&&r.legend.ownerName===sA.name+'#'+sA.tag,'
 const kingFish=r.fish.id;
 // B tries the same: it is owned, so a normal fish (or nothing) comes up
 rpc('admin_player',['oc-admin-testkey',B.pid,'coins','900000']);
-rpc('buy',[B.pid,B.secret,'region','everglades']); rpc('buy',[B.pid,B.secret,'gear','boat']); rpc('buy',[B.pid,B.secret,'bait','mullet']); rpc('buy',[B.pid,B.secret,'gear','line1']); rpc('buy',[B.pid,B.secret,'gear','line2']); rpc('buy',[B.pid,B.secret,'gear','line3']);
+rpc('buy',[B.pid,B.secret,'region','everglades']); rpc('buy',[B.pid,B.secret,'gear','kayak']); rpc('buy',[B.pid,B.secret,'gear','skiff']); rpc('buy',[B.pid,B.secret,'bait','mullet']); rpc('buy',[B.pid,B.secret,'gear','line1']); rpc('buy',[B.pid,B.secret,'gear','line2']); rpc('buy',[B.pid,B.secret,'gear','line3']);
 rpc('travel',[B.pid,B.secret,'everglades']);
 c=rpc('cast_line',[B.pid,B.secret,0,'mullet']);
 sql(`update lines set cast_at = '${duskUtc}'::timestamptz - interval '400 minutes', bite_at = '${duskUtc}'::timestamptz, legend_roll = 0 where pid='${B.pid}'`);
@@ -150,6 +157,36 @@ ok(rpc('release_legend',[B.pid,B.secret,kingFish]).ok===true,'B releases the Swa
 world=rpc('get_world',[]); ok(world.spots.everglades.legend&&!world.spots.everglades.legend.owner,'Swamp King is back out there');
 sB=rpc('get_state',[B.pid,B.secret]); ok(sB.fish.find(f=>f.id===kingFish).released===true,'B keeps a photo trophy');
 
+console.log('open water and boats');
+rpc('admin_player',['oc-admin-testkey',A.pid,'coins','3000000']);
+['shrimp','squid','lure','deepbait'].forEach(b2=>rpc('buy',[A.pid,A.secret,'bait',b2]));
+rpc('buy',[A.pid,A.secret,'region','arctic']); rpc('travel',[A.pid,A.secret,'arcticdeep']);
+for(let i=0;i<40;i++){ rpc('cast_line',[A.pid,A.secret,0,'squid']); sql(`update lines set cast_at=now()-interval '9 hours', bite_at=now()-interval '1 minute' where pid='${A.pid}'`); r=rpc('reel_line',[A.pid,A.secret,0]); if(r.fish&&!D.SP_BY_ID[r.fish.sp].small){ ok(false,'big fish without the rig: '+r.fish.sp); break; } }
+ok(true,'40 casts at the Arctic deep without the rig: only small sea fish');
+ok(rpc('cast_line',[A.pid,A.secret,0,'deepbait']).error==='you need the deep-drop rig to use that','deep-drop bait needs the rig');
+rpc('buy',[A.pid,A.secret,'gear','deeprig']); let big=0;
+for(let i=0;i<30;i++){ rpc('cast_line',[A.pid,A.secret,0,'deepbait']); sql(`update lines set cast_at=now()-interval '9 hours', bite_at=now()-interval '1 minute', legend_roll=0.99 where pid='${A.pid}'`); r=rpc('reel_line',[A.pid,A.secret,0]); if(r.fish&&!D.SP_BY_ID[r.fish.sp].small) big++; }
+ok(big>15,'with the rig, the big fish bite ('+big+' of 30)');
+rpc('buy',[A.pid,A.secret,'region','pacific']); rpc('travel',[A.pid,A.secret,'kona']);
+ok(rpc('cast_line',[A.pid,A.secret,0,'lure']).error==='trolling lures need a sportfisher or bigger boat','lures need a sportfisher');
+c=rpc('cast_line',[A.pid,A.secret,0,'shrimp']); ok(c.small===true,'shrimp off the skiff at Kona: small fish only'); rpc('reel_line',[A.pid,A.secret,0]);
+['bassboat','console','sportfisher'].forEach(x=>rpc('buy',[A.pid,A.secret,'gear',x]));
+c=rpc('cast_line',[A.pid,A.secret,0,'lure']); ok(c.line&&c.small===false,'sportfisher can troll lures'); rpc('reel_line',[A.pid,A.secret,0]);
+
+console.log('crews');
+rpc('travel',[A.pid,A.secret,'everglades']); rpc('travel',[B.pid,B.secret,'basslake']);
+ok(rpc('crew_invite',[A.pid,A.secret,uuid()]).error==='you can only invite friends','crew invites are friends only');
+let cr=rpc('crew_invite',[A.pid,A.secret,B.pid]); ok(cr.members.length===1,'invite sent');
+let cb=rpc('get_crew',[B.pid,B.secret]); ok(cb.invites.length===1&&cb.invites[0].host===A.pid,'B sees the invite');
+cb=rpc('crew_respond',[B.pid,B.secret,A.pid,true]); ok(cb.guest&&cb.members.length===2&&cb.spot==='everglades','B is aboard A\'s boat at the Everglades');
+sB=rpc('get_state',[B.pid,B.secret]); ok(sB.spot==='everglades'&&sB.crew.guest,'B rides along to A\'s spot');
+c=rpc('cast_line',[B.pid,B.secret,0,'mullet']); ok(c.line,'B fishes from A\'s boat');
+const bm=sql(`select extract(epoch from (bite_at-cast_at))/60 from lines where pid='${B.pid}'`); ok(+bm>0,'crew line has a bite time');
+ok(rpc('travel',[A.pid,A.secret,'okeechobee']).error==='your crew still has lines in the water','host waits for the crew to reel in');
+rpc('reel_line',[B.pid,B.secret,0]);
+t=rpc('travel',[A.pid,A.secret,'okeechobee']); ok(rpc('get_state',[B.pid,B.secret]).spot==='okeechobee','the crew sails with the host');
+ok(rpc('crew_leave',[B.pid,B.secret]).members.length===1,'B hops off');
+
 console.log('boards, profiles, safety');
 let board=rpc('get_board',['all',null,null]); ok(board.length>=1&&board.every(x=>!x.legend),'all-time board has fish, no legends');
 ok(rpc('get_board',['week','bluegill',null]).every(x=>x.sp==='bluegill'),'species board filters');
@@ -182,12 +219,12 @@ sA=rpc('get_state',[A.pid,A.secret]); ok(sA.champ===1&&sA.items.includes('hat_ch
 ok(rpc('get_news',[0]).some(n=>n.kind==='season'),'season news posted');
 
 console.log('roll parity with the game page (species distribution)');
-const N=3000; const sqlCounts={}; sql(`select species from (select (oc_roll('basslake','worm',3,'day')).species from generate_series(1,${N})) x`).split('\n').forEach(s=>{ sqlCounts[s]=(sqlCounts[s]||0)+1; });
+const N=3000; const sqlCounts={}; sql(`select species from (select (oc_roll('basslake','worm',3,'day',false)).species from generate_series(1,${N})) x`).split('\n').forEach(s=>{ sqlCounts[s]=(sqlCounts[s]||0)+1; });
 let seed=9; const rnd=()=>{ seed=(seed*1664525+1013904223)>>>0; return seed/4294967296; }; const jsCounts={};
 for(let i=0;i<N;i++){ const r=D.rollCatch(rnd,'basslake','worm',3,'day'); jsCounts[r.id]=(jsCounts[r.id]||0)+1; }
 let maxDiff=0; Object.keys(Object.assign({},sqlCounts,jsCounts)).forEach(k=>{ maxDiff=Math.max(maxDiff,Math.abs((sqlCounts[k]||0)-(jsCounts[k]||0))/N); });
 ok(maxDiff<0.04,'server and page agree on who bites (max diff '+(maxDiff*100).toFixed(1)+'%) '+JSON.stringify(sqlCounts));
-const avgLb=+sql(`select avg(lb) from (select (oc_roll('okeechobee','sucker',600,'dusk')).* from generate_series(1,2000)) x`);
+const avgLb=+sql(`select avg(lb) from (select (oc_roll('okeechobee','sucker',600,'dusk',false)).* from generate_series(1,2000)) x`);
 ok(avgLb>3,'long sucker waits bring bigger bass (avg '+avgLb.toFixed(1)+' lb)');
 
 console.log(`\n${pass} passed, ${fail} failed`);

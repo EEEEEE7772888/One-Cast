@@ -14,7 +14,7 @@ create table if not exists public.players (
   spot text not null default 'basslake',
   regions text[] not null default '{home}',
   baits text[] not null default '{worm}',
-  gear jsonb not null default '{"line":0,"reel":0,"lines":1,"finder":0,"comfort":false,"methods":[]}',
+  gear jsonb not null default '{"line":0,"reel":0,"lines":1,"finder":0,"comfort":false,"methods":[],"boats":["paddle"],"boat":"paddle"}',
   items text[] not null default '{skin_1,skin_2,skin_3,skin_4,hat_red,coat_orange,pants_navy,boots_black}',
   outfit jsonb not null default '{"hat":"hat_red","coat":"coat_orange","pants":"pants_navy","boots":"boots_black","skin":"skin_1"}',
   prefs jsonb not null default '{}',
@@ -197,6 +197,31 @@ create table if not exists public.species_baits (species text, bait text, w nume
 create table if not exists public.spot_species (spot text, species text, w numeric, primary key (spot, species));
 create table if not exists public.legend_presets (spot text primary key, name text, species text, tier text, lb numeric, bait text, period text, min_wait int, min_line int, clue text, colors jsonb, used boolean not null default false);
 create table if not exists public.config (k text primary key, v jsonb);
+alter table public.species add column if not exists small boolean not null default false;
+alter table public.spots add column if not exists water text not null default 'fresh';
+alter table public.spots add column if not exists need int not null default 0;
+alter table public.gear add column if not exists perk jsonb not null default '{}';
+alter table public.players alter column gear set default '{"line":0,"reel":0,"lines":1,"finder":0,"comfort":false,"methods":[],"boats":["paddle"],"boat":"paddle"}';
+
+-- Crews: friends fishing together on one boat. The host owns the boat; guests ride along.
+create table if not exists public.crews (
+  guest uuid primary key references public.players(pid) on delete cascade,
+  host uuid not null references public.players(pid) on delete cascade,
+  status text not null default 'invited',
+  spot text,
+  created_at timestamptz not null default now(),
+  check (guest <> host)
+);
+create index if not exists crews_host on public.crews (host);
+
+-- Players from before boats: everyone gets the paddleboard, and old boat gear turns into the matching boats.
+update public.players set gear = gear
+  || jsonb_build_object('boats', (select jsonb_agg(distinct b) from jsonb_array_elements_text(
+       '["paddle"]'::jsonb
+       || (case when gear -> 'methods' ? 'boat' then '["kayak","skiff"]'::jsonb else '[]'::jsonb end)
+       || (case when gear -> 'methods' ? 'offshore' then '["sportfisher"]'::jsonb else '[]'::jsonb end)) b))
+  || jsonb_build_object('boat', case when gear -> 'methods' ? 'offshore' then 'sportfisher' when gear -> 'methods' ? 'boat' then 'skiff' else 'paddle' end)
+  where not (gear ? 'boats');
 
 -- Lock everything down. The website only gets the functions.
 do $$ declare t text; begin

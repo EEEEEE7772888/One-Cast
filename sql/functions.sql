@@ -54,19 +54,21 @@ begin
 end $$;
 
 -- How soon the first bite comes, in minutes.
-create or replace function public.oc_bite_minutes(p_spot text, p_bait text, p_comfort boolean) returns numeric language plpgsql as $$
+drop function if exists public.oc_bite_minutes(text, text, boolean);
+create or replace function public.oc_bite_minutes(p_spot text, p_bait text, p_mult numeric, p_small boolean) returns numeric language plpgsql as $$
 declare b public.baits; first_wait int; r numeric;
 begin
   select * into b from baits where id = p_bait;
   select min(s.min_wait) into first_wait from spot_species ss join species s on s.id = ss.species join species_baits sb on sb.species = s.id and sb.bait = p_bait
-    where ss.spot = p_spot and ss.w > 0 and sb.w > 0;
+    where ss.spot = p_spot and ss.w > 0 and sb.w > 0 and (not p_small or s.small);
   if first_wait is null then return null; end if;
   r := random();
-  return greatest(b.min_bite, first_wait) - ln(1 - r) * b.bite_mean * (case when p_comfort then 0.75 else 1 end);
+  return greatest(b.min_bite, first_wait) - ln(1 - r) * b.bite_mean * p_mult;
 end $$;
 
 -- Which fish bit, and how big. The same formula the game shows in its journal.
-create or replace function public.oc_roll(p_spot text, p_bait text, p_minutes numeric, p_period text,
+drop function if exists public.oc_roll(text, text, numeric, text);
+create or replace function public.oc_roll(p_spot text, p_bait text, p_minutes numeric, p_period text, p_small boolean,
   out species text, out lb numeric, out inches numeric, out variant text, out bonus boolean) language plpgsql as $$
 declare b public.baits; total numeric := 0; pick numeric; rec record; chosen record; a numeric; cap numeric; u numeric; v numeric; f numeric; vr numeric; prime boolean;
 begin
@@ -75,7 +77,7 @@ begin
     select s.*, ss.w * sb.w * coalesce((s.act ->> p_period)::numeric, 1) *
       (case when p_minutes < s.min_wait then 0 when s.max_wait > 0 and p_minutes > s.max_wait then exp(-(p_minutes - s.max_wait) / s.max_wait) else 1 end) as w
     from spot_species ss join species s on s.id = ss.species join species_baits sb on sb.species = s.id and sb.bait = p_bait
-    where ss.spot = p_spot and ss.w > 0 and sb.w > 0
+    where ss.spot = p_spot and ss.w > 0 and sb.w > 0 and (not p_small or s.small)
     order by s.id
   loop total := total + rec.w; end loop;
   if total <= 0 then species := null; return; end if;
@@ -84,7 +86,7 @@ begin
     select s.*, ss.w * sb.w * coalesce((s.act ->> p_period)::numeric, 1) *
       (case when p_minutes < s.min_wait then 0 when s.max_wait > 0 and p_minutes > s.max_wait then exp(-(p_minutes - s.max_wait) / s.max_wait) else 1 end) as w
     from spot_species ss join species s on s.id = ss.species join species_baits sb on sb.species = s.id and sb.bait = p_bait
-    where ss.spot = p_spot and ss.w > 0 and sb.w > 0
+    where ss.spot = p_spot and ss.w > 0 and sb.w > 0 and (not p_small or s.small)
     order by s.id
   loop
     if rec.w <= 0 then continue; end if;
@@ -249,6 +251,7 @@ begin
     'friends', fr, 'trades', tr, 'legendsHere', lg,
     'season', jsonb_build_object('key', season, 'endsAt', (date_trunc('month', now() at time zone 'UTC') + interval '1 month') at time zone 'UTC'),
     'newsId', (select max(id) from news),
+    'crew', oc_crew_json(p.pid),
     'now', now());
   return st;
 end $$;
@@ -324,8 +327,25 @@ begin
 end $$;
 
 -- ============ fishing ============
+-- What a player can do at their spot: which boat they're on (their own, or their host's if they're a crew guest),
+-- whether only small fish will bite, and how much sooner bites come.
+create or replace function public.oc_access(p public.players, sp public.spots, out boat text, out boat_lvl int, out rig boolean, out small boolean, out mult numeric, out host uuid, out crewed boolean) language plpgsql as $$
+declare h public.players; g jsonb; pk jsonb;
+begin
+  select c.host into host from crews c where c.guest = p.pid and c.status = 'aboard' and c.spot = p.spot;
+  if host is not null then select * into h from players where pid = host; g := h.gear; else g := p.gear; end if;
+  boat := coalesce(g ->> 'boat', 'paddle');
+  select lvl, perk into boat_lvl, pk from gear where id = boat; boat_lvl := coalesce(boat_lvl, 0);
+  rig := coalesce(g -> 'methods' ? 'deeprig', false);
+  small := (sp.method = 'troll' and boat_lvl < 5) or (sp.method = 'deep' and not rig);
+  mult := (case when coalesce((p.gear ->> 'comfort')::boolean, false) then 0.75 else 1 end)
+        * coalesce((pk ->> 'all')::numeric, (pk ->> sp.water)::numeric, (case when sp.region in ('arctic','southern') then (pk ->> 'polar')::numeric end), 1);
+  crewed := host is not null or exists (select 1 from crews c where c.host = p.pid and c.status = 'aboard' and c.spot = p.spot);
+  if crewed then mult := mult * 0.9; end if;
+end $$;
+
 create or replace function public.cast_line(p_pid uuid, p_secret text, p_idx int, p_bait text) returns jsonb language plpgsql security definer set search_path = public as $$
-declare p public.players; sp public.spots; need text; mins numeric; r record; per text; ln public.lines; cmf boolean;
+declare p public.players; sp public.spots; mins numeric; r record; per text; ln public.lines; ac record;
 begin
   p := oc_auth(p_pid, p_secret);
   select * into sp from spots where id = p.spot;
@@ -333,17 +353,18 @@ begin
   if exists (select 1 from lines where pid = p_pid and idx = p_idx) then perform oc_fail('that line is already in the water'); end if;
   if not (p_bait = any(p.baits)) then perform oc_fail('you do not own that bait'); end if;
   if not exists (select 1 from method_baits where method = sp.method and bait = p_bait) then perform oc_fail('that bait does not work here'); end if;
-  need := case sp.method when 'boat' then 'boat' when 'troll' then 'offshore' when 'deep' then 'deeprig' else null end;
-  if need is not null and not (p.gear -> 'methods' ? need) then perform oc_fail('you need the right boat for this spot'); end if;
-  cmf := coalesce((p.gear ->> 'comfort')::boolean, false);
-  mins := oc_bite_minutes(p.spot, p_bait, cmf);
+  select * into ac from oc_access(p, sp);
+  if sp.need > 0 and sp.method = 'boat' and ac.boat_lvl < sp.need then perform oc_fail(case when sp.need = 1 then 'take out a kayak or bigger boat to fish here' else 'take out a skiff or bigger boat to fish this salt water' end); end if;
+  if p_bait = 'deepbait' and not ac.rig then perform oc_fail('you need the deep-drop rig to use that'); end if;
+  if p_bait = 'lure' and ac.boat_lvl < 5 then perform oc_fail('trolling lures need a sportfisher or bigger boat'); end if;
+  mins := oc_bite_minutes(p.spot, p_bait, ac.mult, ac.small);
   if mins is null then perform oc_fail('nothing here bites on that'); end if;
   per := oc_period(now() + (mins * interval '1 minute'), sp.tz);
-  select * into r from oc_roll(p.spot, p_bait, mins, per);
+  select * into r from oc_roll(p.spot, p_bait, mins, per, ac.small);
   insert into lines (pid, idx, spot, bait, cast_at, bite_at, species, lb, inches, variant, snap, legend_roll)
     values (p_pid, p_idx, p.spot, p_bait, now(), now() + (mins * interval '1 minute'), r.species, r.lb, r.inches, r.variant, random() < oc_reel_snap((p.gear ->> 'reel')::int), random())
     returning * into ln;
-  return jsonb_build_object('line', oc_line_json(ln, (p.gear ->> 'finder')::int), 'now', now());
+  return jsonb_build_object('line', oc_line_json(ln, (p.gear ->> 'finder')::int), 'small', ac.small, 'now', now());
 end $$;
 
 create or replace function public.reel_line(p_pid uuid, p_secret text, p_idx int) returns jsonb language plpgsql security definer set search_path = public as $$
@@ -487,6 +508,10 @@ begin
     elsif g.kind = 'comfort' then
       if (gr ->> 'comfort')::boolean then perform oc_fail('you already own that'); end if;
       gr := jsonb_set(gr, '{comfort}', 'true'::jsonb);
+    elsif g.kind = 'boat' then
+      if gr -> 'boats' ? g.id then perform oc_fail('you already own that boat'); end if;
+      if g.lvl > 0 and not exists (select 1 from gear x where x.kind = 'boat' and x.lvl = g.lvl - 1 and gr -> 'boats' ? x.id) then perform oc_fail('buy the boat before this one first'); end if;
+      gr := jsonb_set(jsonb_set(gr, '{boats}', coalesce(gr -> 'boats', '["paddle"]'::jsonb) || to_jsonb(g.id)), '{boat}', to_jsonb(g.id));
     elsif g.kind = 'method' then
       if gr -> 'methods' ? g.id then perform oc_fail('you already own that'); end if;
       gr := jsonb_set(gr, '{methods}', (gr -> 'methods') || to_jsonb(g.id));
@@ -518,7 +543,12 @@ begin
   select * into sp from spots where id = p_spot; if sp.id is null then perform oc_fail('no such spot'); end if;
   if not (sp.region = any(p.regions)) then perform oc_fail('you need a ticket to that region first'); end if;
   if exists (select 1 from lines where pid = p_pid) then perform oc_fail('reel in all your lines before you travel'); end if;
+  if exists (select 1 from crews c where c.host = p_pid and c.status = 'aboard' and exists (select 1 from lines l where l.pid = c.guest)) then perform oc_fail('your crew still has lines in the water'); end if;
+  delete from crews where guest = p_pid;
   update players set spot = p_spot where pid = p_pid;
+  -- the crew sails with the host
+  update players set spot = p_spot where pid in (select guest from crews where host = p_pid and status = 'aboard');
+  update crews set spot = p_spot where host = p_pid and status = 'aboard';
   select * into p from players where pid = p_pid;
   return jsonb_build_object('spot', p_spot, 'legendsHere', (select coalesce(jsonb_agg(oc_legend_json(l)), '[]'::jsonb) from legends l where l.spot = p_spot and l.active and l.owner_pid is null), 'now', now());
 end $$;
@@ -534,6 +564,79 @@ begin
   update legends set owner_pid = null, caught_at = null, fish_id = null, created_at = now(), history = history || jsonb_build_object('pid', p_pid, 'name', p.name || '#' || p.tag, 'how', 'released', 'at', now()) where id = l.id;
   perform oc_news('release', p_pid, p.name || '#' || p.tag || ' released ' || upper(l.name) || ' back into ' || (select name from spots where id = l.spot) || '. It is out there again!', jsonb_build_object('legend', l.id, 'sp', l.species, 'colors', l.colors, 'name', l.name, 'spot', l.spot));
   return jsonb_build_object('ok', true, 'now', now());
+end $$;
+
+create or replace function public.set_boat(p_pid uuid, p_secret text, p_boat text) returns jsonb language plpgsql security definer set search_path = public as $$
+declare p public.players; g jsonb;
+begin
+  p := oc_auth(p_pid, p_secret);
+  if not (coalesce(p.gear -> 'boats', '["paddle"]'::jsonb) ? p_boat) then perform oc_fail('you do not own that boat'); end if;
+  if exists (select 1 from lines where pid = p_pid) then perform oc_fail('reel in your lines before you switch boats'); end if;
+  update players set gear = jsonb_set(gear, '{boat}', to_jsonb(p_boat)) where pid = p_pid returning gear into g;
+  return jsonb_build_object('gear', g, 'now', now());
+end $$;
+
+-- ============ crews: fishing together ============
+create or replace function public.oc_crew_json(me uuid) returns jsonb language plpgsql stable as $$
+declare v_host uuid; c public.crews;
+begin
+  select * into c from crews where guest = me and status = 'aboard';
+  v_host := coalesce(c.host, me);
+  return jsonb_build_object(
+    'host', v_host, 'hostName', (select name || '#' || tag from players where pid = v_host), 'boat', (select gear ->> 'boat' from players where pid = v_host),
+    'spot', (select spot from players where pid = v_host), 'guest', c.guest is not null,
+    'members', (select coalesce(jsonb_agg(jsonb_build_object('pid', p.pid, 'name', p.name, 'tag', p.tag, 'outfit', p.outfit, 'host', p.pid = v_host, 'online', p.last_seen > now() - interval '5 minutes',
+        'lines', (select coalesce(jsonb_agg(jsonb_build_object('idx', l.idx, 'bait', l.bait, 'castAt', l.cast_at, 'biteAt', l.bite_at) order by l.idx), '[]'::jsonb) from lines l where l.pid = p.pid),
+        'recent', (select coalesce(jsonb_agg(jsonb_build_object('id', f.id, 'sp', f.species, 'lb', f.lb, 'variant', f.variant, 'legend', f.legend_id, 'at', f.caught_at) order by f.caught_at desc), '[]'::jsonb)
+                   from (select * from fish where pid = p.pid and caught_at > now() - interval '15 minutes' order by caught_at desc limit 5) f)) order by (p.pid = v_host) desc, p.name), '[]'::jsonb)
+      from players p where p.pid = v_host or p.pid in (select cc.guest from crews cc where cc.host = v_host and cc.status = 'aboard')),
+    'invites', (select coalesce(jsonb_agg(jsonb_build_object('host', c2.host, 'name', h.name || '#' || h.tag, 'spot', h.spot, 'boat', h.gear ->> 'boat')), '[]'::jsonb)
+      from crews c2 join players h on h.pid = c2.host where c2.guest = me and c2.status = 'invited' and c2.created_at > now() - interval '1 hour'),
+    'now', now());
+end $$;
+
+create or replace function public.crew_invite(p_pid uuid, p_secret text, p_friend uuid) returns jsonb language plpgsql security definer set search_path = public as $$
+declare p public.players; x uuid; y uuid; cur public.crews;
+begin
+  p := oc_auth(p_pid, p_secret);
+  x := least(p_pid, p_friend); y := greatest(p_pid, p_friend);
+  if not exists (select 1 from friends where a = x and b = y and status = 'accepted') then perform oc_fail('you can only invite friends'); end if;
+  if exists (select 1 from crews where guest = p_pid and status = 'aboard') then perform oc_fail('you are on someone else''s boat right now'); end if;
+  if (select count(*) from crews where host = p_pid and status = 'aboard') >= 3 then perform oc_fail('your boat is full (3 guests)'); end if;
+  select * into cur from crews where guest = p_friend;
+  if cur.guest is not null and cur.status = 'aboard' then perform oc_fail('they are already on a boat'); end if;
+  insert into crews (guest, host, status, spot, created_at) values (p_friend, p_pid, 'invited', p.spot, now())
+    on conflict (guest) do update set host = excluded.host, status = 'invited', spot = excluded.spot, created_at = now();
+  return oc_crew_json(p_pid);
+end $$;
+
+create or replace function public.crew_respond(p_pid uuid, p_secret text, p_host uuid, p_accept boolean) returns jsonb language plpgsql security definer set search_path = public as $$
+declare p public.players; h public.players;
+begin
+  p := oc_auth(p_pid, p_secret);
+  if not exists (select 1 from crews where guest = p_pid and host = p_host and status = 'invited') then perform oc_fail('that invite is gone'); end if;
+  if not p_accept then delete from crews where guest = p_pid; return oc_crew_json(p_pid); end if;
+  if exists (select 1 from lines where pid = p_pid) then perform oc_fail('reel in your lines before you hop aboard'); end if;
+  if exists (select 1 from crews where host = p_pid and status = 'aboard') then perform oc_fail('you have your own crew right now'); end if;
+  select * into h from players where pid = p_host;
+  update crews set status = 'aboard', spot = h.spot, created_at = now() where guest = p_pid;
+  update players set spot = h.spot where pid = p_pid;
+  return oc_crew_json(p_pid);
+end $$;
+
+create or replace function public.crew_leave(p_pid uuid, p_secret text) returns jsonb language plpgsql security definer set search_path = public as $$
+declare p public.players;
+begin
+  p := oc_auth(p_pid, p_secret);
+  delete from crews where guest = p_pid or host = p_pid;
+  return oc_crew_json(p_pid);
+end $$;
+
+create or replace function public.get_crew(p_pid uuid, p_secret text) returns jsonb language plpgsql security definer set search_path = public as $$
+declare p public.players;
+begin
+  p := oc_auth(p_pid, p_secret);
+  return oc_crew_json(p_pid);
 end $$;
 
 -- ============ friends ============
@@ -820,7 +923,7 @@ begin perform oc_admin(p_key); perform oc_news('notice', null, p_text, '{}'::jso
 
 -- ============ permissions ============
 do $$ declare r record; begin
-  for r in select p.proname, pg_get_function_identity_arguments(p.oid) args from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and (p.proname like 'oc\_%' or p.proname in ('login','get_state','set_prefs','set_outfit','set_name','claim_founder','cast_line','reel_line','sell_fish','buy','travel','release_legend','friend_request','friend_respond','trade_open','get_trade','trade_set','trade_ready','trade_confirm','trade_cancel','get_trade_history','react','report_player','suggest_lake','get_board','get_news','get_legends','get_profile','get_season','get_world','admin_overview','admin_find','admin_player','admin_report','admin_suggestion','admin_news')) loop
+  for r in select p.proname, pg_get_function_identity_arguments(p.oid) args from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and (p.proname like 'oc\_%' or p.proname in ('login','get_state','set_prefs','set_outfit','set_name','claim_founder','cast_line','reel_line','sell_fish','buy','travel','release_legend','friend_request','friend_respond','trade_open','get_trade','trade_set','trade_ready','trade_confirm','trade_cancel','get_trade_history','react','report_player','suggest_lake','get_board','get_news','get_legends','get_profile','get_season','get_world','set_boat','crew_invite','crew_respond','crew_leave','get_crew','admin_overview','admin_find','admin_player','admin_report','admin_suggestion','admin_news')) loop
     execute format('revoke all on function public.%I(%s) from public, anon, authenticated', r.proname, r.args);
     if r.proname not like 'oc\_%' then execute format('grant execute on function public.%I(%s) to anon, authenticated', r.proname, r.args); end if;
   end loop;

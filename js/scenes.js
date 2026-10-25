@@ -308,10 +308,8 @@ S.draw=function(ms){
     var ls=S.hooks.lines?S.hooks.lines():[]; var selI=S.hooks.sel?S.hooks.sel():0;
     ls.forEach(function(l){ if(l.idx===selI) return; var rx=de-20+l.idx*3, bx=bobberX(l.idx), hooked=Date.parse(l.biteAt)<=root.NET.now(); line(rx,horizonY-4,rx+3,horizonY-14,'#3B2A1E'); ctx.fillStyle='rgba(230,240,250,0.5)'; line(rx+3,horizonY-14,bx,wt-1,'rgba(230,240,250,0.45)'); drawBobber(bx,wt,hooked,t); });
   }
-  if(m==='boat'){ var bX=Math.round(W/2)-20, bob=Math.round(Math.sin(t*1.3)*1); A.drawSprite(ctx,A.SMALL_BOAT,A.SMALL_BOAT_MAP,bX,horizonY-5+bob); aY=horizonY-20+bob-hop; R(bX+4,wt+2,32,1,'rgba(220,240,255,0.25)'); }
-  if(m==='troll'||m==='deep'){ var tX=bigX(), bob2=Math.round(Math.sin(t*1.1)*1); A.drawSprite(ctx,A.BIG_BOAT,A.BIG_BOAT_MAP,tX,horizonY-13+bob2); aY=horizonY-21+bob2-hop;
-    if(m==='troll'){ for(i=0;i<16;i++){ var wx2=tX-1-i*2-Math.floor((t*18)%2), wy2=wt+Math.round(Math.sin(i*0.8+t*4)*1); P(wx2,wy2,'rgba(240,250,255,'+(0.7-i*0.04).toFixed(2)+')'); } for(i=0;i<8;i++) P(tX+56+i,wt+1+(i%2),'rgba(240,250,255,0.5)'); } }
-
+  var boatInfo=null;
+  if(m==='boat'||m==='troll'||m==='deep'){ var bob=Math.round(Math.sin(t*(m==='boat'?1.3:1.1))*1); boatInfo=drawBoat(aX,bob,wt,t,m==='troll'); aY=horizonY-20+bob-hop; }
   /* crane for giants */
   var craneTip=null;
   if(fx&&fx.big){ var fromLeft=(m==='boat'||m==='troll'||m==='deep'), tgt=fromLeft?hang[0]-34:hang[0]+10, k1=Math.min(1,F.ft/1100), startX=fromLeft?-30:W+2, cxx=startX+(tgt-startX)*(1-Math.pow(1-k1,3)); if(fx.out){ var ko2=Math.max(0,(ms-fx.out-250)/900); cxx=tgt+((fromLeft?-60:W+40)-tgt)*ko2*ko2; } cxx=Math.round(cxx);
@@ -321,6 +319,7 @@ S.draw=function(ms){
 
   /* angler */
   var fX=aX-(fx&&fx.big&&(m==='ice'||m==='shore')?Math.min(12,Math.max(0,Math.round(A.fishCanvas(fx.sp,fx.L,false,fx.variant,fx.colors).height/2)-6)):0), fY=aY;
+  drawCrew(m,aX,aY,t,wt,fy);
   ctx.drawImage(A.fisherCanvas(S.hooks.outfit()),fX,fY);
   if(lt<0.5){ var g2=ctx.createRadialGradient(fX-3,fY+15,0,fX-3,fY+15,22); g2.addColorStop(0,'rgba(255,200,110,'+(0.35*(1-lt*2)).toFixed(2)+')'); g2.addColorStop(1,'rgba(255,200,110,0)'); ctx.fillStyle=g2; ctx.fillRect(fX-26,fY-8,48,40); }
   A.drawSprite(ctx,[".k.","yYy","yYy","kkk"],{k:'#2A2A2A',y:'#C98A12',Y:'#FFE08A'},fX-4,fY+14);
@@ -380,6 +379,28 @@ S.draw=function(ms){
   if(rain){ for(i=0;i<90;i++){ var rx2=Math.floor((hash(i*2.9)*W+t*6)%W), ry2=Math.floor((hash(i*4.7)*wt+t*(60+hash(i)*30))%wt); R(rx2,ry2,1,3,'rgba(200,220,255,0.45)'); } }
   if(flash&&ms-flash<900){ ctx.fillStyle='rgba(255,220,120,'+(0.35*(1-(ms-flash)/900)).toFixed(3)+')'; ctx.fillRect(0,0,W,H); }
 };
+function drawBoat(aX,bob,wt,t,moving){
+  var id=S.hooks.boat?S.hooks.boat():'paddle', bb=A.boat(id), x0=aX-bb.stand, top=horizonY-2-bb.deck+bob;
+  A.drawSprite(ctx,bb.rows,bb.map,x0,top);
+  /* the part below the waterline sits in the water */
+  ctx.fillStyle='rgba(20,70,120,0.55)'; for(var y=Math.max(wt,top);y<top+bb.h;y++){ var row=bb.rows[y-top]; for(var x=0;x<row.length;x++) if(row[x]!=='.') ctx.fillRect(x0+x,y,1,1); }
+  ctx.fillStyle='rgba(230,245,255,0.55)'; for(x=0;x<bb.w;x+=2) ctx.fillRect(x0+x+((Math.floor(t*4))&1),wt,1,1);
+  if(moving){ for(var i=0;i<18;i++){ var wx=x0-1-i*2-Math.floor((t*18)%2), wy=wt+Math.round(Math.sin(i*0.8+t*4)*1); P(wx,wy,'rgba(240,250,255,'+(0.7-i*0.035).toFixed(2)+')'); } for(i=0;i<8;i++) P(x0+bb.w+i-2,wt+1+(i%2),'rgba(240,250,255,0.5)'); }
+  return {x0:x0,top:top,bb:bb};
+}
+/* friends on your crew: they stand next to you with their own rods */
+function drawCrew(m,aX,aY,t,wt,fy){
+  var crew=S.hooks.crew?S.hooks.crew():[]; if(!crew.length) return;
+  crew.forEach(function(c,k){
+    var dir=(m==='shore'||m==='ice')?-1:1, x=aX+dir*16*(k+1); if(x<2||x>W-16) x=aX-dir*16*(k+1);
+    var fc=A.fisherCanvas(c.outfit||root.OC.DEFAULT_OUTFIT); ctx.save(); ctx.translate(x+fc.width,0); ctx.scale(-1,1); ctx.drawImage(fc,0,aY); ctx.restore();
+    var hooked=(c.lines||[]).some(function(l){ return Date.parse(l.biteAt)<=root.NET.now(); }), out=(c.lines||[]).length>0;
+    var hx=x-2, hy=aY+9, tx=x-10, ty=aY-6+(hooked?3+Math.round(Math.sin(t*24)*1.5):0);
+    line(hx,hy,tx,ty,'#3B2A1E');
+    if(out){ var depth=m==='troll'?wt:Math.min(fy-6,wt+Math.round((fy-wt)*0.5)); line(tx,ty+1,m==='troll'?tx-18:tx,depth,'rgba(230,240,250,0.55)'); if(hooked){ R(x+2,aY-8+Math.floor(t*6)%2,3,5,'#E5484D'); P(x+3,aY-2,'#E5484D'); } }
+    var mx=x+5, my=aY-6+(Math.floor(t*2)%2); A.drawSprite(ctx,["kkkkk","kGGGk",".kGk.","..k.."],{k:'#14294C',G:'#5CF08A'},mx-2,my);
+  });
+}
 function drawOtherLines(m,t,th,dkL,fy,wt){
   var ls=S.hooks.lines?S.hooks.lines():[], selI=S.hooks.sel?S.hooks.sel():0;
   if(m==='ice'){ drawTipups(ls,selI,t,th,dkL); return; }

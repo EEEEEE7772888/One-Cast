@@ -22,6 +22,7 @@
         <div class="chips">
           <span class="chip money" id="coinChip"><span class="coin"></span><span id="coinTxt">$0</span></span>
           <button class="chip btn" id="whereChip" type="button" title="Open the world map"><span class="k">AT</span><span class="t" id="whereTxt">Bass Lake</span></button>
+          <button class="chip btn" id="crewChip" type="button" hidden><span class="k">CREW</span><span class="t" id="crewTxt"></span></button>
           <span class="chip" id="timeChip" title="Local time at this spot"><span class="k">LOCAL</span><span id="timeTxt">--:--</span></span>
         </div>
       </div>
@@ -89,6 +90,7 @@
 
   <!-- shops -->
   <div class="overlay" id="baitOv" hidden><div class="dialog"><div class="d-head"><h2 class="d-title">BAIT SHOP</h2><button class="x" data-close type="button" aria-label="Close">X</button></div><ul class="rows" id="baitRows"></ul></div></div>
+  <div class="overlay" id="dockOv" hidden><div class="dialog wide"><div class="d-head"><h2 class="d-title">THE DOCK</h2><button class="x" data-close type="button" aria-label="Close">X</button></div><p class="note">Collect boats and take one out. The boat you take out decides which water you can fish, gives you its bonus, and shows up in the scene. Invite friends aboard from the Friends screen.</p><div id="dockRows" style="display:grid;gap:8px"></div></div></div>
   <div class="overlay" id="gearOv" hidden><div class="dialog"><div class="d-head"><h2 class="d-title">GEAR SHOP</h2><button class="x" data-close type="button" aria-label="Close">X</button></div><div id="gearRows" class="rows"></div></div></div>
   <div class="overlay" id="shopOv" hidden><div class="dialog">
     <div class="d-head"><h2 class="d-title">CLOTHES SHOP</h2><button class="x" data-close type="button" aria-label="Close">X</button></div>
@@ -129,6 +131,7 @@
     <p class="note">Add a friend by their name and #tag. Both of you have to accept. Friends can trade and react to each other's catches. Your tag: <b id="myTag"></b></p>
     <div style="display:grid;grid-template-columns:minmax(0,1fr) 90px auto;gap:6px"><input class="field small" id="frName" placeholder="Name" maxlength="16"><input class="field small" id="frTag" placeholder="#tag" maxlength="4" inputmode="numeric"><button class="pbtn gold" id="frAdd" type="button">ADD</button></div>
     <p class="err" id="frErr"></p>
+    <div id="crewBox" style="display:grid;gap:6px"></div>
     <div id="friendList" style="display:grid;gap:6px"></div>
     <div id="openTrades" style="display:grid;gap:6px"></div>
     <button class="pbtn" id="tradeHistBtn" type="button">TRADE HISTORY</button><div id="tradeHist" hidden style="display:grid;gap:6px"></div>
@@ -187,6 +190,7 @@
 <script src="js/data.js"></script>
 <script src="js/art.js"></script>
 <script src="js/fishart.js"></script>
+<script src="js/boats.js"></script>
 <script src="js/map.js"></script>
 <script src="js/mapdata.js"></script>
 <script src="js/net.js"></script>

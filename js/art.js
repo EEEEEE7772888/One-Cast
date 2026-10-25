@@ -91,6 +91,11 @@ var L={
  gag:{b:'#7A7A6A',d:'#4A4A3E',bel:'#D8D8C8',fin:'#5A5A4A',spot:'#3A3A30',pat:'mottle',ht:.4,blunt:1},
  silverperch:{b:'#B0B8B8',d:'#7A8484',bel:'#F4F4F2',fin:'#8A9494',spot:'#6A7474',pat:'none',ht:.42,hump:1},
  notothen:{b:'#8A8A7A',d:'#5A5A4A',bel:'#D8D8C8',fin:'#6E6E5E',spot:'#4A4A3A',pat:'bars',ht:.3,bigEye:1},
+ herring:{b:'#6E92B0',d:'#3E5E80',bel:'#EEF4F8',fin:'#8AA4B8',spot:'#2A4460',pat:'none',ht:.24},
+ sculpin:{b:'#7A6A4A',d:'#4E4230',bel:'#D8C8A0',fin:'#8A5A3A',spot:'#3A2E1E',pat:'mottle',ht:.3,blunt:1},
+ polarcod:{b:'#8A9AA8',d:'#56667A',bel:'#EEF0F2',fin:'#7A8A98',spot:'#3A4A5A',pat:'spots',ht:.22},
+ opelu:{b:'#4A8AA8',d:'#24506E',bel:'#F0F2F0',fin:'#E0C060',spot:'#F0D070',pat:'lateral',ht:.24},
+ silverfish:{b:'#C0CCD8',d:'#8A9AAC',bel:'#F8FAFC',fin:'#A8B6C4',spot:'#6A7A8C',pat:'none',ht:.18},
  snakehead:{b:'#5A5A3A',d:'#3A3A22',bel:'#C8C8A0',fin:'#4A4A30',spot:'#2A2A14',pat:'mottle',ht:.2,long:1,eel:1}
 };
 A.LOOK=L;

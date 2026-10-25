@@ -5,12 +5,12 @@ var D=window.OC, A=window.ART, N=window.NET, M=window.WMAP, SC=window.SCENE, G=w
 function $(id){ return document.getElementById(id); }
 function el(tag,cls,html){ var e=document.createElement(tag); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e; }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
-var OVERLAYS=['menuOv','tackleOv','baitOv','gearOv','shopOv','bucketOv','fishOv','cardOv','journalOv','legendOv','achOv','boardOv','friendsOv','tradeOv','profileOv','newsOv','mapOv','saveOv','helpOv','awayOv','reportOv','suggestOv'];
-var RENDER={menuOv:renderMenu,tackleOv:renderTackle,baitOv:renderBaitShop,gearOv:renderGear,shopOv:renderShop,bucketOv:renderBucket,journalOv:renderJournal,legendOv:renderLegends,achOv:renderAch,boardOv:renderBoard,friendsOv:renderFriends,newsOv:renderNews,mapOv:renderMap,saveOv:renderSave};
+var OVERLAYS=['dockOv','menuOv','tackleOv','baitOv','gearOv','shopOv','bucketOv','fishOv','cardOv','journalOv','legendOv','achOv','boardOv','friendsOv','tradeOv','profileOv','newsOv','mapOv','saveOv','helpOv','awayOv','reportOv','suggestOv'];
+var RENDER={dockOv:renderDock,menuOv:renderMenu,tackleOv:renderTackle,baitOv:renderBaitShop,gearOv:renderGear,shopOv:renderShop,bucketOv:renderBucket,journalOv:renderJournal,legendOv:renderLegends,achOv:renderAch,boardOv:renderBoard,friendsOv:renderFriends,newsOv:renderNews,mapOv:renderMap,saveOv:renderSave};
 UI.open=function(id){ OVERLAYS.forEach(function(o){ if(o!==id&&o!=='cardOv') $(o).hidden=true; }); $(id).hidden=false; if(RENDER[id]) RENDER[id](); var f=$(id).querySelector('.x,button,select,input'); if(f&&id!=='mapOv') try{ f.focus({preventScroll:true}); }catch(e){} if(id==='mapOv') G.coachEvent&&G.coachEvent('map'); };
 UI.closeAll=function(){ OVERLAYS.forEach(function(o){ $(o).hidden=true; }); $('resetAsk').hidden=true; $('reset').hidden=false; if(G.tradeId){ stopTradePoll(); } if(G.s){ G.renderAll(); G.checkAch(); } };
 UI.anyOpen=function(){ return OVERLAYS.some(function(o){ return !$(o).hidden; }); };
-UI.afterRefresh=function(){ if(!$('menuOv').hidden) renderMenu(); if(!$('friendsOv').hidden) renderFriends(); if(!$('bucketOv').hidden) renderBucket(); };
+UI.afterRefresh=function(){ UI.crewTick(); if(!$('menuOv').hidden) renderMenu(); if(!$('friendsOv').hidden) renderFriends(); if(!$('bucketOv').hidden) renderBucket(); };
 document.querySelectorAll('[data-close]').forEach(function(b){ b.addEventListener('click',UI.closeAll); });
 document.querySelectorAll('.overlay').forEach(function(o){ o.addEventListener('click',function(e){ if(e.target===o&&o.id!=='nameOv'&&o.id!=='bootOv'&&o.id!=='confirmOv'&&o.id!=='travelOv'&&o.id!=='cardOv') UI.closeAll(); }); });
 $('menuBtn').onclick=function(){ UI.open('menuOv'); }; $('mapBtn').onclick=function(){ UI.open('mapOv'); }; $('whereChip').onclick=function(){ UI.open('mapOv'); }; $('tackleBtn').onclick=function(){ UI.open('tackleOv'); };
@@ -35,6 +35,7 @@ function renderMenu(){
     ['map','WORLD MAP',G.spot().name+' · '+G.s.regions.length+' of 14 regions','mapOv'],
     ['legend','LEGENDS',legendBlurb(),'legendOv'],
     ['tackle','BAIT SHOP',G.s.baits.length+' of '+D.BAITS.length+' baits','baitOv'],
+    ['boat','THE DOCK',(D.GEAR_BY_ID[G.s.gear.boat||'paddle']||{}).name+' · '+(G.s.gear.boats||['paddle']).length+' of '+D.BOATS.length+' boats','dockOv'],
     ['spool','GEAR SHOP',gearBlurb(),'gearOv'],
     ['hat','CLOTHES','Dress your angler','shopOv'],
     ['book','FISH JOURNAL',Object.keys(G.s.journal).filter(function(k){ return k.indexOf('legend:')!==0; }).length+' of '+D.SPECIES.length+' species','journalOv'],
@@ -89,7 +90,7 @@ function buy(kind,id,name){
 }
 function renderGear(){
   var box=$('gearRows'); box.innerHTML='';
-  var groups=[['LINES','lines','Fish more than one line at once. All your lines are at the spot you are visiting.'],['LINE STRENGTH','line','A fish heavier than your line can snap it. Stronger line holds bigger fish.'],['REEL','reel','A better reel gives overweight fish fewer chances to get away.'],['FISH FINDER','finder','See what is on your hook before you reel.'],['BOATS','method','Some spots can only be fished from a boat.'],['COMFORT','comfort','Faster bites everywhere.']];
+  var groups=[['LINES','lines','Fish more than one line at once. All your lines are at the spot you are visiting.'],['LINE STRENGTH','line','A fish heavier than your line can snap it. Stronger line holds bigger fish.'],['REEL','reel','A better reel gives overweight fish fewer chances to get away.'],['FISH FINDER','finder','See what is on your hook before you reel.'],['DEEP DROP','method','For the deep-drop spots. Without it you only catch small fish near the surface.'],['COMFORT','comfort','Faster bites everywhere.']];
   groups.forEach(function(g){ box.appendChild(el('div','gear-group',g[0])); box.appendChild(el('p','note',g[2]));
     D.GEAR.filter(function(x){ return x.kind===g[1]; }).forEach(function(x){
       var own=x.kind==='method'?(G.s.gear.methods||[]).indexOf(x.id)>=0:x.kind==='comfort'?!!G.s.gear.comfort:(G.s.gear[x.kind]||(x.kind==='lines'?1:0))>=x.lvl;
@@ -98,6 +99,22 @@ function renderGear(){
       li.appendChild(el('div',null,'<div class="nm">'+esc(x.name)+'</div><div class="sub">'+esc(x.desc)+'</div>'));
       var act=el('div'); if(own) act.innerHTML='<span class="own">OWNED</span>'; else if(!next) act.innerHTML='<span class="sub">'+D.money(x.price)+'</span>'; else { var btn=el('button','pbtn'+(G.s.coins>=x.price?' gold':''),D.money(x.price)); btn.type='button'; btn.disabled=G.s.coins<x.price; btn.onclick=function(){ buy('gear',x.id,x.name); }; act.appendChild(btn); }
       li.appendChild(act); box.appendChild(li); }); });
+}
+
+
+/* ---------- the dock: boats ---------- */
+function perkText(b){ var p=b.perk||{}, out=[]; if(p.all) out.push('bites '+Math.round((1-p.all)*100)+'% sooner everywhere'); ['fresh','salt','troll','deep','polar'].forEach(function(k){ if(p[k]) out.push(Math.round((1-p[k])*100)+'% sooner on '+{fresh:'freshwater',salt:'salt water',troll:'trolling',deep:'deep drops',polar:'polar water'}[k]); }); return out.join(', '); }
+function waterText(b){ return b.lvl===0?'Shore and ice spots':b.lvl===1?'+ freshwater boat spots':b.lvl===2?'+ salt flats, swamps and reefs':b.lvl<5?'+ everything a skiff can do':b.lvl===5?'+ ocean trolling for tuna and marlin':'everywhere'; }
+function renderDock(){
+  var box=$('dockRows'); box.innerHTML=''; var own=G.s.gear.boats||['paddle'], cur=G.s.gear.boat||'paddle';
+  D.BOATS.forEach(function(b){ var has=own.indexOf(b.id)>=0, prevOwned=b.lvl===0||D.BOATS.some(function(x){ return x.lvl===b.lvl-1&&own.indexOf(x.id)>=0; });
+    var row=el('div','dock-row'+(b.id===cur?' out':'')+(has?'':' locked')); var pic=el('div','dock-pic'); var cv=A.boatCanvas(b.id,b.lvl>=5?2:3); cv.style.maxWidth='100%'; cv.style.height='auto'; if(!has){ cv.style.filter='brightness(0.35) saturate(0.2)'; } pic.appendChild(cv); row.appendChild(pic);
+    var t=el('div','dock-info','<div class="nm">'+esc(b.name.toUpperCase())+(b.id===cur?' <span class="tag green">TAKEN OUT</span>':'')+'</div><div class="sub">'+esc(b.desc)+'</div><div class="sub"><b>Water:</b> '+waterText(b)+(perkText(b)?' · <b>Bonus:</b> '+perkText(b):'')+'</div>'); row.appendChild(t);
+    var act=el('div','dock-act');
+    if(has){ if(b.id!==cur){ var go=el('button','pbtn gold','TAKE OUT'); go.type='button'; go.onclick=function(){ N.me('set_boat',{p_boat:b.id}).then(function(r){ G.s.gear=r.gear; G.toast('Took out the '+b.name+'.',2200,'good'); renderDock(); G.renderAll(); }).catch(G.fail); }; act.appendChild(go); } }
+    else if(prevOwned){ var buyb=el('button','pbtn'+(G.s.coins>=b.price?' gold':''),D.money(b.price)); buyb.type='button'; buyb.disabled=G.s.coins<b.price; buyb.onclick=function(){ UI.confirm({title:'BUY THE '+b.name.toUpperCase()+'?',note:D.money(b.price)+'. You will take it out right away. '+waterText(b)+'.',yes:'BUY IT',no:'NOT YET',danger:false}).then(function(v){ if(v) buy('gear',b.id,b.name).then(function(){ renderDock(); }); }); }; act.appendChild(buyb); }
+    else act.appendChild(el('span','sub',D.money(b.price)));
+    row.appendChild(act); box.appendChild(row); });
 }
 
 /* ---------- clothes ---------- */
@@ -276,12 +293,13 @@ function report(p){ $('reportWho').textContent='Report '+p.name+'#'+p.tag+'. The
 
 /* ---------- friends and trading ---------- */
 function renderFriends(){
-  $('myTag').textContent=G.s.name+'#'+G.s.tag; var list=$('friendList'); list.innerHTML='';
+  $('myTag').textContent=G.s.name+'#'+G.s.tag; renderCrewBox(); var list=$('friendList'); list.innerHTML='';
   if(!G.s.friends.length) list.appendChild(el('div','empty','No friends yet. Ask a friend for their name and #tag.'));
   G.s.friends.forEach(function(f){ var row=el('div','friend'); row.appendChild(el('div',null,'<div class="fn"><span class="dot'+(f.online?' on':'')+'"></span>'+esc(f.name)+'<small style="color:#93B2D2">#'+f.tag+'</small></div><div class="fs">'+(f.status==='accepted'?(f.online?'Online now':'Friend'):f.mine?'Request sent, waiting':'Wants to be your friend')+'</div>'));
     var btns=el('div','fb');
     if(f.status==='pending'&&!f.mine){ var ok=el('button','pbtn gold','ACCEPT'); ok.type='button'; ok.onclick=function(){ N.me('friend_respond',{p_other:f.pid,p_accept:true}).then(function(){ G.refresh(true).then(renderFriends); }).catch(G.fail); }; btns.appendChild(ok); }
-    if(f.status==='accepted'){ var tr=el('button','pbtn gold','TRADE'); tr.type='button'; tr.onclick=function(){ openTrade(f.pid); }; btns.appendChild(tr); }
+    if(f.status==='accepted'){ var inv=el('button','pbtn','INVITE ABOARD'); inv.type='button'; inv.title='Invite '+f.name+' onto your boat to fish together'; inv.onclick=function(){ N.me('crew_invite',{p_friend:f.pid}).then(function(c){ G.s.crew=c; G.toast('Invited '+f.name+' aboard your '+(D.GEAR_BY_ID[G.s.gear.boat]||{name:'boat'}).name+'.',2600,'good'); renderFriends(); }).catch(G.fail); }; btns.appendChild(inv);
+      var tr=el('button','pbtn gold','TRADE'); tr.type='button'; tr.onclick=function(){ openTrade(f.pid); }; btns.appendChild(tr); }
     var pr=el('button','pbtn','PROFILE'); pr.type='button'; pr.onclick=function(){ UI.profile(f.pid); }; btns.appendChild(pr);
     var rm=el('button','pbtn danger','X'); rm.type='button'; rm.title='Remove'; rm.onclick=function(){ N.me('friend_respond',{p_other:f.pid,p_accept:false}).then(function(){ G.refresh(true).then(renderFriends); }).catch(G.fail); }; btns.appendChild(rm);
     row.appendChild(btns); list.appendChild(row); });
@@ -310,6 +328,29 @@ $('tradeEdit').onclick=function(){ var pk=$('tradePick'); pk.hidden=false; $('tr
 $('tradeReady').onclick=function(){ N.me('trade_ready',{p_id:trade.id,p_ready:!trade.myReady}).then(function(t){ trade=t; renderTrade(); }).catch(G.fail); };
 $('tradeConfirm').onclick=function(){ var legends=trade.myFish.filter(function(f){ return f.legend; }); var p=legends.length?UI.confirm({title:'TRADE A LEGEND?',note:'You are giving away '+legends.map(function(f){ return f.legendName; }).join(' and ')+'. Only one exists. Sure?',yes:'TRADE IT',no:'WAIT'}):Promise.resolve(true); p.then(function(v){ if(!v) return; N.me('trade_confirm',{p_id:trade.id}).then(function(t){ trade=t; renderTrade(); if(t.status==='done'){ G.toast('Trade complete!',3000,'good'); G.refresh(true); } }).catch(function(e){ G.fail(e); showTrade(trade.id); }); }); };
 $('tradeCancel').onclick=function(){ N.me('trade_cancel',{p_id:trade.id}).then(function(){ stopTradePoll(); G.refresh(true); UI.open('friendsOv'); }).catch(G.fail); };
+
+
+/* ---------- crews: fishing together ---------- */
+function renderCrewBox(){
+  var box=$('crewBox'); box.innerHTML=''; var c=G.s.crew; if(!c) return;
+  (c.invites||[]).forEach(function(iv){ var r=el('div','friend crew-invite','<div><div class="fn">'+esc(iv.name)+' invited you aboard</div><div class="fs">Their '+esc((D.GEAR_BY_ID[iv.boat]||{name:'boat'}).name)+' at '+esc((D.SPOT_BY_ID[iv.spot]||{name:''}).name)+'. You ride for free.</div></div>'); var b=el('div','fb'); var ok=el('button','pbtn gold','HOP ABOARD'); ok.type='button'; ok.onclick=function(){ UI.joinCrew(iv); }; var no=el('button','pbtn','NO THANKS'); no.type='button'; no.onclick=function(){ N.me('crew_respond',{p_host:iv.host,p_accept:false}).then(function(cc){ G.s.crew=cc; renderFriends(); }).catch(G.fail); }; b.appendChild(ok); b.appendChild(no); r.appendChild(b); box.appendChild(r); });
+  var others=(c.members||[]).filter(function(m){ return m.pid!==G.s.pid; });
+  if(others.length||c.guest){ var head=el('div','gear-group',c.guest?'ABOARD '+esc((c.hostName||'').toUpperCase())+'\'S '+esc(((D.GEAR_BY_ID[c.boat]||{}).name||'BOAT').toUpperCase()):'YOUR CREW'); box.appendChild(head);
+    (c.members||[]).forEach(function(m){ var lines=(m.lines||[]), hooked=lines.filter(function(l){ return Date.parse(l.biteAt)<=N.now(); }).length; box.appendChild(el('div','friend','<div><div class="fn"><span class="dot'+(m.online?' on':'')+'"></span>'+esc(m.name)+(m.host?' <span class="tag gold">CAPTAIN</span>':'')+(m.pid===G.s.pid?' <span class="tag">YOU</span>':'')+'</div><div class="fs">'+(lines.length?lines.length+' line'+(lines.length>1?'s':'')+' out'+(hooked?' · <b style="color:#FF8A8D">FISH ON!</b>':''):'no lines out')+'</div></div>')); });
+    var lv=el('button','pbtn danger',c.guest?'HOP OFF':'END THE TRIP'); lv.type='button'; lv.onclick=function(){ N.me('crew_leave').then(function(cc){ G.s.crew=cc; G.toast(c.guest?'You hopped off.':'Trip over. Everyone heads home.',2400,'info'); renderFriends(); G.renderAll(); }).catch(G.fail); }; box.appendChild(lv);
+    box.appendChild(el('p','note','Fishing together: everyone on the boat gets bites 10% sooner. Guests use the captain\'s boat and rig, and sail along when the captain travels.')); }
+}
+UI.joinCrew=function(iv){ if(G.lines().length){ G.toast('Reel in your lines before you hop aboard.'); return; }
+  N.me('crew_respond',{p_host:iv.host,p_accept:true}).then(function(c){ G.s.crew=c; var sp=D.SPOT_BY_ID[c.spot]; UI.closeAll(); UI.travelScene('bus',G.spot(),sp); setTimeout(function(){ $('travelOv').hidden=true; G.refresh(true).then(function(){ SC.layout(); G.toast('Welcome aboard! Fishing with '+c.hostName+' at '+sp.name+'.',3600,'good'); }); },1800); }).catch(G.fail); };
+var crewSeen={}, crewFishSeen={}, crewPoll=0;
+UI.crewTick=function(){
+  var c=G.s&&G.s.crew; if(!c) return;
+  (c.invites||[]).forEach(function(iv){ var k=iv.host+'|'+iv.spot; if(crewSeen[k]) return; crewSeen[k]=1; UI.confirm({title:'INVITE ABOARD!',note:iv.name+' wants you on their '+((D.GEAR_BY_ID[iv.boat]||{}).name||'boat')+' at '+((D.SPOT_BY_ID[iv.spot]||{}).name||'')+'. You ride for free and fish together.',yes:'HOP ABOARD',no:'LATER',danger:false}).then(function(v){ if(v) UI.joinCrew(iv); }); });
+  (c.members||[]).forEach(function(m){ if(m.pid===G.s.pid) return; (m.recent||[]).forEach(function(f){ if(crewFishSeen[f.id]) return; var fresh=Date.now()-Date.parse(f.at)<60000; crewFishSeen[f.id]=1; if(fresh) G.queueToast(m.name+' caught '+(f.legend?'A LEGEND':'a '+D.fmtWeight(+f.lb)+' '+(D.SP_BY_ID[f.sp]||{name:'fish'}).name.toLowerCase())+'!'); }); });
+  var others=(c.members||[]).filter(function(m){ return m.pid!==G.s.pid; }); var chip=$('crewChip'); chip.hidden=!others.length&&!(c.invites||[]).length; $('crewTxt').textContent=others.length?others.map(function(m){ return m.name; }).join(', '):(c.invites||[]).length?'INVITE!':'';
+};
+UI.startCrewPoll=function(){ clearInterval(crewPoll); crewPoll=setInterval(function(){ if(!G.s||document.hidden) return; var c=G.s.crew, active=c&&((c.members||[]).length>1||(c.invites||[]).length); if(!active&&Math.random()>0.25) return; N.me('get_crew').then(function(cc){ G.s.crew=cc; UI.crewTick(); if(!$('friendsOv').hidden) renderCrewBox(); }).catch(function(){}); },8000); };
+$('crewChip').onclick=function(){ UI.open('friendsOv'); };
 
 /* ---------- news ---------- */
 function renderNews(){ var ul=$('newsList'); ul.innerHTML='<li>Loading...</li>'; N.rpc('get_news',{p_after:0}).then(function(rows){ ul.innerHTML=''; if(!rows.length) ul.innerHTML='<li class="empty">Nothing yet. Go make news.</li>'; rows.forEach(function(n){ var li=el('li',n.kind); var ic=el('span','ic'); if(n.data&&n.data.sp) ic.appendChild(A.fishImg(n.data.sp,22,false,1.5,n.data.variant,n.data.colors,'')); else ic.appendChild(icon(n.kind==='season'?'trophy':'news')); li.appendChild(ic); li.appendChild(el('div',null,'<div class="nt">'+esc(n.text)+'</div><div class="nw">'+timeAgo(n.at)+(n.pid?' · <a href="#" data-pid="'+n.pid+'">profile</a>':'')+'</div>')); ul.appendChild(li); }); ul.querySelectorAll('a[data-pid]').forEach(function(a){ a.onclick=function(e){ e.preventDefault(); UI.profile(a.getAttribute('data-pid')); }; }); if(rows.length){ G.prefs({newsSeen:rows[0].id}); UI.renderMenuBadge(); } }).catch(function(e){ ul.innerHTML='<li class="empty">'+esc(e.message)+'</li>'; }); }
@@ -411,10 +452,10 @@ function renderMapFoot(){
   var s=D.SPOT_BY_ID[pickedSpot]||G.spot(), r=D.REGION_BY_ID[s.region], own=G.s.regions.indexOf(s.region)>=0, w=G.world&&G.world.spots[s.id], card=el('div','spot-card');
   var pic=el('div','pic'); var biggest=D.spotSpecies(s.id).sort(function(a,b){ return b.max-a.max; })[0]; if(biggest) pic.appendChild(A.fishImg(biggest.id,30,G.s.journal[biggest.id]?false:'#2C5088',2,null,null,biggest.name)); card.appendChild(pic);
   var t=el('div'); t.innerHTML='<h3>'+esc(s.name)+(s.famous?' <span class="tag">FAMOUS</span>':'')+'</h3><div class="where">'+esc(r.name)+(s.where?' · '+esc(s.where):'')+' · '+D.METHOD_NAME[s.method]+' · '+G.clockAt(s)+' local ('+D.PERIOD_NAME[G.period(s)].toLowerCase()+')'+(w&&w.anglers?' · '+w.anglers+' angler'+(w.anglers>1?'s':'')+' here':'')+'</div>';
-  var acts=el('div','acts'); var need=D.METHOD_GEAR[s.method], hasGear=!need||(G.s.gear.methods||[]).indexOf(need)>=0;
+  var acts=el('div','acts'); var ac=G.access(s), need=ac.blocked, hasGear=!need;
   if(s.id===G.s.spot) acts.appendChild(el('span','legend-chip','YOU ARE HERE'));
   else { var go=el('button','pbtn gold',own?'TRAVEL HERE (FREE)':'BUY TICKET '+D.money(r.ticket)+' AND GO'); go.type='button'; go.onclick=function(){ G.travelTo(s.id); }; acts.appendChild(go); if(!own) acts.appendChild(el('span','where','Pay once, then every trip to '+esc(r.name)+' is free. Travel by '+r.by+'.')); }
-  if(!hasGear) acts.appendChild(el('span','where','Needs: '+esc(D.GEAR_BY_ID[need].name)+' (gear shop).'));
+  if(!hasGear) acts.appendChild(el('span','where','Needs a '+(need==='kayak'?'kayak':'skiff')+' or bigger boat (Dock).')); else if(ac.small) acts.appendChild(el('span','where',esc(ac.why)));
   t.appendChild(acts);
   if(w&&w.legend){ var lg=el('div','leg'); lg.appendChild(A.fishImg(w.legend.sp,26,false,1.5,null,w.legend.colors,w.legend.name)); lg.appendChild(el('div',null,'<div class="ln">'+esc(w.legend.name)+'</div><div class="ls">'+(w.legend.owner?'Owned by '+esc(w.legend.ownerName||'someone'):'Still out there · 1 in '+Number(w.legend.odds).toLocaleString())+'</div>')); t.appendChild(lg); }
   t.appendChild(el('p',null,esc(s.desc)+(s.known?' Known for: '+esc(s.known)+'.':''))); t.appendChild(el('p','where','Fish: '+D.spotSpecies(s.id).map(function(x){ return esc(x.name); }).join(', ')));

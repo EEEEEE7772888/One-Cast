@@ -11,7 +11,7 @@ function sql(q){ return execFileSync('su',['postgres','-c','psql -X -At -d oneca
   await p.evaluate(()=>G.prefs({tut:9}));
   await p.evaluate(()=>G.refresh(true)); await p.waitForTimeout(800);
   // buy everything through the real buy function
-  const buys=[['bait','minnow'],['bait','cut'],['bait','sucker'],['bait','shrimp'],['bait','squid'],['bait','mullet'],['bait','lure'],['bait','deepbait'],['gear','hole2'],['gear','hole3'],['gear','hole4'],['gear','line1'],['gear','line2'],['gear','line3'],['gear','line4'],['gear','line5'],['gear','finder1'],['gear','finder2'],['gear','finder3'],['gear','boat'],['gear','offshore'],['gear','deeprig'],['gear','comfort'],['region','northwoods'],['region','everglades'],['region','keys'],['region','pacific'],['region','arctic'],['region','southern'],['region','greatlakes']];
+  const buys=[['bait','minnow'],['bait','cut'],['bait','sucker'],['bait','shrimp'],['bait','squid'],['bait','mullet'],['bait','lure'],['bait','deepbait'],['gear','hole2'],['gear','hole3'],['gear','hole4'],['gear','line1'],['gear','line2'],['gear','line3'],['gear','line4'],['gear','line5'],['gear','finder1'],['gear','finder2'],['gear','finder3'],['gear','kayak'],['gear','skiff'],['gear','bassboat'],['gear','console'],['gear','sportfisher'],['gear','trawler'],['gear','deeprig'],['gear','comfort'],['region','northwoods'],['region','everglades'],['region','keys'],['region','pacific'],['region','arctic'],['region','southern'],['region','greatlakes']];
   for(const [k,id] of buys){ await p.evaluate(([k,id])=>NET.me('buy',{p_kind:k,p_id:id}).catch(e=>console.log('buy fail',k,id,e.message)),[k,id]); }
   await p.evaluate(()=>G.refresh(true)); await p.waitForTimeout(600);
   async function shotSpot(spot,bait,name){
