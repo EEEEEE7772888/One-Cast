@@ -2,7 +2,7 @@
 
 An idle fishing game across the whole world. Cast a line, walk away, come back to a bite. Every spot hides one legendary fish that only one player on Earth can own, and you can trade it with friends.
 
-**Play:** https://eeeeee7772888.github.io/One-Cast/
+**Play:** https://onecast.github.io/
 
 ## How it's built
 
