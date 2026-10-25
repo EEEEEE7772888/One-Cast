@@ -216,7 +216,8 @@ S.draw=function(ms){
   if(storm||rain) sky=[mixC(sky[0],[96,104,120],0.45),mixC(sky[1],[150,158,172],0.45)];
   if(m==='troll') scroll+=dt*18;
   /* sky */
-  for(y=0;y<=horizonY;y++){ R(0,y,W,1,rgb(mixC(sky[0],sky[1],y/horizonY))); }
+  var BANDS=7; for(y=0;y<=horizonY;y++){ var k0=y/horizonY, bi=Math.floor(k0*BANDS), frac=k0*BANDS-bi, c0=rgb(mixC(sky[0],sky[1],Math.min(1,bi/BANDS))), c1=rgb(mixC(sky[0],sky[1],Math.min(1,(bi+1)/BANDS)));
+    R(0,y,W,1,c0); if(frac>0.55){ ctx.fillStyle=c1; for(x=(y&1);x<W;x+=2) ctx.fillRect(x,y,1,1); } }
   var aur=Math.max(0,(0.35-lt)/0.35), dayIdx=Math.floor(Date.now()/86400000);
   if(aur>0&&!storm&&(th.aurora||Math.abs(sp.lat)>52)&&hash(dayIdx+0.5)<0.75){
     for(x=0;x<W;x+=2){ var ab=horizonY*0.1+Math.sin(x*0.045+t*0.25)*5+Math.sin(x*0.011+t*0.07)*8, al=10+Math.sin(x*0.07+t*0.4)*5+Math.sin(x*0.023)*4, aa=(0.11+0.08*Math.sin(x*0.09+t*0.6))*aur;
@@ -224,10 +225,13 @@ S.draw=function(ms){
   }
   if(lt<0.6){ for(i=0;i<40;i++){ if(hash(i+3)*(1-lt)<0.25) continue; if(Math.sin(t*1.5+i*2)>-.6) P(Math.floor(hash(i*3.1)*W),Math.floor(hash(i*7.7+1)*horizonY*0.75),i%5?'#BFD0F0':'#FFFFFF'); } }
   var day=h>=6&&h<18, p=day?(h-6)/12:(((h<6)?h+24:h)-18)/12, sx=Math.round(W*(0.1+0.8*p)), sy=Math.round(horizonY-14-Math.sin(Math.PI*p)*(horizonY*0.62));
-  if(day){ disc(sx,sy,6,'#FFE9A8'); disc(sx,sy,4,'#FFF6D6'); } else { disc(sx,sy,5,'#E4EAF6'); disc(sx+2,sy-1,4,rgb(mixC(sky[0],sky[1],Math.max(0,sy)/horizonY))); }
-  /* clouds */
-  for(i=0;i<5;i++){ var cx=Math.floor((hash(i*4.3)*W*1.4+t*(2+hash(i))+(m==='troll'?scroll*0.3:0))%(W*1.4))-W*0.2, cy=4+Math.round(hash(i*2.7)*horizonY*0.4), cw=10+Math.round(hash(i)*16);
-    ctx.fillStyle=lt>0.5?'rgba(255,255,255,0.75)':'rgba(120,130,160,0.45)'; ctx.fillRect(cx,cy,cw,2); ctx.fillRect(cx+2,cy-1,cw-5,1); ctx.fillRect(cx+1,cy+2,cw-3,1); }
+  if(day){ ctx.fillStyle='rgba(255,230,150,0.18)'; for(var gi=9;gi>6;gi--) disc(sx,sy,gi,'rgba(255,230,150,0.12)'); disc(sx,sy,6,'#FFE9A8'); disc(sx,sy,4,'#FFF6D6'); P(sx-2,sy-2,'#FFFFFF'); }
+  else { disc(sx,sy,5,'#E4EAF6'); P(sx-2,sy-1,'#C4CCDA'); P(sx+1,sy+2,'#C4CCDA'); P(sx+1,sy-2,'#D4DAE6'); P(sx-1,sy+1,'#C4CCDA'); disc(sx+2,sy-1,4,rgb(mixC(sky[0],sky[1],Math.max(0,sy)/horizonY))); }
+  /* clouds: puffy two-tone pixel clouds with a shaded underside */
+  var cloudHi=lt>0.5?'#FFFFFF':rgb(mixC([150,160,190],[255,255,255],lt)), cloudLo=lt>0.5?'#C8DCEC':rgb(mixC([70,80,110],[200,220,236],lt));
+  if(!storm&&!rain) for(i=0;i<5;i++){ var cx=Math.floor((hash(i*4.3)*W*1.4+t*(1.5+hash(i))+(m==='troll'?scroll*0.3:0))%(W*1.4))-W*0.2, cy=4+Math.round(hash(i*2.7)*horizonY*0.4), cw=12+Math.round(hash(i)*18), ch2=3+Math.round(hash(i*1.3)*3);
+    for(var cj=0;cj<4;cj++){ var px2=cx+Math.round(cw*(0.1+0.7*hash(i*9+cj*3))), pr=Math.max(2,Math.round(ch2*(0.6+0.6*hash(i*5+cj)))); disc(px2,cy,pr,cloudHi); }
+    R(cx+2,cy+ch2-1,cw-4,1,cloudLo); R(cx+3,cy+ch2,cw-6,1,cloudLo); R(cx,cy,cw,1,cloudHi); }
   /* backdrop */
   var hill=shade(th.snow?'#D5E6F0':th.ground||'#5A7A3A',0.2+dk);
   if(th.back==='mountains') drawMountains(dk,true);
@@ -277,6 +281,7 @@ S.draw=function(ms){
       if(!reduceMotion&&ft>fx.reel-500){ shakeUntil=Math.max(shakeUntil,ms+40); shakeAmp=Math.max(shakeAmp,0.6); } }
     else { var kh=Math.min(1,(ft-fx.reel)/HAUL); hx2=land[0]+(hang[0]-land[0])*kh; hy2=(land[1]+1)+(hang[1]-(land[1]+1))*easeOutBack(kh); var sec=(ft-fx.reel)/1000; th2=(0.5*Math.exp(-sec/1.6)+0.05)*Math.sin(sec*3.2)*(fx.big?0.55:1);
       if(!fx.breached){ fx.breached=true; splash(land[0],wt,fx.big,th.ice); }
+      if(fx.legend&&kh>=1&&Math.random()<dt*4) parts.push({k:'spark',x:hang[0]+(Math.random()-0.5)*(fx.L*0.6+10),y:hang[1]+Math.random()*fx.L,vx:(Math.random()-0.5)*6,vy:-4-Math.random()*6,g:0,c:Math.random()<0.5?'#FFC94A':'#FFFFFF',sz:1,life:0.8+Math.random()*0.8});
       if(!fx.sparked&&kh>=1){ fx.sparked=true; if(fx.variant||fx.legend||fx.newBest){ sparkle(hang[0],hang[1],fx.L); } if(fx.legend){ sparkle(hang[0],hang[1],fx.L); sparkle(hang[0],hang[1],fx.L); } } }
     if(fx.out&&!fx.snap){ var ko=Math.min(1,(ms-fx.out)/700); hy2-=(hy2+fx.L+30)*ko*ko; }
     F={ft:ft,cs:cs,x:Math.round(hx2),y:Math.round(hy2),th:th2,pre:pre};

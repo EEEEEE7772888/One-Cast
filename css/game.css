@@ -418,3 +418,27 @@ a{color:var(--frost)}
 @media (max-width:420px){#hudAlert{display:none}}
 
 @media (max-width:600px){.map-foot{max-height:42%;padding:10px}.map-foot .spot-card{grid-template-columns:minmax(0,1fr)}.map-foot .spot-card .pic{display:none}.map-foot .spot-card p{font-size:17px}}
+
+/* ---------- Legend presentation ---------- */
+.stand.legend{position:relative;overflow:hidden;isolation:isolate;padding:22px 8px;border-color:var(--gold);
+  background:radial-gradient(circle at 50% 55%,#5A4410 0,#2A2008 45%,var(--panel-lo) 75%);box-shadow:inset 0 0 0 2px #6B5214}
+.stand.legend::before{content:"";position:absolute;inset:-60%;z-index:-1;
+  background:repeating-conic-gradient(from 0deg,rgba(255,201,74,.22) 0 10deg,transparent 10deg 20deg);animation:rays 14s steps(56) infinite}
+.stand.legend::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background-image:radial-gradient(#FFF2B0 1px,transparent 1.5px);background-size:23px 19px;opacity:.35;animation:twinkle 1.4s steps(2) infinite}
+@keyframes rays{to{transform:rotate(360deg)}}
+.catch .stand.legend canvas{filter:drop-shadow(0 0 6px rgba(255,201,74,.55))}
+.legend-card{position:relative}
+.legend-card.free{border-color:var(--gold);background:linear-gradient(160deg,#2A2208,var(--panel-lo) 55%)}
+.legend-card.free .pic{background:radial-gradient(circle at 50% 55%,#4A3A10,var(--panel-lo) 70%)}
+.legend-card .ln{text-shadow:2px 2px 0 var(--edge)}
+.legend-card.free::after{content:"";position:absolute;inset:-3px;pointer-events:none;border:3px solid transparent;
+  background:linear-gradient(90deg,transparent 0 40%,rgba(255,240,170,.9) 50%,transparent 60% 100%) border-box;background-size:300% 100%;
+  -webkit-mask:linear-gradient(#000 0 0) padding-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:sheen 3.2s steps(24) infinite}
+@keyframes sheen{from{background-position:100% 0}to{background-position:-100% 0}}
+.card.legend{background:linear-gradient(160deg,#3A2E0C,var(--panel-lo) 60%)}
+.card.legend .pic canvas{filter:drop-shadow(0 0 4px rgba(255,201,74,.45))}
+.fish-on.legend{font-size:clamp(24px,8vw,36px);color:var(--gold-hi);text-shadow:3px 3px 0 #6B3A00,-1px -1px 0 #FFF2B0}
+.news li.legend{background:linear-gradient(90deg,#2A2208,var(--panel-lo) 60%)}
+@media (prefers-reduced-motion: reduce){.stand.legend::before,.stand.legend::after,.legend-card.free::after{animation:none}}
+.c-name.legend{font-size:15px;color:var(--gold);text-shadow:2px 2px 0 var(--edge)}

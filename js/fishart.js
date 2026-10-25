@@ -153,7 +153,7 @@ A.fishGrid2=function(lk,plan,L,fx){
       if(flat) c=v<0.5?(v<0.08?'dD':'d'):(v>0.92?'belD':'bel');
       else if(v<0.1) c='dD'; else if(v<0.28) c='d';
       else if(v<0.62) c='b'; else if(y===bt) c='belD'; else c='bel';
-      if(L>=40&&(v>0.26&&v<0.3||v>0.6&&v<0.64)&&((x+y)&1)) c=v<0.4?'b':'bel';
+      if(L>=28&&(v>=0.26&&v<0.3)&&((x+y)&1)) c='b'; if(L>=28&&(v>=0.6&&v<0.64)&&((x+y)&1)) c='bel'; if(L>=28&&(v>=0.08&&v<0.11)&&((x+y)&1)) c='d';
       if(!flat&&c==='b'&&v>0.32&&v<0.4&&u3>0.25&&u3<0.86) c='bL';
       if(!flat&&c==='d'&&v<0.16&&u3>0.4&&u3<0.8&&L>20) c='dL';
       if(u3<0.08&&c!=='belD') c=c==='bel'?'belD':c==='bL'?'b':c==='b'?'d':'dD';
@@ -207,7 +207,7 @@ A.fishGrid2=function(lk,plan,L,fx){
   for(y=0;y<GH;y++) for(x=0;x<GW;x++){ if(g[y][x]==='F'&&((x+(y>cy?1:0))%2===0)) g[y][x]='FD'; }
   /* outline: dark on the outside, lighter along the top for a little rim light */
   var out=[]; for(y=0;y<GH;y++) for(x=0;x<GW;x++){ if(g[y][x]) continue; var n=get(x-1,y)||get(x+1,y)||get(x,y-1)||get(x,y+1); if(n) out.push([x,y]); }
-  out.forEach(function(q){ g[q[1]][q[0]]='out'; });
+  out.forEach(function(q){ var below=get(q[0],q[1]+1); g[q[1]][q[0]]=(below&&below!=='F'&&below!=='FD'&&below!=='out'&&!get(q[0],q[1]-1)&&q[0]>bodyStart&&q[0]<nose-1)?'outT':'out'; });
   if(aura){ var ring=[]; for(y=0;y<GH;y++) for(x=0;x<GW;x++){ if(g[y][x]) continue; if(get(x-1,y)==='out'||get(x+1,y)==='out'||get(x,y-1)==='out'||get(x,y+1)==='out') ring.push([x,y]); }
     ring.forEach(function(q){ g[q[1]][q[0]]='aura'; });
     var ring2=[]; for(y=0;y<GH;y++) for(x=0;x<GW;x++){ if(g[y][x]) continue; if(get(x-1,y)==='aura'||get(x+1,y)==='aura'||get(x,y-1)==='aura'||get(x,y+1)==='aura') ring2.push([x,y]); }
@@ -223,7 +223,7 @@ function palette(lk,variant,colors,fx){
     B:c.b, b:c.b, bL:light(c.b,0.28), bD:dark(c.b,0.18), d:c.d, dL:light(c.d,0.18), dD:dark(c.d,0.3),
     bel:c.bel, belD:mix(c.bel,c.b,0.35), F:c.fin, FD:dark(c.fin,0.22), P:light(c.fin,0.12), PD:dark(c.fin,0.3), Y:'#F0C030',
     S:c.spot, SL:light(c.spot,0.25), band:lk.band||c.spot, bandD:dark(lk.band||c.spot,0.2),
-    gill:dark(c.b,0.35), mouth:dark(c.d,0.5), tooth:'#F4F4E8', out:dark(c.d,0.72), eye:'#0B0F14', iris:variant==='albino'?'#D04A5A':mix(c.d,'#E8C860',0.55), hl:'#F8F8F0',
+    gill:dark(c.b,0.35), mouth:dark(c.d,0.5), tooth:'#F4F4E8', out:dark(c.d,0.72), outT:mix(c.d,'#FFFFFF',0.22), eye:'#0B0F14', iris:variant==='albino'?'#D04A5A':mix(c.d,'#E8C860',0.55), hl:'#F8F8F0',
     scar:light(c.b,0.55), moss:'#4E7A2E', barn:'#C8C4B0', barnD:'#8A8676', crown:'#FFC94A', crownD:'#C98A12', crownL:'#FFF2B0', gem:'#E5484D', shim:light(c.b,0.6), arm:light(c.d,0.4), gst:'#FFFFFF', frs:'#DFF2FF',
     glowE:'#FF5A3A', glowC:'#FFE08A', oc:'#E05A2A', ocD:'#0B0F14', aura:'rgba(255,201,74,0.5)', auraO:'rgba(255,201,74,0.18)', auraL:'rgba(255,248,200,0.95)', smoke:'rgba(160,190,220,0.25)'
   };

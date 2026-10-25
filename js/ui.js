@@ -174,13 +174,13 @@ UI.showCard=function(last){
   body.appendChild(el('div','fish-on'+(legend?' legend':''),legend?'LEGEND!':last.newSpecies?'NEW SPECIES!':last.worldRecord?'WORLD RECORD!':last.newBest?'NEW BEST!':'FISH ON!'));
   var rib=el('div','ribbons'); if(legend) rib.appendChild(el('span','ribbon gold','ONE OF A KIND')); if(last.variant) rib.appendChild(el('span','ribbon '+(last.variant==='golden'?'gold':'white'),last.variant.toUpperCase()+' · '+(D.VARIANT_MULT[last.variant])+'x VALUE')); if(last.worldRecord) rib.appendChild(el('span','ribbon','WORLD RECORD')); if(last.newBest&&!legend) rib.appendChild(el('span','ribbon b','PERSONAL BEST')); if(last.newSpecies) rib.appendChild(el('span','ribbon g','FIRST '+sp.name.toUpperCase())); if(sp.protected) rib.appendChild(el('span','ribbon p','CATCH AND RELEASE')); if(rib.children.length) body.appendChild(rib);
   var stand=el('div','stand'+(legend?' legend':'')); stand.appendChild(A.fishImg(last.sp,Math.min(70,A.heroLen(last.lb)*2),false,3,last.variant,last.colors,sp.name)); body.appendChild(stand);
-  body.appendChild(el('div','c-name',esc(last.legendName||sp.name))); body.appendChild(el('div','c-weight',D.fmtWeight(last.lb))); body.appendChild(el('div','c-len',last.inches+' inches · after '+D.fmtDuration(last.minutes||0)));
+  body.appendChild(el('div','c-name'+(legend?' legend':''),esc(last.legendName||sp.name))); body.appendChild(el('div','c-weight',D.fmtWeight(last.lb))); body.appendChild(el('div','c-len',last.inches+' inches · after '+D.fmtDuration(last.minutes||0)));
   if(legend&&last.legendInfo) body.appendChild(el('p','note gold','"'+esc(last.legendInfo.clue)+'" Nobody else on Earth can catch it now. The whole world just heard.'));
   if(last.reward) body.appendChild(el('p','note gold','Daily challenge done: +'+D.money(last.reward)+'!'));
   body.appendChild(facts([['WORTH',legend?'Priceless':sp.protected?'Not for sale':D.money(last.value||0)],['BAIT',D.BAIT_BY_ID[last.bait].name],['TIME',D.PERIOD_NAME[last.period]||'']]));
   var btns=el('div','two');
   if(!legend&&!sp.protected){ var sell=el('button','go','SELL '+D.money(last.value||0)); sell.type='button'; sell.onclick=function(){ sellFish([last.id]).then(function(){ closeCard(); }); }; btns.appendChild(sell); }
-  var keep=el('button','go alt',legend?'AMAZING':'KEEP'); keep.type='button'; keep.onclick=closeCard; btns.appendChild(keep); body.appendChild(btns);
+  var keep=el('button','go '+(legend?'':'alt'),legend?'AMAZING!':'KEEP'); keep.type='button'; keep.onclick=closeCard; btns.appendChild(keep); if(btns.children.length===1) btns.style.gridTemplateColumns='1fr'; body.appendChild(btns);
   var sparks=$('sparks'); sparks.innerHTML=''; if(legend||last.variant||last.newBest){ for(var i=0;i<(legend?30:14);i++){ var s=el('i'); s.style.setProperty('--dx',(Math.random()-0.5)*300+'px'); s.style.setProperty('--dy',(Math.random()-0.5)*300+'px'); s.style.animationDelay=(Math.random()*0.4)+'s'; sparks.appendChild(s); } }
   $('cardOv').hidden=false;
 };
