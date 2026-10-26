@@ -267,5 +267,21 @@ console.log('deleting an account');
   ok(rpc('get_state',[E.pid,E.secret]).error==='no player','the old save code no longer works');
 }
 
+
+console.log('lures and jigs');
+{ const L={pid:uuid(),secret:'llllllllllllllllllllllllllllll'}; rpc('login',[L.pid,L.secret,'Luremaster']);
+  rpc('admin_player',['oc-admin-testkey',L.pid,'coins','5000']);
+  ok(rpc('buy',[L.pid,L.secret,'bait','crank']).baits.includes('crank'),'bought crankbaits');
+  ok(rpc('buy',[L.pid,L.secret,'bait','jig']).baits.includes('jig'),'bought jigs');
+  let c=rpc('cast_line',[L.pid,L.secret,0,'crank']); const secs=(Date.parse(c.line.biteAt)-Date.parse(c.now))/1000;
+  ok(secs>=5&&secs<=23,'a crankbait strike comes within seconds ('+secs.toFixed(1)+'s)');
+  ok(rpc('reel_line',[L.pid,L.secret,0]).result==='early','reeling before the strike brings the lure back');
+  rpc('cast_line',[L.pid,L.secret,0,'crank']); sql(`update lines set bite_at=now()-interval '1 second' where pid='${L.pid}'`);
+  const hit=rpc('reel_line',[L.pid,L.secret,0]); ok(hit.result==='catch'||hit.result==='snap'||hit.result==='nothing','setting the hook on time lands the fish ('+hit.result+(hit.fish?' '+hit.fish.sp:'')+')');
+  rpc('cast_line',[L.pid,L.secret,0,'jig']); sql(`update lines set bite_at=now()-interval '10 seconds' where pid='${L.pid}'`);
+  ok(rpc('reel_line',[L.pid,L.secret,0]).result==='missed','too slow on the hook-set and the fish gets away');
+  ok(rpc('cast_line',[L.pid,L.secret,0,'jig']).line.bait==='jig','jigs cast at Bass Lake'); rpc('reel_line',[L.pid,L.secret,0]);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);

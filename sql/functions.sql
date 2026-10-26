@@ -344,8 +344,10 @@ begin
   if crewed then mult := mult * 0.9; end if;
 end $$;
 
+create or replace function public.oc_is_lure(p_bait text) returns boolean language sql immutable as $$ select p_bait in ('crank', 'jig') $$;
+
 create or replace function public.cast_line(p_pid uuid, p_secret text, p_idx int, p_bait text) returns jsonb language plpgsql security definer set search_path = public as $$
-declare p public.players; sp public.spots; mins numeric; r record; per text; ln public.lines; ac record;
+declare p public.players; sp public.spots; mins numeric; r record; per text; ln public.lines; ac record; bite timestamptz;
 begin
   p := oc_auth(p_pid, p_secret);
   select * into sp from spots where id = p.spot;
@@ -359,10 +361,14 @@ begin
   if p_bait = 'lure' and ac.boat_lvl < 5 then perform oc_fail('trolling lures need a sportfisher or bigger boat'); end if;
   mins := oc_bite_minutes(p.spot, p_bait, ac.mult, ac.small);
   if mins is null then perform oc_fail('nothing here bites on that'); end if;
-  per := oc_period(now() + (mins * interval '1 minute'), sp.tz);
+  -- Lures and jigs are fished actively: the strike comes within seconds while the player works the lure.
+  -- The fish is rolled as if the lure had fished for `mins` (same size rules), so cast_at is set that far back.
+  bite := case when oc_is_lure(p_bait) then now() + ((case when p_bait = 'crank' then 6 + random() * 16 else 8 + random() * 20 end) * interval '1 second')
+               else now() + (mins * interval '1 minute') end;
+  per := oc_period(bite, sp.tz);
   select * into r from oc_roll(p.spot, p_bait, mins, per, ac.small);
   insert into lines (pid, idx, spot, bait, cast_at, bite_at, species, lb, inches, variant, snap, legend_roll)
-    values (p_pid, p_idx, p.spot, p_bait, now(), now() + (mins * interval '1 minute'), r.species, r.lb, r.inches, r.variant, random() < oc_reel_snap((p.gear ->> 'reel')::int), random())
+    values (p_pid, p_idx, p.spot, p_bait, case when oc_is_lure(p_bait) then bite - (mins * interval '1 minute') else now() end, bite, r.species, r.lb, r.inches, r.variant, random() < oc_reel_snap((p.gear ->> 'reel')::int), random())
     returning * into ln;
   return jsonb_build_object('line', oc_line_json(ln, (p.gear ->> 'finder')::int), 'small', ac.small, 'now', now());
 end $$;
@@ -375,6 +381,8 @@ begin
   if ln.pid is null then perform oc_fail('no line there'); end if;
   delete from lines where pid = p_pid and idx = p_idx;
   if now() < ln.bite_at then return jsonb_build_object('result', 'early', 'now', now()); end if;
+  -- a lure strike has to be answered within a few seconds, or the fish spits the hook
+  if oc_is_lure(ln.bait) and now() > ln.bite_at + interval '4 seconds' then return jsonb_build_object('result', 'missed', 'now', now()); end if;
   select * into sp from spots where id = ln.spot;
   per := oc_period(ln.bite_at, sp.tz);
   mins := extract(epoch from (ln.bite_at - ln.cast_at)) / 60;
