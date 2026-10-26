@@ -259,7 +259,11 @@ G.ACH=[
 ];
 function speciesCount(s){ return Object.keys(s.journal).filter(function(k){ return k.indexOf('legend:')!==0; }).length; }
 function saltCaught(s){ return Object.keys(s.journal).some(function(k){ var sp=D.SP_BY_ID[k]; return sp&&Object.keys(sp.baits).some(function(b){ return D.BAIT_BY_ID[b].water==='salt'; }); }); }
-G.checkAch=function(){ if(!G.s) return; if(!G.s.hasPw&&(G.s.stats.catches||0)>=3&&!G.s.prefs.pwTip){ G.prefs({pwTip:1}); G.queueToast('Tip: set a password in MENU, then SAVE YOUR GAME, so you never lose your fish.'); } var have=G.s.prefs.ach||[], got=[]; G.ACH.forEach(function(a){ var v=a.n(G.s); if(v[0]>=v[1]&&have.indexOf(a.id)<0) got.push(a.id); }); if(got.length){ G.prefs({ach:have.concat(got)}); got.forEach(function(id){ var a=G.ACH.filter(function(x){ return x.id===id; })[0]; G.queueToast('ACHIEVEMENT: '+a.name); }); } };
+/* password tip: stays on screen until the player sets a password or closes it with X */
+G.renderTip=function(){ if(!G.s) return; $('tipBox').hidden=!(!G.s.hasPw&&(G.s.stats.catches||0)>=3&&!G.s.prefs.pwTip2); };
+$('tipX').onclick=function(){ G.prefs({pwTip2:1}); G.renderTip(); };
+$('tipGo').onclick=function(){ UI.open('saveOv'); };
+G.checkAch=function(){ if(!G.s) return; G.renderTip(); var have=G.s.prefs.ach||[], got=[]; G.ACH.forEach(function(a){ var v=a.n(G.s); if(v[0]>=v[1]&&have.indexOf(a.id)<0) got.push(a.id); }); if(got.length){ G.prefs({ach:have.concat(got)}); got.forEach(function(id){ var a=G.ACH.filter(function(x){ return x.id===id; })[0]; G.queueToast('ACHIEVEMENT: '+a.name); }); } };
 
 /* ---------- boot ---------- */
 function showBoot(msg,retry){ $('bootOv').hidden=false; $('bootMsg').textContent=msg; $('bootRetry').hidden=!retry; }

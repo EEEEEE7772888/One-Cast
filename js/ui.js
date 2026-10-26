@@ -471,7 +471,7 @@ function renderSave(){ $('saveOut').value=N.code(); $('saveIn').value=''; $('sav
 $('pwSet').onclick=function(){ var a=$('pwNew').value, b=$('pwNew2').value, err=$('pwErr');
   if(a.length<6){ err.textContent='Use at least 6 characters.'; return; } if(a!==b){ err.textContent="Those two don't match."; return; }
   $('pwSet').disabled=true;
-  N.me('set_password',{p_password:a}).then(function(){ $('pwSet').disabled=false; G.s.hasPw=true; renderSave(); G.toast('Password saved. Log in anywhere with '+G.s.name+'#'+G.s.tag+' and your password.',4500,'good'); })
+  N.me('set_password',{p_password:a}).then(function(){ $('pwSet').disabled=false; G.s.hasPw=true; renderSave(); G.renderTip(); G.toast('Password saved. Log in anywhere with '+G.s.name+'#'+G.s.tag+' and your password.',4500,'good'); })
     .catch(function(e){ $('pwSet').disabled=false; G.fail(e); }); };
 $('copySave').onclick=function(){ var ta=$('saveOut'); ta.select(); try{ navigator.clipboard.writeText(ta.value).then(function(){ G.toast('Copied.',1800,'good'); }); }catch(e){ document.execCommand('copy'); G.toast('Copied.',1800,'good'); } };
 $('loadSave').onclick=function(){ var v=$('saveIn').value.trim(); if(/^BZ1\./.test(v)){ try{ var s=JSON.parse(decodeURIComponent(escape(atob(v.slice(4))))); if(s&&(s.total>0||(s.bucket&&s.bucket.length))){ N.me('claim_founder').then(function(){ G.toast('Founder cap unlocked! A thank-you for playing Below Zero first.',4000,'good'); G.refresh(true); }).catch(G.fail); return; } }catch(e){} $('saveErr').textContent='That Below Zero code did not have any catches in it.'; return; } G.loadCode(v,$('saveErr')); };
