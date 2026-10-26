@@ -1,0 +1,17 @@
+{
+  "appId": "io.github.onecast",
+  "appName": "One Cast",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#0A1530",
+    "scrollEnabled": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 900,
+      "backgroundColor": "#0A1530",
+      "showSpinner": false
+    }
+  }
+}

@@ -198,6 +198,11 @@ UI.showCard=function(last){
   var btns=el('div','two');
   if(!legend&&!sp.protected){ var sell=el('button','go','SELL '+D.money(last.value||0)); sell.type='button'; sell.onclick=function(){ sellFish([last.id]).then(function(){ closeCard(); }); }; btns.appendChild(sell); }
   var keep=el('button','go '+(legend?'':'alt'),legend?'AMAZING!':'KEEP'); keep.type='button'; keep.onclick=closeCard; btns.appendChild(keep); if(btns.children.length===1) btns.style.gridTemplateColumns='1fr'; body.appendChild(btns);
+  /* share the catch (phone share sheet in the app and on mobile browsers; copies text elsewhere) */
+  var sh=el('button','pbtn share-btn','SHARE THIS CATCH'); sh.type='button';
+  sh.onclick=function(){ var w=D.fmtWeight(last.lb), nm=last.legendName||sp.name;
+    NATIVE.share(legend?'I just caught '+nm+', a one-of-a-kind legend that nobody else can ever catch, in One Cast!':'I just caught a '+w+' '+nm.toLowerCase()+' in One Cast!'); };
+  body.appendChild(sh);
   var sparks=$('sparks'); sparks.innerHTML=''; if(legend||last.variant||last.newBest){ for(var i=0;i<(legend?30:14);i++){ var s=el('i'); s.style.setProperty('--dx',(Math.random()-0.5)*300+'px'); s.style.setProperty('--dy',(Math.random()-0.5)*300+'px'); s.style.animationDelay=(Math.random()*0.4)+'s'; sparks.appendChild(s); } }
   $('cardOv').hidden=false;
 };
@@ -464,10 +469,14 @@ function renderMapFoot(){
 UI.travelScene=function(by,from,to){ var ov=$('travelOv'), cv=$('travelCanvas'); ov.hidden=false; cv.width=160; cv.height=40; $('travelTxt').textContent=(by==='plane'?'Flying':by==='charter'?'Sailing':'Driving')+' to '+to.name+'...'; var t0=performance.now(); (function f(){ if(ov.hidden) return; SC.travel(cv,by,from,to,performance.now()-t0); requestAnimationFrame(f); })(); };
 
 /* ---------- save and misc ---------- */
-function renderSave(){ $('saveOut').value=N.code(); $('saveIn').value=''; $('saveErr').textContent=''; $('pwNew').value=''; $('pwNew2').value=''; $('pwErr').textContent='';
+function renderSave(){ $('delBox').hidden=true; $('saveOut').value=N.code(); $('saveIn').value=''; $('saveErr').textContent=''; $('pwNew').value=''; $('pwNew2').value=''; $('pwErr').textContent='';
   var who='<b>'+esc(G.s.name)+'#'+G.s.tag+'</b>';
   $('pwStatus').innerHTML=G.s.hasPw?'<span class="pw-on">PASSWORD IS ON.</span> If you clear your browser or switch devices, tap LOG IN WITH PASSWORD and use '+who+' and your password.':'<b>Add a password</b> so you can always get back in, even if you clear your browser or lose this device. You will log in with '+who+' and your password.';
   $('pwSet').textContent=G.s.hasPw?'CHANGE PASSWORD':'SET PASSWORD'; }
+$('delAsk').onclick=function(){ $('delBox').hidden=!$('delBox').hidden; $('delIn').value=''; $('delErr').textContent=''; };
+$('delGo').onclick=function(){ if($('delIn').value.trim()!=='DELETE'){ $('delErr').textContent='Type DELETE in capital letters to confirm.'; return; }
+  $('delGo').disabled=true;
+  N.me('delete_account',{p_confirm:'DELETE'}).then(function(){ N.clearId(); location.reload(); }).catch(function(e){ $('delGo').disabled=false; $('delErr').textContent=e.message; }); };
 $('pwSet').onclick=function(){ var a=$('pwNew').value, b=$('pwNew2').value, err=$('pwErr');
   if(a.length<6){ err.textContent='Use at least 6 characters.'; return; } if(a!==b){ err.textContent="Those two don't match."; return; }
   $('pwSet').disabled=true;

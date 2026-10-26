@@ -252,5 +252,20 @@ console.log('passwords and recovery');
   rpc('admin_player',['oc-admin-testkey',C.pid,'clearpw','']); ok(rpc('get_state',[C.pid,ns]).hasPw===false,'admin can clear a password');
 }
 
+
+console.log('deleting an account');
+{ const E={pid:uuid(),secret:'eeeeeeeeeeeeeeeeeeeeeeeeeeeeee'}; rpc('login',[E.pid,E.secret,'Goner']);
+  sql(`insert into fish (pid,species,lb,inches,bait,spot,period,caught_by) values ('${E.pid}','largemouth',5,20,'worm','basslake','day','${E.pid}')`);
+  const lid=sql(`select id from legends where spot='farmpond' and active limit 1`);
+  sql(`update legends set owner_pid='${E.pid}', caught_at=now(), history=history||jsonb_build_array(jsonb_build_object('pid','${E.pid}','name','Goner#0000','how','caught')) where id=${lid}`);
+  ok(rpc('delete_account',[E.pid,E.secret,'delete']).error==='type DELETE to confirm','must type DELETE');
+  ok(rpc('delete_account',[E.pid,'wrongwrongwrongwrongwrongwrong','DELETE']).error==='not your game','only the owner can delete');
+  ok(rpc('delete_account',[E.pid,E.secret,'DELETE']).ok===true,'account deleted');
+  ok(sql(`select count(*) from players where pid='${E.pid}'`)==='0'&&sql(`select count(*) from fish where pid='${E.pid}'`)==='0','player and their fish are gone');
+  ok(sql(`select owner_pid is null from legends where id=${lid}`)==='t','their legend goes back into the water');
+  ok(!/Goner/.test(sql(`select history::text from legends where id=${lid}`)),'their name is removed from legend history');
+  ok(rpc('get_state',[E.pid,E.secret]).error==='no player','the old save code no longer works');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);

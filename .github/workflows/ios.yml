@@ -1,0 +1,74 @@
+# Builds the One Cast iPhone app on a GitHub Mac and uploads it to TestFlight.
+# Run it from the Actions tab: "iOS app" -> "Run workflow". Needs these repository secrets:
+#   APPLE_TEAM_ID   your 10-character Team ID (developer.apple.com -> Membership)
+#   ASC_KEY_ID      App Store Connect API key ID
+#   ASC_ISSUER_ID   App Store Connect API issuer ID
+#   ASC_KEY_P8      the full text of the downloaded AuthKey_XXXX.p8 file
+name: iOS app
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "App version shown in the App Store (e.g. 1.0.0)"
+        required: true
+        default: "1.0.0"
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: app
+    env:
+      TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APP_VERSION: ${{ inputs.version }}
+      BUILD_NUMBER: ${{ github.run_number }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check secrets
+        run: |
+          for v in TEAM_ID ASC_KEY_ID ASC_ISSUER_ID; do [ -n "${!v}" ] || { echo "::error::Missing secret for $v"; exit 1; }; done
+          [ -n "${{ secrets.ASC_KEY_P8 }}" ] || { echo "::error::Missing secret ASC_KEY_P8"; exit 1; }
+      - name: Pick Xcode
+        run: |
+          ls -d /Applications/Xcode*.app
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | grep -v -i beta | sort -V | tail -1)"
+          xcodebuild -version
+      - name: Install Capacitor
+        run: npm install
+      - name: Copy the game in
+        run: node copy-web.js
+      - name: Create the iPhone project
+        run: npx cap add ios
+      - name: App settings, icon and splash
+        run: node ios-setup.js
+      - name: Sync plugins
+        run: npx cap sync ios
+      - name: API key
+        run: |
+          mkdir -p ~/private_keys
+          printf '%s\n' "${{ secrets.ASC_KEY_P8 }}" > ~/private_keys/AuthKey_${ASC_KEY_ID}.p8
+      - name: Build (archive)
+        run: |
+          xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/OneCast.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            archive | tail -n 80
+          test -d "$RUNNER_TEMP/OneCast.xcarchive" || { echo "::error::Archive failed, see the log above"; exit 1; }
+      - name: Upload to TestFlight
+        run: |
+          /usr/libexec/PlistBuddy -c "Add :teamID string $TEAM_ID" ExportOptions.plist
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/OneCast.xcarchive" \
+            -exportOptionsPlist ExportOptions.plist -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+      - name: Done
+        run: echo "Uploaded version $APP_VERSION (build $BUILD_NUMBER). It shows up in App Store Connect -> TestFlight in about 10-30 minutes."

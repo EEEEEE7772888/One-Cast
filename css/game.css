@@ -21,7 +21,7 @@ a{color:var(--frost)}
 
 .game{position:relative;height:100%;min-height:540px;overflow:hidden;background:var(--night)}
 #scene{position:absolute;left:0;top:0;image-rendering:pixelated;image-rendering:crisp-edges}
-.ui{position:absolute;inset:0;display:flex;flex-direction:column;pointer-events:none;padding-block:10px 12px;
+.ui{position:absolute;inset:0;display:flex;flex-direction:column;pointer-events:none;padding-top:max(10px,env(safe-area-inset-top,0px));padding-bottom:max(12px,env(safe-area-inset-bottom,0px));
   padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px))}
 .ui > *{pointer-events:auto}
 .spacer{flex:1;pointer-events:none}
@@ -110,7 +110,7 @@ a{color:var(--frost)}
 .toast.info{background:var(--panel);color:var(--ice);border-color:var(--edge)}
 
 /* Overlays */
-.overlay{position:absolute;inset:0;z-index:10;display:grid;place-items:center;background:rgba(3,7,18,.74);padding-block:14px;
+.overlay{position:absolute;inset:0;z-index:10;display:grid;place-items:center;background:rgba(3,7,18,.74);padding-top:max(14px,env(safe-area-inset-top,0px));padding-bottom:max(14px,env(safe-area-inset-bottom,0px));
   padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
 .dialog{position:relative;width:min(100%,460px);max-height:100%;overflow:auto;padding:16px 14px 14px;display:grid;gap:12px;align-content:start;background:var(--panel);border:4px solid var(--edge);
   box-shadow:inset 0 4px 0 var(--panel-hi),inset 0 -4px 0 var(--panel-lo);overscroll-behavior:contain}
@@ -471,8 +471,17 @@ a{color:var(--frost)}
 .pw-sec .note{margin:0}
 .pw-on{color:#7CE38B;font-weight:bold}
 /* sticky password tip (closes only with its X) */
-.tipbox{position:absolute;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 122px);z-index:29;width:min(440px,calc(100% - 24px));box-sizing:border-box;display:grid;gap:8px;padding:10px 44px 10px 12px;background:var(--panel);color:var(--ice);border:3px solid var(--gold);box-shadow:0 4px 0 var(--edge);font:19px/1.15 var(--term)}
+.tipbox{position:absolute;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 122px);z-index:9;width:min(440px,calc(100% - 24px));box-sizing:border-box;display:grid;gap:8px;padding:10px 44px 10px 12px;background:var(--panel);color:var(--ice);border:3px solid var(--gold);box-shadow:0 4px 0 var(--edge);font:19px/1.15 var(--term)}
 .tipbox p{margin:0}
 .tipbox .pbtn{justify-self:start}
 .tipbox .tip-x{position:absolute;top:6px;right:6px}
 @media (max-width:600px){.tipbox{top:calc(env(safe-area-inset-top,0px) + 240px);font-size:17px}}
+/* catch card share button */
+.share-btn{display:block;margin:8px auto 0;font-size:8px}
+/* inside the phone app: real notifications replace the browser fish-alert window */
+.native #alertBtn,.native #hudAlert{display:none!important}
+/* delete account */
+.del-sec{margin-top:14px;padding-top:10px;border-top:2px dashed var(--edge);display:grid;gap:8px}
+.del-sec .pbtn{justify-self:start}
+#delBox{display:grid;gap:8px}
+.go.danger{background:var(--red,#C0303A);color:#fff}

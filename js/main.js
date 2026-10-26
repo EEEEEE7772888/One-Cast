@@ -61,7 +61,7 @@ G.refresh=function(force){
 G.setBait=function(id){ G.bait=id; var pb=Object.assign({},G.s.prefs.bait||{}); pb[G.s.spot]=id; G.prefs({bait:pb}); G.renderPanel(); };
 
 /* ---------- render ---------- */
-G.renderAll=function(){ G.renderHUD(); G.renderHoles(); G.renderPanel(); G.renderSonar(); G.renderStatus(); UI.renderMenuBadge(); G.updateCoach(); };
+G.renderAll=function(){ G.renderHUD(); G.renderHoles(); G.renderPanel(); G.renderSonar(); G.renderStatus(); UI.renderMenuBadge(); G.updateCoach(); NATIVE.sync(); };
 G.renderHUD=function(){
   $('coinTxt').textContent=D.money(G.s.coins); $('whereTxt').textContent=G.spot().name; $('timeTxt').textContent=G.clockAt(G.spot());
   document.title=anyHooked()?'FISH ON! | One Cast':'One Cast';
@@ -148,6 +148,7 @@ G.reel=function(){
     var f=r.fish; G.s.fish.unshift(f); if(r.reward){ G.s.coins+=r.reward; }
     var sp=D.SP_BY_ID[f.sp]; G.last=Object.assign({newSpecies:r.newSpecies,newBest:r.newBest,worldRecord:r.worldRecord,minutes:r.minutes,daily:r.daily,reward:r.reward,legendInfo:r.legend},f);
     var wait=SC.startCatch({sp:f.sp,lb:f.lb,variant:f.variant,colors:f.colors,legend:!!f.legend,idx:idx,bait:l.bait,max:sp.max,newBest:r.newBest});
+    NATIVE.buzz(f.legend||r.newBest?'big':'catch');
     G.renderAll(); G.coachEvent('reel');
     setTimeout(function(){ UI.showCard(G.last); },wait+350);
     if(r.daily) G.s.daily=r.daily;
@@ -198,7 +199,7 @@ function renderMini(){
   else { ms.textContent='NO LINE OUT'; mx.textContent='Cast in the game tab'; }
 }
 function checkBiteAlert(){
-  G.lines().forEach(function(l){ var k=l.idx+'|'+l.castAt; if(!G.hooked(l)||alerted[k]) return; alerted[k]=1; if(!document.hidden||pipWin||!notifyActive()) return;
+  G.lines().forEach(function(l){ var k=l.idx+'|'+l.castAt; if(!G.hooked(l)||alerted[k]) return; alerted[k]=1; if(!document.hidden) NATIVE.buzz('bite'); if(!document.hidden||pipWin||!notifyActive()) return;
     try{ var n=new Notification('FISH ON! | One Cast',{body:'Something bit your '+D.BAIT_BY_ID[l.bait].name.toLowerCase()+' at '+G.spot().name+'. Go reel it in!',silent:true,tag:'onecast-'+l.idx}); n.onclick=function(){ try{ window.focus(); }catch(e){} n.close(); }; }catch(e){} });
 }
 G.openAlert=async function(){
@@ -269,6 +270,7 @@ G.checkAch=function(){ if(!G.s) return; G.renderTip(); var have=G.s.prefs.ach||[
 function showBoot(msg,retry){ $('bootOv').hidden=false; $('bootMsg').textContent=msg; $('bootRetry').hidden=!retry; }
 function hideBoot(){ $('bootOv').hidden=true; }
 var retryTimer=0;
+NATIVE.init();
 function boot(){
   var id=N.loadId();
   if(!id){ hideBoot(); $('nameOv').hidden=false; setTimeout(function(){ $('nameIn').focus(); },50); return; }

@@ -178,6 +178,7 @@
     <p class="err" id="saveErr"></p>
     <button class="go" id="loadSave" type="button">LOAD</button>
     <p class="note">Played Below Zero? Paste its save code (starts with BZ1) to earn the Founder cap.</p>
+    <div class="del-sec"><button class="pbtn danger" id="delAsk" type="button">DELETE MY ACCOUNT</button><div id="delBox" hidden><p class="note">This permanently deletes your angler, fish, coins, boats and friends. Any legend you own goes back into the water. <b>This can't be undone.</b> Type DELETE to confirm:</p><input class="field" id="delIn" autocomplete="off" spellcheck="false" placeholder="DELETE"><p class="err" id="delErr"></p><button class="go danger" id="delGo" type="button">DELETE FOREVER</button></div></div>
     <div class="reset-row"><button class="pbtn danger" id="reset" type="button">START OVER</button><span id="resetAsk" hidden>Really start a new game here? Your current game stays on the server if you have its code. <button class="pbtn danger" id="resetYes" type="button">YES</button></span></div>
   </div></div>
   <div class="overlay" id="helpOv" hidden><div class="dialog"><div class="d-head"><h2 class="d-title">HOW TO PLAY</h2><button class="x" data-close type="button" aria-label="Close">X</button></div>
@@ -206,6 +207,7 @@
 <script src="js/map.js"></script>
 <script src="js/mapdata.js"></script>
 <script src="js/net.js"></script>
+<script src="js/native.js"></script>
 <script src="js/scenes.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/main.js"></script>

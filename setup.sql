@@ -1215,9 +1215,28 @@ begin
   return jsonb_build_object('pid', p.pid, 'secret', p.secret);
 end $$;
 
+-- Delete my account (required by the App Store). Removes the player and everything that is theirs.
+-- Legends they owned go back into the water; past legend history keeps the catch but drops the name.
+create or replace function public.delete_account(p_pid uuid, p_secret text, p_confirm text) returns jsonb language plpgsql security definer set search_path = public as $$
+declare p public.players;
+begin
+  p := oc_auth(p_pid, p_secret);
+  if coalesce(p_confirm, '') <> 'DELETE' then perform oc_fail('type DELETE to confirm'); end if;
+  update legends set owner_pid = null, caught_at = null, fish_id = null where owner_pid = p.pid;
+  update legends set history = (select coalesce(jsonb_agg(case when e ->> 'pid' = p.pid::text then (e - 'pid') || '{"name":"(deleted angler)"}'::jsonb else e end), '[]'::jsonb) from jsonb_array_elements(history) e)
+   where history @> jsonb_build_array(jsonb_build_object('pid', p.pid::text));
+  delete from hall_of_fame where pid = p.pid;
+  delete from news where pid = p.pid;
+  delete from reports where reporter = p.pid or target = p.pid;
+  delete from suggestions where pid = p.pid;
+  delete from trade_log where a = p.pid or b = p.pid;
+  delete from players where pid = p.pid;
+  return jsonb_build_object('ok', true);
+end $$;
+
 -- ============ permissions ============
 do $$ declare r record; begin
-  for r in select p.proname, pg_get_function_identity_arguments(p.oid) args from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and (p.proname like 'oc\_%' or p.proname in ('login','get_state','set_prefs','set_outfit','set_name','claim_founder','cast_line','reel_line','sell_fish','buy','travel','release_legend','friend_request','friend_respond','trade_open','get_trade','trade_set','trade_ready','trade_confirm','trade_cancel','get_trade_history','react','report_player','suggest_lake','get_board','get_news','get_legends','get_profile','get_season','get_world','set_boat','crew_invite','crew_respond','crew_leave','get_crew','set_password','login_password','admin_overview','admin_find','admin_player','admin_report','admin_suggestion','admin_news')) loop
+  for r in select p.proname, pg_get_function_identity_arguments(p.oid) args from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and (p.proname like 'oc\_%' or p.proname in ('login','get_state','set_prefs','set_outfit','set_name','claim_founder','cast_line','reel_line','sell_fish','buy','travel','release_legend','friend_request','friend_respond','trade_open','get_trade','trade_set','trade_ready','trade_confirm','trade_cancel','get_trade_history','react','report_player','suggest_lake','get_board','get_news','get_legends','get_profile','get_season','get_world','set_boat','crew_invite','crew_respond','crew_leave','get_crew','set_password','login_password','delete_account','admin_overview','admin_find','admin_player','admin_report','admin_suggestion','admin_news')) loop
     execute format('revoke all on function public.%I(%s) from public, anon, authenticated', r.proname, r.args);
     if r.proname not like 'oc\_%' then execute format('grant execute on function public.%I(%s) to anon, authenticated', r.proname, r.args); end if;
   end loop;

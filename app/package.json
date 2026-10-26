@@ -1,0 +1,21 @@
+{
+  "name": "one-cast-app",
+  "private": true,
+  "version": "1.0.0",
+  "description": "One Cast as an iPhone app (Capacitor). Built in the cloud by .github/workflows/ios.yml.",
+  "scripts": {
+    "web": "node copy-web.js"
+  },
+  "dependencies": {
+    "@capacitor/app": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/haptics": "^7.0.0",
+    "@capacitor/ios": "^7.0.0",
+    "@capacitor/local-notifications": "^7.0.0",
+    "@capacitor/share": "^7.0.0",
+    "@capacitor/splash-screen": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0"
+  }
+}
