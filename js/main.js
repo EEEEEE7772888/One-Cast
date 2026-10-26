@@ -275,7 +275,7 @@ var retryTimer=0;
 NATIVE.init();
 function boot(){
   var id=N.loadId();
-  if(!id){ hideBoot(); $('nameOv').hidden=false; setTimeout(function(){ $('nameIn').focus(); },50); return; }
+  if(!id){ hideBoot(); $('nameOv').hidden=false; if(NATIVE.on){ $('appWelcome').hidden=false; $('pwBox').hidden=false; setTimeout(function(){ $('pwName').focus(); },50); } else setTimeout(function(){ $('nameIn').focus(); },50); return; }
   N.id=id; showBoot('Casting a line to the server...',false);
   N.rpc('login',{p_pid:id.pid,p_secret:id.secret,p_name:null}).then(function(s){ start(s); })
     .catch(function(e){ if(e.message==='bad name'){ hideBoot(); $('nameOv').hidden=false; return; }
