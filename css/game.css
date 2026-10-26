@@ -465,3 +465,8 @@ a{color:var(--frost)}
 /* shop buy buttons: say BUY and give fingers a real target */
 .pbtn.buy{font-size:10px;padding:11px 12px;min-width:92px;min-height:40px;white-space:nowrap}
 .pbtn.buy:disabled{opacity:.75}
+/* passwords */
+.pw-box{display:grid;gap:8px;margin-top:8px}
+.pw-sec{display:grid;gap:8px;padding:10px;margin-bottom:10px;border:3px solid var(--edge);background:var(--panel-lo)}
+.pw-sec .note{margin:0}
+.pw-on{color:#7CE38B;font-weight:bold}

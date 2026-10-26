@@ -227,5 +227,30 @@ ok(maxDiff<0.04,'server and page agree on who bites (max diff '+(maxDiff*100).to
 const avgLb=+sql(`select avg(lb) from (select (oc_roll('okeechobee','sucker',600,'dusk',false)).* from generate_series(1,2000)) x`);
 ok(avgLb>3,'long sucker waits bring bigger bass (avg '+avgLb.toFixed(1)+' lb)');
 
+
+console.log('passwords and recovery');
+{ const C={pid:uuid(),secret:'cccccccccccccccccccccccccccccc'}; const sc=rpc('login',[C.pid,C.secret,'PwTester']);
+  ok(sc.hasPw===false,'new players have no password');
+  ok(rpc('set_password',[C.pid,C.secret,'abc']).error==='password must be 6 to 64 characters','short passwords refused');
+  ok(rpc('set_password',[C.pid,'wrongwrongwrongwrongwrongwrong','goodpass1']).error==='not your game','only the owner can set a password');
+  ok(rpc('set_password',[C.pid,C.secret,'goodpass1']).ok===true,'password set');
+  ok(rpc('get_state',[C.pid,C.secret]).hasPw===true,'state shows a password is set');
+  ok(!/goodpass1/.test(sql(`select pw_hash from players where pid='${C.pid}'`)),'password stored only as a hash');
+  const good=rpc('login_password',['pwtester',sc.tag,'goodpass1']);
+  ok(good.pid===C.pid&&good.secret===C.secret,'name#tag + password logs back in (name is not case sensitive)');
+  ok(rpc('login_password',['PwTester',sc.tag,'nope']).error==='wrong name, tag or password','wrong password refused');
+  ok(rpc('login_password',['Nobody','0000','goodpass1']).error==='wrong name, tag or password','unknown player gets the same message');
+  for(let i=0;i<4;i++) rpc('login_password',['PwTester',sc.tag,'nope'+i]);
+  ok(/too many wrong tries/.test(rpc('login_password',['PwTester',sc.tag,'goodpass1']).error||''),'five wrong tries lock password login, even for the right password');
+  sql(`update players set pw_locked_until=now()-interval '1 second' where pid='${C.pid}'`);
+  ok(rpc('login_password',['PwTester',sc.tag,'goodpass1']).pid===C.pid,'login works again after the lock');
+  const nc=rpc('admin_player',['oc-admin-testkey',C.pid,'newcode','']);
+  ok(nc.ok&&/^OC1\.[0-9a-f-]{36}\.[0-9a-f]{40}$/.test(nc.code),'admin can make a new save code');
+  ok(rpc('get_state',[C.pid,C.secret]).error==='not your game','the old save code stops working');
+  const ns=nc.code.split('.')[2]; ok(rpc('get_state',[C.pid,ns]).pid===C.pid,'the new save code works');
+  ok(rpc('admin_player',['wrongkey',C.pid,'newcode','']).error==='not the admin key','new codes need the admin key');
+  rpc('admin_player',['oc-admin-testkey',C.pid,'clearpw','']); ok(rpc('get_state',[C.pid,ns]).hasPw===false,'admin can clear a password');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);

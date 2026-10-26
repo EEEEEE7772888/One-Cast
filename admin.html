@@ -41,6 +41,15 @@ function rpc(fn,args){ args.p_key=key; return N.rpc(fn,args); }
 function playerLine(p){ var d=document.createElement('div'); d.className='line'; d.innerHTML='<div><b>'+esc(p.name)+'#'+p.tag+'</b> · $'+Number(p.coins).toLocaleString()+' · '+(p.catches||0)+' catches'+(p.hidden?' · <span style="color:var(--red-hi)">HIDDEN</span>':'')+(p.banned?' · <span style="color:var(--red-hi)">BANNED</span>':'')+'<br><small style="color:var(--muted)">'+p.pid+' · seen '+new Date(p.seen).toLocaleString()+'</small></div>';
   var b=document.createElement('div'); b.className='b';
   [['RENAME','rename',function(){ return prompt('New name (letters, numbers, _):'); }],[p.hidden?'UNHIDE':'HIDE','hide',function(){ return String(!p.hidden); }],[p.banned?'UNBAN':'BAN','ban',function(){ return String(!p.banned); }],['+COINS','coins',function(){ return prompt('Coins to add (negative to take):','1000'); }]].forEach(function(a){ var btn=document.createElement('button'); btn.className='pbtn'+(a[1]==='ban'?' danger':''); btn.textContent=a[0]; btn.onclick=function(){ var v=a[2](); if(v==null||v==='') return; rpc('admin_player',{p_pid:p.pid,p_action:a[1],p_value:v}).then(load).catch(function(e){ alert(e.message); }); }; b.appendChild(btn); });
+  /* account recovery: only after checking they are the real owner (ask what fish, coins or boats they had) */
+  var nc=document.createElement('button'); nc.className='pbtn gold'; nc.textContent='NEW SAVE CODE';
+  nc.onclick=function(){ if(!confirm('Make a NEW save code for '+p.name+'#'+p.tag+'?\n\nTheir old code stops working on every device. Only do this if you are sure this is really them (ask what fish, boats or coins they had).')) return;
+    rpc('admin_player',{p_pid:p.pid,p_action:'newcode',p_value:''}).then(function(r){ prompt('Send '+p.name+' this new save code privately. They paste it in PASTE SAVE CODE:',r.code); }).catch(function(e){ alert(e.message); }); };
+  b.appendChild(nc);
+  var cp=document.createElement('button'); cp.className='pbtn'; cp.textContent='CLEAR PASSWORD';
+  cp.onclick=function(){ if(!confirm('Remove '+p.name+'#'+p.tag+"'s password? They can set a new one in SAVE YOUR GAME.")) return;
+    rpc('admin_player',{p_pid:p.pid,p_action:'clearpw',p_value:''}).then(function(){ alert('Password cleared.'); }).catch(function(e){ alert(e.message); }); };
+  b.appendChild(cp);
   d.appendChild(b); return d; }
 function load(){
   rpc('admin_overview',{}).then(function(o){

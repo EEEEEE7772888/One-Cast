@@ -259,7 +259,7 @@ G.ACH=[
 ];
 function speciesCount(s){ return Object.keys(s.journal).filter(function(k){ return k.indexOf('legend:')!==0; }).length; }
 function saltCaught(s){ return Object.keys(s.journal).some(function(k){ var sp=D.SP_BY_ID[k]; return sp&&Object.keys(sp.baits).some(function(b){ return D.BAIT_BY_ID[b].water==='salt'; }); }); }
-G.checkAch=function(){ if(!G.s) return; var have=G.s.prefs.ach||[], got=[]; G.ACH.forEach(function(a){ var v=a.n(G.s); if(v[0]>=v[1]&&have.indexOf(a.id)<0) got.push(a.id); }); if(got.length){ G.prefs({ach:have.concat(got)}); got.forEach(function(id){ var a=G.ACH.filter(function(x){ return x.id===id; })[0]; G.queueToast('ACHIEVEMENT: '+a.name); }); } };
+G.checkAch=function(){ if(!G.s) return; if(!G.s.hasPw&&(G.s.stats.catches||0)>=3&&!G.s.prefs.pwTip){ G.prefs({pwTip:1}); G.queueToast('Tip: set a password in MENU, then SAVE YOUR GAME, so you never lose your fish.'); } var have=G.s.prefs.ach||[], got=[]; G.ACH.forEach(function(a){ var v=a.n(G.s); if(v[0]>=v[1]&&have.indexOf(a.id)<0) got.push(a.id); }); if(got.length){ G.prefs({ach:have.concat(got)}); got.forEach(function(id){ var a=G.ACH.filter(function(x){ return x.id===id; })[0]; G.queueToast('ACHIEVEMENT: '+a.name); }); } };
 
 /* ---------- boot ---------- */
 function showBoot(msg,retry){ $('bootOv').hidden=false; $('bootMsg').textContent=msg; $('bootRetry').hidden=!retry; }
@@ -297,7 +297,20 @@ $('nameGo').onclick=function(){
     .catch(function(e){ $('nameGo').disabled=false; err.textContent=e.message==='bad name'?"That name isn't allowed. Try another.":e.offline?"Can't reach the server. Try again in a moment.":e.message; });
 };
 $('nameIn').addEventListener('keydown',function(e){ if(e.key==='Enter') $('nameGo').click(); });
-$('nameHaveCode').onclick=function(){ $('codeBox').hidden=!$('codeBox').hidden; };
+$('nameHaveCode').onclick=function(){ $('codeBox').hidden=!$('codeBox').hidden; $('pwBox').hidden=true; };
+$('nameHavePw').onclick=function(){ $('pwBox').hidden=!$('pwBox').hidden; $('codeBox').hidden=true; if(!$('pwBox').hidden) $('pwName').focus(); };
+/* name#tag + password: works even after the browser forgot who you are */
+$('pwGo').onclick=function(){
+  var m=/^\s*([A-Za-z0-9_]{2,16})\s*#\s*(\d{4})\s*$/.exec($('pwName').value), err=$('pwLoginErr');
+  if(!m){ err.textContent='Type your name and tag like ReelDeal#1234.'; return; }
+  if(!$('pwIn').value){ err.textContent='Type your password.'; return; }
+  $('pwGo').disabled=true;
+  N.rpc('login_password',{p_name:m[1],p_tag:m[2],p_password:$('pwIn').value}).then(function(r){ $('pwGo').disabled=false;
+    if(!r||r.error){ err.textContent=!r?'Something went wrong. Try again.':r.error==='banned'?'This game has been locked by the admin.':r.error.charAt(0).toUpperCase()+r.error.slice(1)+'.'; return; }
+    N.saveId({pid:r.pid,secret:r.secret}); location.reload(); })
+  .catch(function(e){ $('pwGo').disabled=false; err.textContent=e.offline?"Can't reach the server. Try again in a moment.":e.message; });
+};
+$('pwIn').addEventListener('keydown',function(e){ if(e.key==='Enter') $('pwGo').click(); });
 $('codeGo').onclick=function(){ G.loadCode($('codeIn').value,$('nameErr')); };
 G.loadCode=function(code,errEl){
   var id=N.parseCode(code); if(!id){ errEl.textContent="That doesn't look like a One Cast save code."; return; }

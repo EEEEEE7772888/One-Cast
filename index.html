@@ -68,7 +68,8 @@
       <input class="field" id="nameIn" maxlength="16" autocomplete="off" spellcheck="false" placeholder="ReelDeal">
       <p class="err" id="nameErr"></p>
       <button class="go" id="nameGo" type="button">START FISHING</button>
-      <p class="note">Already play on another device? <button class="pbtn" id="nameHaveCode" type="button" style="font-size:8px">PASTE SAVE CODE</button></p>
+      <p class="note">Already play? <button class="pbtn" id="nameHavePw" type="button" style="font-size:8px">LOG IN WITH PASSWORD</button> <button class="pbtn" id="nameHaveCode" type="button" style="font-size:8px">PASTE SAVE CODE</button></p>
+      <div id="pwBox" class="pw-box" hidden><input class="field" id="pwName" maxlength="21" autocomplete="username" spellcheck="false" placeholder="Name#1234"><input class="field" id="pwIn" type="password" maxlength="64" autocomplete="current-password" placeholder="Password"><p class="err" id="pwLoginErr"></p><button class="go" id="pwGo" type="button">LOG IN</button></div>
       <div id="codeBox" hidden><textarea class="field code" id="codeIn" placeholder="OC1...."></textarea><button class="pbtn gold" id="codeGo" type="button">LOAD MY GAME</button></div>
     </div>
   </div>
@@ -162,7 +163,12 @@
 
   <!-- save, help, settings, confirm, away -->
   <div class="overlay" id="saveOv" hidden><div class="dialog">
-    <div class="d-head"><h2 class="d-title">SAVE CODE</h2><button class="x" data-close type="button" aria-label="Close">X</button></div>
+    <div class="d-head"><h2 class="d-title">SAVE YOUR GAME</h2><button class="x" data-close type="button" aria-label="Close">X</button></div>
+    <div class="pw-sec"><p class="note" id="pwStatus"></p>
+      <input class="field" id="pwNew" type="password" maxlength="64" autocomplete="new-password" placeholder="New password (6+ characters)">
+      <input class="field" id="pwNew2" type="password" maxlength="64" autocomplete="new-password" placeholder="Type it again">
+      <p class="err" id="pwErr"></p><button class="go" id="pwSet" type="button">SET PASSWORD</button></div>
+    <p class="note"><b>Save code:</b></p>
     <p class="note">Your game lives on the server. This code is the key to it. Paste it on another device to keep playing there. <b>Keep it private:</b> anyone with the code can play as you.</p>
     <textarea class="field code" id="saveOut" readonly></textarea>
     <button class="go alt" id="copySave" type="button">COPY CODE</button>

@@ -43,7 +43,7 @@ function renderMenu(){
     ['friends','FRIENDS AND TRADING',G.s.friends.filter(function(f){ return f.status==='accepted'; }).length+' friends'+(G.s.trades.length?' · '+G.s.trades.length+' open trade'+(G.s.trades.length>1?'s':''):'')+pendingTxt(),'friendsOv'],
     ['news','WORLD NEWS',unread?unread+' new':'Legends, records and rare fish','newsOv'],
     ['star','ACHIEVEMENTS',(G.s.prefs.ach||[]).length+' of '+G.ACH.length,'achOv'],
-    ['disk','SAVE CODE','Play on another device','saveOv'],
+    ['disk','SAVE YOUR GAME',(G.s.hasPw?'Password on':'Set a password')+' · save code','saveOv'],
     ['help','HOW TO PLAY','The rules in one minute','helpOv']
   ];
   items.forEach(function(it){ var b=el('button','mbtn'); b.type='button'; b.appendChild(icon(it[0])); var t=el('span',null,'<span class="t">'+it[1]+'</span><span class="s">'+esc(it[2])+'</span>'); b.appendChild(t); b.appendChild(el('span','arrow','>')); b.onclick=function(){ UI.open(it[3]); }; list.appendChild(b); });
@@ -464,7 +464,15 @@ function renderMapFoot(){
 UI.travelScene=function(by,from,to){ var ov=$('travelOv'), cv=$('travelCanvas'); ov.hidden=false; cv.width=160; cv.height=40; $('travelTxt').textContent=(by==='plane'?'Flying':by==='charter'?'Sailing':'Driving')+' to '+to.name+'...'; var t0=performance.now(); (function f(){ if(ov.hidden) return; SC.travel(cv,by,from,to,performance.now()-t0); requestAnimationFrame(f); })(); };
 
 /* ---------- save and misc ---------- */
-function renderSave(){ $('saveOut').value=N.code(); $('saveIn').value=''; $('saveErr').textContent=''; }
+function renderSave(){ $('saveOut').value=N.code(); $('saveIn').value=''; $('saveErr').textContent=''; $('pwNew').value=''; $('pwNew2').value=''; $('pwErr').textContent='';
+  var who='<b>'+esc(G.s.name)+'#'+G.s.tag+'</b>';
+  $('pwStatus').innerHTML=G.s.hasPw?'<span class="pw-on">PASSWORD IS ON.</span> If you clear your browser or switch devices, tap LOG IN WITH PASSWORD and use '+who+' and your password.':'<b>Add a password</b> so you can always get back in, even if you clear your browser or lose this device. You will log in with '+who+' and your password.';
+  $('pwSet').textContent=G.s.hasPw?'CHANGE PASSWORD':'SET PASSWORD'; }
+$('pwSet').onclick=function(){ var a=$('pwNew').value, b=$('pwNew2').value, err=$('pwErr');
+  if(a.length<6){ err.textContent='Use at least 6 characters.'; return; } if(a!==b){ err.textContent="Those two don't match."; return; }
+  $('pwSet').disabled=true;
+  N.me('set_password',{p_password:a}).then(function(){ $('pwSet').disabled=false; G.s.hasPw=true; renderSave(); G.toast('Password saved. Log in anywhere with '+G.s.name+'#'+G.s.tag+' and your password.',4500,'good'); })
+    .catch(function(e){ $('pwSet').disabled=false; G.fail(e); }); };
 $('copySave').onclick=function(){ var ta=$('saveOut'); ta.select(); try{ navigator.clipboard.writeText(ta.value).then(function(){ G.toast('Copied.',1800,'good'); }); }catch(e){ document.execCommand('copy'); G.toast('Copied.',1800,'good'); } };
 $('loadSave').onclick=function(){ var v=$('saveIn').value.trim(); if(/^BZ1\./.test(v)){ try{ var s=JSON.parse(decodeURIComponent(escape(atob(v.slice(4))))); if(s&&(s.total>0||(s.bucket&&s.bucket.length))){ N.me('claim_founder').then(function(){ G.toast('Founder cap unlocked! A thank-you for playing Below Zero first.',4000,'good'); G.refresh(true); }).catch(G.fail); return; } }catch(e){} $('saveErr').textContent='That Below Zero code did not have any catches in it.'; return; } G.loadCode(v,$('saveErr')); };
 $('reset').onclick=function(){ $('resetAsk').hidden=false; $('reset').hidden=true; };

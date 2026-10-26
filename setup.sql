@@ -206,6 +206,14 @@ alter table public.spots add column if not exists need int not null default 0;
 alter table public.gear add column if not exists perk jsonb not null default '{}';
 alter table public.players alter column gear set default '{"line":0,"reel":0,"lines":1,"finder":0,"comfort":false,"methods":[],"boats":["paddle"],"boat":"paddle"}';
 
+-- Passwords (optional): lets a player log back in with name#tag + password after clearing their browser.
+-- Stored only as bcrypt hashes; five wrong tries lock that account's password login for 10 minutes.
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
+alter table public.players add column if not exists pw_hash text;
+alter table public.players add column if not exists pw_fails int not null default 0;
+alter table public.players add column if not exists pw_locked_until timestamptz;
+
 -- Crews: friends fishing together on one boat. The host owns the boat; guests ride along.
 create table if not exists public.crews (
   guest uuid primary key references public.players(pid) on delete cascade,
@@ -496,7 +504,7 @@ begin
   select coalesce(jsonb_agg(oc_legend_json(l)), '[]'::jsonb) into lg from legends l where l.spot = p.spot and l.active and l.owner_pid is null;
   st := jsonb_build_object(
     'pid', p.pid, 'name', p.name, 'tag', p.tag, 'coins', p.coins, 'spot', p.spot, 'regions', to_jsonb(p.regions), 'baits', to_jsonb(p.baits), 'gear', p.gear,
-    'items', to_jsonb(p.items), 'outfit', p.outfit, 'prefs', p.prefs, 'stats', p.stats, 'journal', p.journal, 'daily', p.daily, 'founder', p.founder, 'champ', p.champ,
+    'items', to_jsonb(p.items), 'outfit', p.outfit, 'prefs', p.prefs, 'stats', p.stats, 'journal', p.journal, 'daily', p.daily, 'hasPw', p.pw_hash is not null, 'founder', p.founder, 'champ', p.champ,
     'created', p.created_at, 'renamedAt', p.renamed_at,
     'lines', (select coalesce(jsonb_agg(oc_line_json(l, (p.gear ->> 'finder')::int) order by l.idx), '[]'::jsonb) from lines l where l.pid = p.pid),
     'fish', (select coalesce(jsonb_agg(oc_fish_json(f) order by f.caught_at desc), '[]'::jsonb) from fish f where f.pid = p.pid),
@@ -1153,7 +1161,13 @@ end $$;
 create or replace function public.admin_player(p_key text, p_pid uuid, p_action text, p_value text) returns jsonb language plpgsql security definer set search_path = public as $$
 begin
   perform oc_admin(p_key);
+  if p_action = 'newcode' then
+    -- account recovery: a fresh save code; the old one (and any device using it) stops working
+    update players set secret = encode(extensions.gen_random_bytes(20), 'hex') where pid = p_pid;
+    return (select jsonb_build_object('ok', true, 'code', 'OC1.' || pid || '.' || secret) from players where pid = p_pid);
+  end if;
   case p_action
+    when 'clearpw' then update players set pw_hash = null, pw_fails = 0, pw_locked_until = null where pid = p_pid;
     when 'rename' then if oc_bad_name(p_value) then perform oc_fail('bad name'); end if; update players set name = p_value where pid = p_pid;
     when 'hide' then update players set hidden = (p_value = 'true') where pid = p_pid;
     when 'ban' then update players set banned = (p_value = 'true') where pid = p_pid;
@@ -1173,9 +1187,37 @@ begin perform oc_admin(p_key); update suggestions set status = p_status where id
 create or replace function public.admin_news(p_key text, p_text text) returns jsonb language plpgsql security definer set search_path = public as $$
 begin perform oc_admin(p_key); perform oc_news('notice', null, p_text, '{}'::jsonb); return jsonb_build_object('ok', true); end $$;
 
+-- ============ passwords and account recovery ============
+create or replace function public.set_password(p_pid uuid, p_secret text, p_password text) returns jsonb language plpgsql security definer set search_path = public as $$
+declare p public.players;
+begin
+  p := oc_auth(p_pid, p_secret);
+  if p_password is null or length(p_password) < 6 or length(p_password) > 64 then perform oc_fail('password must be 6 to 64 characters'); end if;
+  update players set pw_hash = extensions.crypt(p_password, extensions.gen_salt('bf', 8)), pw_fails = 0, pw_locked_until = null where pid = p.pid;
+  return jsonb_build_object('ok', true);
+end $$;
+
+-- Returns {pid, secret} on success. Failures are returned (not raised) so the wrong-try counter is saved.
+create or replace function public.login_password(p_name text, p_tag text, p_password text) returns jsonb language plpgsql security definer set search_path = public as $$
+declare p public.players;
+begin
+  select * into p from players where lower(name) = lower(trim(coalesce(p_name, ''))) and tag = trim(coalesce(p_tag, '')) for update;
+  if p.pid is null or p.pw_hash is null then return jsonb_build_object('error', 'wrong name, tag or password'); end if;
+  if p.pw_locked_until is not null and p.pw_locked_until > now() then return jsonb_build_object('error', 'too many wrong tries. wait 10 minutes and try again'); end if;
+  if extensions.crypt(coalesce(p_password, ''), p.pw_hash) <> p.pw_hash then
+    update players set pw_fails = case when pw_fails + 1 >= 5 then 0 else pw_fails + 1 end,
+                       pw_locked_until = case when pw_fails + 1 >= 5 then now() + interval '10 minutes' else pw_locked_until end
+     where pid = p.pid;
+    return jsonb_build_object('error', 'wrong name, tag or password');
+  end if;
+  if p.banned then return jsonb_build_object('error', 'banned'); end if;
+  update players set pw_fails = 0, pw_locked_until = null where pid = p.pid;
+  return jsonb_build_object('pid', p.pid, 'secret', p.secret);
+end $$;
+
 -- ============ permissions ============
 do $$ declare r record; begin
-  for r in select p.proname, pg_get_function_identity_arguments(p.oid) args from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and (p.proname like 'oc\_%' or p.proname in ('login','get_state','set_prefs','set_outfit','set_name','claim_founder','cast_line','reel_line','sell_fish','buy','travel','release_legend','friend_request','friend_respond','trade_open','get_trade','trade_set','trade_ready','trade_confirm','trade_cancel','get_trade_history','react','report_player','suggest_lake','get_board','get_news','get_legends','get_profile','get_season','get_world','set_boat','crew_invite','crew_respond','crew_leave','get_crew','admin_overview','admin_find','admin_player','admin_report','admin_suggestion','admin_news')) loop
+  for r in select p.proname, pg_get_function_identity_arguments(p.oid) args from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and (p.proname like 'oc\_%' or p.proname in ('login','get_state','set_prefs','set_outfit','set_name','claim_founder','cast_line','reel_line','sell_fish','buy','travel','release_legend','friend_request','friend_respond','trade_open','get_trade','trade_set','trade_ready','trade_confirm','trade_cancel','get_trade_history','react','report_player','suggest_lake','get_board','get_news','get_legends','get_profile','get_season','get_world','set_boat','crew_invite','crew_respond','crew_leave','get_crew','set_password','login_password','admin_overview','admin_find','admin_player','admin_report','admin_suggestion','admin_news')) loop
     execute format('revoke all on function public.%I(%s) from public, anon, authenticated', r.proname, r.args);
     if r.proname not like 'oc\_%' then execute format('grant execute on function public.%I(%s) to anon, authenticated', r.proname, r.args); end if;
   end loop;

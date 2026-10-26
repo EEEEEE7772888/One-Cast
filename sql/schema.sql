@@ -203,6 +203,14 @@ alter table public.spots add column if not exists need int not null default 0;
 alter table public.gear add column if not exists perk jsonb not null default '{}';
 alter table public.players alter column gear set default '{"line":0,"reel":0,"lines":1,"finder":0,"comfort":false,"methods":[],"boats":["paddle"],"boat":"paddle"}';
 
+-- Passwords (optional): lets a player log back in with name#tag + password after clearing their browser.
+-- Stored only as bcrypt hashes; five wrong tries lock that account's password login for 10 minutes.
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
+alter table public.players add column if not exists pw_hash text;
+alter table public.players add column if not exists pw_fails int not null default 0;
+alter table public.players add column if not exists pw_locked_until timestamptz;
+
 -- Crews: friends fishing together on one boat. The host owns the boat; guests ride along.
 create table if not exists public.crews (
   guest uuid primary key references public.players(pid) on delete cascade,
