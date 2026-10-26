@@ -21,7 +21,7 @@ NT.askNotify=function(){
 NT.sync=function(){
   if(!on||!root.G||!root.G.s) return; var LN=plug('LocalNotifications'); if(!LN) return;
   var all=root.G.s.lines||[], sig=all.map(function(l){ return l.idx+':'+l.biteAt; }).join('|'); if(sig===lastSig) return; lastSig=sig;
-  var now=Date.now(), soon=all.filter(function(l){ return l.biteAt&&new Date(l.biteAt).getTime()>now+3000; });
+  var now=Date.now(), soon=all.filter(function(l){ return l.biteAt&&new Date(l.biteAt).getTime()>now+3000&&!(root.OC&&root.OC.isLure&&root.OC.isLure(l.bait)); });
   LN.cancel({notifications:[0,1,2,3].map(function(i){ return {id:1000+i}; })}).catch(function(){}).then(function(){
     if(!soon.length) return;
     return NT.askNotify().then(function(ok){ if(!ok) return;

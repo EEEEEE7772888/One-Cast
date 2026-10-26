@@ -207,6 +207,8 @@ A.BAIT_ART={
   shrimp:{rows:["........","....pp..","...pPPp.","..pPPPp.","..pPPp..","aa.pp...","..aaa...","........"],map:{p:'#E08A6A',P:'#F8C8A8',a:'#C06A4A'}},
   squid:{rows:["...ww...","..wWWw..","..wWWw..","..wwww..",".e.ww.e.","..tttt..",".t.tt.t.","t..tt..t"],map:{w:'#D8C8D8',W:'#F0E8F0',e:'#10161C',t:'#C0A8C0'}},
   mullet:{rows:["........","........","s..ssss.","sssSSSse","s.sSSSs.","...ssss.","........","........"],map:{s:'#7A8A98',S:'#D8E0E8',e:'#10161C'}},
+  crank:{rows:["........","..GGGG..",".GkGkGG.","OOOOOOeL",".OOOOO.L","..h..h..",".hh.hh..","........"],map:{G:'#B8E040',k:'#1B1F2A',O:'#F08A30',e:'#10161C',L:'#CFE6F0',h:'#9AA6B6'}},
+  jig:{rows:["........","...hh...","..JJJh..",".JJeJJ..",".JJJJSSS","..JJ.SsS","......SS","....hh.."],map:{h:'#9AA6B6',J:'#E5484D',e:'#10161C',S:'#7A4AC0',s:'#2A1A40'}},
   lure:{rows:["........","..kk....",".kYYk...","kYYYYk..","kYYYYkff","kYYYYkff",".kYYk.f.","..kk...."],map:{k:'#1B1F2A',Y:'#F0C030',f:'#E05A4A'}},
   deepbait:{rows:["..kk....","..kk....",".kkkk...","sskkkss.","sSSSSSse","ssSSSss.","..sss...","........"],map:{k:'#5A6476',s:'#6A8A9A',S:'#B8D0D8',e:'#10161C'}}
 };
