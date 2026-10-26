@@ -485,3 +485,16 @@ a{color:var(--frost)}
 .del-sec .pbtn{justify-self:start}
 #delBox{display:grid;gap:8px}
 .go.danger{background:var(--red,#C0303A);color:#fff}
+/* lure controls: sits over the fishing panel while you work a crankbait or jig */
+.lurebox{position:absolute;left:50%;transform:translateX(-50%);bottom:max(12px,env(safe-area-inset-bottom,0px));z-index:7;width:min(560px,calc(100% - 24px));box-sizing:border-box;display:grid;gap:8px;padding:11px;background:var(--panel);border:4px solid var(--gold);box-shadow:0 4px 0 var(--edge)}
+.lure-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.lure-name{font:12px var(--pixel);color:var(--gold)}
+.lure-tip,.lure-msg{margin:0;font:18px/1.15 var(--term);color:var(--ice)}
+.lure-msg{min-height:1.15em;color:var(--frost)}
+#lureCanvas{width:100%;height:auto;aspect-ratio:160/56;image-rendering:pixelated;border:3px solid var(--edge);background:#0D2A4A}
+.lure-dist{height:8px;background:var(--panel-lo);border:2px solid var(--edge)}
+.lure-dist i{display:block;height:100%;background:#5FB2CF}
+.lure-btn{touch-action:none;user-select:none;-webkit-user-select:none;min-height:64px}
+.lure-btn.strike{background:var(--red);color:#fff;animation:lureflash .25s steps(2) infinite}
+@keyframes lureflash{50%{filter:brightness(1.4)}}
+@media (prefers-reduced-motion:reduce){.lure-btn.strike{animation:none}}

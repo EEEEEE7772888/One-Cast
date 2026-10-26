@@ -12,7 +12,7 @@ G.method=function(){ return G.spot().method; };
 G.lines=function(){ return G.s?G.s.lines:[]; };
 G.line=function(i){ return G.lines().filter(function(l){ return l.idx===(i==null?G.sel:i); })[0]||null; };
 G.lineCount=function(){ return G.s?(G.s.gear.lines||1):1; };
-G.hooked=function(l){ return !!l&&Date.parse(l.biteAt)<=N.now(); };
+G.hooked=function(l){ return !!l&&!D.isLure(l.bait)&&Date.parse(l.biteAt)<=N.now(); }; /* lure strikes are handled by the lure controls */
 G.minutes=function(l){ return Math.max(0,(N.now()-Date.parse(l.castAt))/60000); };
 G.hourAt=function(spot){
   var key=spot.tz+'|'+Math.floor(Date.now()/30000); if(hourCache[key]!=null) return hourCache[key];
@@ -71,7 +71,7 @@ G.renderHoles=function(){
   var box=$('holes'); box.innerHTML=''; var n=G.lineCount(), anyLock=false;
   for(var i=0;i<4;i++){
     var b=document.createElement('button'); b.type='button'; b.className='hole-chip';
-    if(i<n){ var l=G.line(i), st=l?(G.hooked(l)?'BITE!':D.fmtDuration(G.minutes(l))):'empty';
+    if(i<n){ var l=G.line(i), st=l?(D.isLure(l.bait)?'LURE':G.hooked(l)?'BITE!':D.fmtDuration(G.minutes(l))):'empty';
       b.innerHTML='<span class="hn">LINE '+(i+1)+'</span><span class="hs">'+st+'</span>'; b.setAttribute('aria-pressed',String(i===G.sel)); if(l&&G.hooked(l)) b.classList.add('on');
       b.onclick=(function(i){ return function(){ G.sel=i; G.renderAll(); }; })(i); }
     else { b.classList.add('locked'); b.innerHTML='<span class="hn">LINE '+(i+1)+'</span><span class="hs">'+D.money(D.GEAR_BY_ID['hole'+(i+1)].price)+'</span>'; b.title='Buy another line in the gear shop'; b.onclick=function(){ UI.open('gearOv'); }; anyLock=true; }
@@ -89,6 +89,7 @@ G.renderPanel=function(){
   else if(!l){ if(need){ go.textContent='TAKE OUT A '+(need==='kayak'?'KAYAK':'SKIFF')+' OR BIGGER'; go.className='go alt'; go.onclick=function(){ UI.open('dockOv'); }; }
     else if(!G.baitWorksHere(G.bait)){ go.textContent='NOTHING HERE TAKES '+b.name.toUpperCase(); go.className='go alt'; go.onclick=function(){ UI.open('tackleOv'); }; }
     else { go.textContent='CAST'; go.onclick=G.cast; } }
+  else if(D.isLure(l.bait)){ if(LURE.active){ go.textContent='WORKING THE LURE...'; go.disabled=true; } else { go.textContent='REEL IN THE LURE'; go.className='go alt'; go.onclick=G.reel; } }
   else if(G.hooked(l)){ go.textContent='REEL IN!'; go.className='go reel arm'; go.onclick=G.reel; }
   else { go.textContent='PULL LINE (NOTHING YET)'; go.className='go alt'; go.onclick=function(){ UI.confirm({title:'PULL THE LINE?',note:'Nothing has bitten yet. Pulling it in now means starting the wait over.',yes:'PULL IT',no:'LEAVE IT'}).then(function(v){ if(v) G.reel(); }); }; }
 };
@@ -107,6 +108,7 @@ function aAn(n){ return (/^[aeiou]/i.test(n)?'An ':'A ')+n; }
 function sizeWord(max){ return max<5?'small':max<30?'medium-sized':max<150?'big':'huge'; }
 G.renderStatus=function(){
   var l=G.line(), sp=G.spot(), per=G.period(sp), clock=$('clock'), st=$('status');
+  if(l&&D.isLure(l.bait)){ clock.textContent=G.clockAt(sp); clock.classList.remove('ready'); st.innerHTML='Working a <span class="n">'+D.BAIT_BY_ID[l.bait].name.toLowerCase().replace(/s$/,'')+'</span> at '+sp.name+'. '+todLine(sp,per); return; }
   if(l){ var sec=(N.now()-Date.parse(l.castAt))/1000; clock.textContent=D.fmtClock(sec); clock.classList.toggle('ready',G.hooked(l));
     if(G.hooked(l)) st.innerHTML='<span class="n">FISH ON!</span> Something took the '+D.BAIT_BY_ID[l.bait].name.toLowerCase()+'. Reel it in.';
     else st.innerHTML=D.BAIT_BY_ID[l.bait].name+' in the water at <span class="n">'+sp.name+'</span>. '+todLine(sp,per); }
@@ -132,7 +134,7 @@ function loop(ms){ requestAnimationFrame(loop); tick(); SC.draw(ms); }
 /* ---------- casting and reeling ---------- */
 G.cast=function(){
   if(G.busy||G.line()) return; G.busy=true; $('goBtn').disabled=true;
-  N.me('cast_line',{p_idx:G.sel,p_bait:G.bait}).then(function(r){ G.s.lines.push(r.line); SC.cast(); G.renderAll(); G.coachEvent('cast'); })
+  N.me('cast_line',{p_idx:G.sel,p_bait:G.bait}).then(function(r){ G.s.lines.push(r.line); SC.cast(); G.renderAll(); G.coachEvent('cast'); if(D.isLure(r.line.bait)) LURE.start(r.line); })
     .catch(function(e){ G.fail(e); if(!e.offline) G.refresh(true); }).then(function(){ G.busy=false; G.renderPanel(); });
 };
 G.reel=function(){
@@ -140,7 +142,7 @@ G.reel=function(){
   var idx=G.sel;
   N.me('reel_line',{p_idx:idx}).then(function(r){
     G.s.lines=G.s.lines.filter(function(x){ return x.idx!==idx; });
-    if(r.result==='early'||r.result==='nothing'){ G.toast(r.result==='early'?'Nothing yet. Your bait is back in the box.':'Whatever it was, it got off the hook.',2600,'info'); G.renderAll(); return; }
+    if(r.result==='early'||r.result==='nothing'||r.result==='missed'){ G.toast(r.result==='missed'?'Too slow on the hook-set. It got away!':r.result==='early'?(D.isLure(l.bait)?'Your lure is back. Cast again!':'Nothing yet. Your bait is back in the box.'):'Whatever it was, it got off the hook.',2600,'info'); G.renderAll(); return; }
     if(r.result==='snap'){ G.last={snap:true,sp:r.sp,lb:r.lb}; SC.startCatch({sp:r.sp,lb:r.lb,snap:true,idx:idx,bait:l.bait,max:D.SP_BY_ID[r.sp].max}); G.renderAll();
       setTimeout(function(){ G.toast('SNAP! A '+D.fmtWeight(r.lb)+' '+D.SP_BY_ID[r.sp].name.toLowerCase()+' broke your '+r.test+' lb line. Stronger line is in the gear shop.',4200); },1200); return; }
     if(r.result==='legendsnap'){ G.last=null; SC.startCatch({sp:r.legend.sp,lb:r.legend.lb,snap:true,colors:r.legend.colors,idx:idx,bait:l.bait,max:1}); G.renderAll();
@@ -217,7 +219,7 @@ var TUT=[
  {id:'wait',t:'Now wait. The line stays in the water even if you close this tab. When it says BITE!, come back and reel.'},
  {id:'reel',t:'FISH ON! Press REEL IN. The longer a fish waited before biting, the bigger it can be.'},
  {id:'sell',t:'This is how you make money: every fish is worth coins. Press SELL on the catch card, or KEEP it and sell later from MENU, then YOUR FISH. Spend coins on minnows and a second line to earn faster.'},
- {id:'map',t:'Open the MAP. Home waters has ten famous lakes to try for free. Farther regions need a one-time ticket.'},
+ {id:'map',t:'Open the MAP. Home waters has a dozen famous lakes and rivers to try for free. Farther regions need a one-time ticket.'},
  {id:'legend',t:'Every spot hides one LEGEND only one player on Earth can own. Read its clue in the Legends screen. Good luck out there.'}
 ];
 G.updateCoach=function(){ var i=G.s.prefs.tut||0, c=$('coach'); if(i>=TUT.length){ c.hidden=true; return; } var step=TUT[i]; if(step.id==='wait'&&!G.line()){ c.hidden=true; return; } if(step.id==='reel'&&!anyHooked()){ c.hidden=true; return; } $('coachTxt').textContent=step.t; c.hidden=false; };

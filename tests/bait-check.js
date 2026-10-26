@@ -1,0 +1,15 @@
+const {chromium}=require('playwright');const {execFileSync}=require('child_process');
+const sql=q=>execFileSync('su',['postgres','-c','psql -X -At -d qa'],{input:q,encoding:'utf8'}).trim();
+const B='http://localhost:8802',Q='/?server='+B+'&key=test';
+(async()=>{ const br=await chromium.launch(), p=await br.newPage({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true}); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+  await p.route('https://fonts.googleapis.com/**',r=>r.fulfill({status:200,contentType:'text/css',body:''}));
+  await p.goto(B+Q); await p.waitForTimeout(900); await p.fill('#nameIn','LureTest'); await p.keyboard.press('Enter'); await p.waitForTimeout(1500);
+  const pid=await p.evaluate(()=>G.s.pid); sql(`update players set coins=5000 where pid='${pid}'`); await p.evaluate(()=>G.refresh(true)); await p.waitForTimeout(800);
+  await p.evaluate(()=>UI.open('baitOv')); await p.waitForTimeout(500); await p.screenshot({path:'/tmp/baitshop.png'});
+  await p.click('#baitOv button:has-text("BUY $350")'); await p.waitForTimeout(500); if(await p.isVisible('#confirmOv')) await p.locator('#confirmOv button').last().click(); await p.waitForTimeout(900);
+  console.log('owns crank:', await p.evaluate(()=>G.s.baits.includes('crank')), 'selected bait:', await p.evaluate(()=>G.bait));
+  await p.evaluate(()=>{ document.getElementById('baitOv').hidden=true; }); await p.click('button:has-text("CAST")'); await p.waitForTimeout(800);
+  sql(`update lines set bite_at=now()-interval '2 seconds', cast_at=now()-interval '30 minutes' where pid='${pid}'`); await p.evaluate(()=>G.refresh(true)); await p.waitForTimeout(1000);
+  await p.click('button:has-text("REEL")'); await p.waitForTimeout(2600);
+  console.log('caught on a crankbait:', await p.evaluate(()=>G.last&&(G.last.sp+' '+G.last.lb+' lb, bait '+G.last.bait)));
+  console.log('errors:', errs.length?errs:'none'); await br.close(); })();
