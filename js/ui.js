@@ -72,17 +72,28 @@ function renderTackle(){
     var btn=el('button','bait'+(own?'':' locked')+(works?'':' dead')); btn.type='button'; btn.setAttribute('aria-pressed',String(b.id===G.bait)); var art=A.BAIT_ART[b.id]; btn.appendChild(A.spriteCanvas(art.rows,art.map)); btn.appendChild(el('span',null,own?esc(b.name):D.money(b.price)));
     btn.onclick=function(){ if(!own){ UI.open('baitOv'); return; } if(!works){ G.toast('Nothing at '+sp.name+' takes '+b.name.toLowerCase()+'.'); return; } G.setBait(b.id); renderTackle(); }; box.appendChild(btn); });
   var b=D.BAIT_BY_ID[G.bait], fishHere=D.spotSpecies(sp.id).filter(function(s){ return s.baits[G.bait]; }).map(function(s){ return s.name; });
-  $('baitInfo').innerHTML='<b style="color:#EAF5FF">'+esc(b.name.toUpperCase())+'</b> · bites: '+b.rate+'<br>'+esc(b.timing)+(fishHere.length?'<br>Here it catches: '+esc(fishHere.join(', '))+'.':'<br>Nothing here takes it.');
+  $('baitInfo').innerHTML='<b style="color:#EAF5FF">'+esc(b.name.toUpperCase())+'</b>'+baitBars(b)+esc(b.timing)+(fishHere.length?'<br>Here it catches: '+esc(fishHere.join(', '))+'.':'<br>Nothing here takes it.');
 }
+/* three little stat bars for a bait: bite rate, how good the fish are, where it works */
+function baitBars(b){ var st=D.baitStats(b.id);
+  function bar(n,color){ var h=''; for(var i=1;i<=5;i++) h+='<i'+(i<=n?' style="background:'+color+'"':'')+'></i>'; return '<span class="bb-bar">'+h+'</span>'; }
+  var wait=st.active?'fast, you reel it':st.wait<60?'every ~'+st.wait+' min':'every ~'+Math.round(st.wait/60)+' hr';
+  var MN={ice:'ICE',shore:'SHORE',boat:'BOAT',troll:'TROLL',deep:'DEEP'};
+  var where=Object.keys(MN).map(function(k){ return '<span class="bb-m'+(st.methods.indexOf(k)>=0?' on':'')+'">'+MN[k]+'</span>'; }).join('');
+  var water=b.water==='fresh'?'Freshwater':b.water==='salt'?'Saltwater':b.water==='troll'?'Open ocean':'Deep sea';
+  return '<div class="bbars">'+
+    '<div class="bb"><span class="bb-l">BITE RATE</span>'+bar(st.speed,'#5CF08A')+'<small>'+wait+'</small></div>'+
+    '<div class="bb"><span class="bb-l">FISH</span>'+bar(st.tier.id,st.tier.color)+'<small style="color:'+st.tier.color+'">'+st.tier.name+'</small></div>'+
+    '<div class="bb"><span class="bb-l">WHERE</span><span class="bb-where">'+where+'</span><small>'+water+'</small></div></div>'; }
 $('toBaitShop').onclick=function(){ UI.open('baitOv'); };
 function renderBaitShop(){
   var ul=$('baitRows'); ul.innerHTML='';
   D.BAITS.forEach(function(b){ var own=G.s.baits.indexOf(b.id)>=0, li=el('li','row'+(own?' selected':'')), art=A.BAIT_ART[b.id];
     li.appendChild(el('div','ic')).appendChild(A.spriteCanvas(art.rows,art.map)); li.lastChild.firstChild.style.width='32px'; li.lastChild.firstChild.style.height='32px';
     var where=b.water==='fresh'?'Freshwater':b.water==='salt'?'Saltwater':b.water==='troll'?'Ocean trolling':'Deep drop';
-    li.appendChild(el('div',null,'<div class="nm">'+esc(b.name)+'</div><div class="sub">'+esc(b.desc)+' · <b>'+where+'</b> · bites '+b.rate.toLowerCase()+'</div>'));
+    li.appendChild(el('div','bait-info','<div class="nm">'+esc(b.name)+'</div><div class="sub">'+esc(b.desc)+'</div>'));
     var act=el('div'); if(own) act.innerHTML='<span class="own">OWNED</span>'; else { var btn=el('button','pbtn buy'+(G.s.coins>=b.price?' gold':''),(G.s.coins>=b.price?'BUY ':'')+D.money(b.price)); btn.type='button'; btn.disabled=G.s.coins<b.price; btn.onclick=function(){ buy('bait',b.id,b.name); }; act.appendChild(btn); }
-    li.appendChild(act); ul.appendChild(li); });
+    li.appendChild(act); li.appendChild(el('div','row-bars',baitBars(b))); ul.appendChild(li); });
 }
 function buy(kind,id,name){
   return N.me('buy',{p_kind:kind,p_id:id}).then(function(r){ G.s.coins=r.coins; G.s.baits=r.baits; G.s.gear=r.gear; G.s.items=r.items; G.s.regions=r.regions; G.bump(); G.toast('Bought '+name+'.',2000,'good'); G.renderAll();

@@ -391,6 +391,13 @@ D.FISH_TIERS=[
 D.spotValue=function(spotId){ if(D._sv&&D._sv[spotId]!=null) return D._sv[spotId]; D._sv=D._sv||{}; var tw=0,tv=0;
   D.SPECIES.forEach(function(sp){ var w=(sp.spots||{})[spotId]||0; if(!w||sp.protected) return; tw+=w; tv+=w*(sp.min+(sp.max-sp.min)*0.3)*sp.rate; });
   return (D._sv[spotId]=tw?Math.round(tv/tw):0); };
+/* Bait stats for the shop bars: how fast bites come (1-5), how good the fish it catches are (same 5 levels as the map key), and where it works. */
+D.baitStats=function(id){ D._bs=D._bs||{}; if(D._bs[id]) return D._bs[id]; var b=D.BAIT_BY_ID[id], tw=0, tv=0;
+  D.SPECIES.forEach(function(sp){ var w=(sp.baits||{})[id]||0; if(!w||sp.protected) return; var top=sp.min+(sp.max-sp.min)*b.capMax; tw+=w; tv+=w*(sp.min+(top-sp.min)*0.35)*sp.rate; });
+  var v=tw?tv/tw:0, tier=D.FISH_TIERS[0]; D.FISH_TIERS.forEach(function(x){ if(v>=x.min) tier=x; });
+  var m=b.biteMean, speed=m<=2?5:m<=15?4:m<=60?3:m<=150?2:1;
+  var methods=Object.keys(D.METHOD_BAITS).filter(function(k){ return D.METHOD_BAITS[k].indexOf(id)>=0; });
+  return (D._bs[id]={speed:speed,wait:m,tier:tier,value:Math.round(v),methods:methods,active:id==='crank'||id==='jig'}); };
 D.spotTier=function(spotId){ var v=D.spotValue(spotId), t=D.FISH_TIERS[0]; D.FISH_TIERS.forEach(function(x){ if(v>=x.min) t=x; }); return t; };
 D.fishValue=function(id,lb,variant){ var s=D.SP_BY_ID[id]; if(!s||s.protected) return 0; return Math.max(1,Math.round(lb*s.rate*(D.VARIANT_MULT[variant]||1))); };
 D.biteMinutes=function(rnd,spotId,bait,comfort,smallOnly){
