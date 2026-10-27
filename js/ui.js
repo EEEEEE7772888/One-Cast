@@ -220,15 +220,18 @@ UI.showCard=function(last){
 function closeCard(){ $('cardOv').hidden=true; SC.endCatch(); G.checkAch(); }
 
 /* ---------- journal ---------- */
-var jRegion='home';
+var jRegion=null;
 function renderJournal(){
-  var sel=$('journalRegion'); if(!sel.options.length){ D.REGIONS.forEach(function(r){ var o=document.createElement('option'); o.value=r.id; o.textContent=r.name; sel.appendChild(o); }); sel.value=G.spot().region; sel.onchange=function(){ jRegion=sel.value; renderJournal(); }; jRegion=sel.value; }
-  var body=$('journalBody'); body.innerHTML=''; var spots=D.SPOTS.filter(function(s){ return s.region===jRegion; }), seen={}, list=[];
+  var sel=$('journalRegion'); if(!sel.options.length){ var all=document.createElement('option'); all.value='all'; all.textContent='All fish'; sel.appendChild(all); D.REGIONS.forEach(function(r){ var o=document.createElement('option'); o.value=r.id; o.textContent=r.name; sel.appendChild(o); }); sel.value=jRegion||G.spot().region; sel.onchange=function(){ jRegion=sel.value; renderJournal(); }; jRegion=sel.value; }
+  sel.value=jRegion; $('journalTitle').textContent=jRegion==='all'?'FISH INDEX':'FISH JOURNAL';
+  var body=$('journalBody'); body.innerHTML=''; var all=jRegion==='all', spots=all?D.SPOTS:D.SPOTS.filter(function(s){ return s.region===jRegion; }), seen={}, list=[];
   spots.forEach(function(s){ D.spotSpecies(s.id).forEach(function(sp){ if(!seen[sp.id]){ seen[sp.id]=1; list.push(sp); } }); });
+  if(all) D.SPECIES.forEach(function(sp){ if(!seen[sp.id]){ seen[sp.id]=1; list.push(sp); } });
   list.sort(function(a,b){ return a.max-b.max; });
   var caught=list.filter(function(s){ return G.s.journal[s.id]; }).length;
-  $('journalNote').innerHTML=D.REGION_BY_ID[jRegion].name+': <b>'+caught+' of '+list.length+'</b> species across '+spots.map(function(s){ return '<b>'+esc(s.name)+'</b>'; }).join(', ')+'. Tap a fish for where and how to catch it.';
-  list.forEach(function(sp){ var j=G.s.journal[sp.id], c=el('button','card'+(j?'':' no')); c.type='button'; var pic=el('div','pic'); pic.appendChild(A.fishImg(sp.id,Math.min(44,A.sceneLen(sp.max)+16),j?false:'#2C5088',2,null,null,j?sp.name:'Unknown fish')); c.appendChild(pic);
+  $('journalNote').innerHTML=all?'You have caught <b>'+caught+' of '+list.length+'</b> fish in the game. The ones you have not caught yet are blacked out. Tap any fish for where and how to catch it.'
+    :D.REGION_BY_ID[jRegion].name+': <b>'+caught+' of '+list.length+'</b> species across '+spots.map(function(s){ return '<b>'+esc(s.name)+'</b>'; }).join(', ')+'. Tap a fish for where and how to catch it.';
+  list.forEach(function(sp){ var j=G.s.journal[sp.id], c=el('button','card'+(j?'':' no')); c.type='button'; var pic=el('div','pic'); pic.appendChild(A.fishImg(sp.id,Math.min(44,A.sceneLen(sp.max)+16),j?false:'#000000',2,null,null,j?sp.name:'Unknown fish')); /* not caught yet: blacked out */ c.appendChild(pic);
     c.appendChild(el('span','nm',j?esc(sp.name):'???')); c.appendChild(el('span','v',j?'best '+D.fmtWeight(+j.best):'not yet'));
     if(j&&(j.golden||j.albino)) c.appendChild(el('span','sub',(j.golden?'golden ':'')+(j.albino?'albino':'')));
     c.onclick=function(){ journalDetail(sp,j); }; body.appendChild(c); });
@@ -385,6 +388,7 @@ UI.crewTick=function(){
 UI.startCrewPoll=function(){ clearInterval(crewPoll); crewPoll=setInterval(function(){ if(!G.s||document.hidden) return; var c=G.s.crew, active=c&&((c.members||[]).length>1||(c.invites||[]).length); if(!active&&Math.random()>0.25) return; N.me('get_crew').then(function(cc){ var was=G.s.crew&&G.s.crew.guest; G.s.crew=cc; if(was&&!cc.guest){ G.toast('The captain ended the trip. You headed back.',3200,'info'); G.refresh(true).then(function(){ SC.layout(); G.renderAll(); }); } UI.crewTick(); if(!$('friendsOv').hidden) renderCrewBox(); }).catch(function(){}); },8000); };
 $('crewChip').onclick=function(){ UI.open('friendsOv'); };
 $('profBtn').onclick=function(){ if(G.s) UI.profile(G.s.pid); };
+$('indexBtn').onclick=function(){ if(!G.s) return; jRegion='all'; UI.open('journalOv'); };
 
 /* ---------- news ---------- */
 function renderNews(){ var ul=$('newsList'); ul.innerHTML='<li>Loading...</li>'; N.rpc('get_news',{p_after:0}).then(function(rows){ ul.innerHTML=''; if(!rows.length) ul.innerHTML='<li class="empty">Nothing yet. Go make news.</li>'; rows.forEach(function(n){ var li=el('li',n.kind); var ic=el('span','ic'); if(n.data&&n.data.sp) ic.appendChild(A.fishImg(n.data.sp,22,false,1.5,n.data.variant,n.data.colors,'')); else ic.appendChild(icon(n.kind==='season'?'trophy':'news')); li.appendChild(ic); li.appendChild(el('div',null,'<div class="nt">'+esc(n.text)+'</div><div class="nw">'+timeAgo(n.at)+(n.pid?' · <a href="#" data-pid="'+n.pid+'">profile</a>':'')+'</div>')); ul.appendChild(li); }); ul.querySelectorAll('a[data-pid]').forEach(function(a){ a.onclick=function(e){ e.preventDefault(); UI.profile(a.getAttribute('data-pid')); }; }); if(rows.length){ G.prefs({newsSeen:rows[0].id}); UI.renderMenuBadge(); } }).catch(function(e){ ul.innerHTML='<li class="empty">'+esc(e.message)+'</li>'; }); }
