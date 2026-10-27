@@ -380,6 +380,18 @@ D.rollCatch=function(rnd,spotId,bait,minutes,period,smallOnly){
   var vr=rnd(), variant=null; if(vr<D.GOLDEN_P) variant='golden'; else if(vr<D.ALBINO_P) variant='albino';
   return {id:s.id,lb:lb,inches:inches,bonus:bonus,variant:variant};
 };
+/* How good the fish are at each spot: the coin value of an average catch there (sizes skew small), sorted into 5 levels for the map key. */
+D.FISH_TIERS=[
+ {id:1,name:'Small fish',min:0,color:'#8FA3BF'},
+ {id:2,name:'Good fish',min:150,color:'#4FB8FF'},
+ {id:3,name:'Great fish',min:500,color:'#B07CFF'},
+ {id:4,name:'Trophy fish',min:2000,color:'#FF9F3A'},
+ {id:5,name:'Monster fish',min:8000,color:'#FF4D6D'}
+];
+D.spotValue=function(spotId){ if(D._sv&&D._sv[spotId]!=null) return D._sv[spotId]; D._sv=D._sv||{}; var tw=0,tv=0;
+  D.SPECIES.forEach(function(sp){ var w=(sp.spots||{})[spotId]||0; if(!w||sp.protected) return; tw+=w; tv+=w*(sp.min+(sp.max-sp.min)*0.3)*sp.rate; });
+  return (D._sv[spotId]=tw?Math.round(tv/tw):0); };
+D.spotTier=function(spotId){ var v=D.spotValue(spotId), t=D.FISH_TIERS[0]; D.FISH_TIERS.forEach(function(x){ if(v>=x.min) t=x; }); return t; };
 D.fishValue=function(id,lb,variant){ var s=D.SP_BY_ID[id]; if(!s||s.protected) return 0; return Math.max(1,Math.round(lb*s.rate*(D.VARIANT_MULT[variant]||1))); };
 D.biteMinutes=function(rnd,spotId,bait,comfort,smallOnly){
   var b=D.BAIT_BY_ID[bait], first=Infinity;

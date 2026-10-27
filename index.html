@@ -165,9 +165,10 @@
 
   <!-- map -->
   <div class="overlay" id="mapOv" hidden><div class="dialog full">
-    <div class="map-head"><h2 class="d-title">WORLD MAP</h2><div class="d-tools"><button class="pbtn" id="mapWorld" type="button">WORLD</button><button class="pbtn" id="mapList" type="button">LIST</button><button class="x" data-close type="button" aria-label="Close">X</button></div></div>
+    <div class="map-head"><h2 class="d-title">WORLD MAP</h2><div class="d-tools"><button class="pbtn" id="mapWorld" type="button">WORLD</button><button class="pbtn" id="mapKeyBtn" type="button" aria-pressed="false" title="Which waters have the best fish">KEY</button><button class="pbtn" id="mapList" type="button">LIST</button><button class="x" data-close type="button" aria-label="Close">X</button></div></div>
     <div class="map-wrap" id="mapWrap"><canvas id="mapCanvas" class="px"></canvas><div class="pins" id="pins"></div>
       <div class="map-tools"><button class="pbtn" id="mapZoomIn" type="button" aria-label="Zoom in">+</button><button class="pbtn" id="mapZoomOut" type="button" aria-label="Zoom out">-</button><button class="pbtn" id="mapHere" type="button" title="Go to where you are">ME</button></div>
+      <div class="map-key" id="mapKey" hidden></div>
       <div class="map-foot" id="mapFoot"></div></div>
   </div></div>
   <div class="overlay" id="travelOv" hidden><div class="dialog"><div class="travel-scene"><canvas id="travelCanvas" class="px"></canvas></div><p class="travel-text" id="travelTxt"></p></div></div>

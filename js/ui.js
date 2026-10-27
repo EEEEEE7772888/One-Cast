@@ -394,7 +394,27 @@ function regionView(rid){ var sp=D.SPOTS.filter(function(s){ return s.region===r
   var r=$('mapWrap').getBoundingClientRect(), asp=r.width/Math.max(1,r.height), w=lon1-lon0, h=lat0-lat1; if(w/h<asp) w=h*asp; var c=(lon0+lon1)/2, cy=(lat0+lat1)/2-(footOpen?h*0.12:0);
   if(r.width/w<11){ var focus=D.SPOT_BY_ID[pickedSpot]&&D.SPOT_BY_ID[pickedSpot].region===rid?D.SPOT_BY_ID[pickedSpot]:sp[0]; w=r.width/13; c=focus.lon; cy=focus.lat-w/asp*0.18; } return clampView({lon0:c-w/2,lon1:c+w/2,lat0:cy+w/asp/2,lat1:cy-w/asp/2}); }
 function loadWorld(){ if(G.world&&Date.now()-worldAt<30000) return Promise.resolve(G.world); return N.rpc('get_world',{}).then(function(w){ G.world=w; worldAt=Date.now(); return w; }); }
-function renderMap(){ view=view?clampView(view):(G.s.regions.length<=1?regionView(G.spot().region):worldView()); /* new players start zoomed on Home waters */ mapList=false; pickedSpot=pickedSpot||G.s.spot; footOpen=isZoomed(); drawMap(); renderMapFoot(); clearInterval(mapTimer); mapTimer=setInterval(function(){ if($('mapOv').hidden){ clearInterval(mapTimer); return; } drawMap(); },60000);
+/* ---- map key: which waters have the best fish (colour = fish level, green = you have it) ---- */
+var keyOpen=null;
+function renderMapKey(){
+  var box=$('mapKey'); if(keyOpen===null) keyOpen=window.innerWidth>=900; box.hidden=!keyOpen; $('mapKeyBtn').setAttribute('aria-pressed',String(keyOpen)); $('mapWrap').classList.toggle('key-open',keyOpen); if(!keyOpen) return;
+  box.innerHTML='';
+  var head=el('div','mk-head','<span>FISH KEY</span>'); var x=el('button','mk-x','X'); x.type='button'; x.setAttribute('aria-label','Close the key'); x.onclick=function(){ keyOpen=false; renderMapKey(); }; head.appendChild(x); box.appendChild(head);
+  var leg=el('div','mk-legend'); leg.appendChild(el('div','mk-sub','AVERAGE CATCH IS WORTH')); D.FISH_TIERS.slice().reverse().forEach(function(t,i,arr){ var nxt=D.FISH_TIERS[t.id]; leg.appendChild(el('div','mk-tier','<i style="background:'+t.color+'"></i><b style="color:'+t.color+'">'+t.name.toUpperCase()+'</b><small>'+(t.min?'$'+t.min.toLocaleString()+(nxt?'–'+nxt.min.toLocaleString():'+'):'under $'+D.FISH_TIERS[1].min)+'</small>')); });
+  leg.appendChild(el('div','mk-tier mk-have','<i class="g"></i><b>GREEN</b><small>= you have it</small>')); box.appendChild(leg);
+  var list=el('div','mk-list');
+  D.FISH_TIERS.slice().reverse().forEach(function(t){
+    var spots=D.SPOTS.filter(function(s){ return D.spotTier(s.id).id===t.id; }).sort(function(a,b){ return D.spotValue(b.id)-D.spotValue(a.id); }); if(!spots.length) return;
+    list.appendChild(el('div','mk-group','<i style="background:'+t.color+'"></i>'+t.name.toUpperCase()));
+    spots.forEach(function(s){ var own=G.s.regions.indexOf(s.region)>=0, rg=D.REGION_BY_ID[s.region];
+      var b=el('button','mk-row'+(own?' have':'')+(s.id===G.s.spot?' here':''),'<i style="background:'+t.color+'"></i><span class="mk-n">'+esc(s.name)+'<small>'+esc(rg.name)+'</small></span>'+(own?'<span class="mk-own">HAVE</span>':'<span class="mk-price"><small>TICKET</small>$'+rg.ticket.toLocaleString()+'</span>'));
+      b.type='button'; b.title=s.name+': '+t.name.toLowerCase()+', about $'+D.spotValue(s.id).toLocaleString()+' for an average catch'+(own?'. You have it.':'. Ticket: $'+rg.ticket.toLocaleString());
+      b.onclick=function(){ pickedSpot=s.id; footOpen=true; if(window.innerWidth<700){ keyOpen=false; renderMapKey(); } view=regionView(s.region); drawMap(); renderMapFoot(); };
+      list.appendChild(b); }); });
+  box.appendChild(list);
+}
+$('mapKeyBtn').onclick=function(){ keyOpen=!keyOpen; if(keyOpen&&window.innerWidth<700){ footOpen=false; renderMapFoot(); } renderMapKey(); };
+function renderMap(){ view=view?clampView(view):(G.s.regions.length<=1?regionView(G.spot().region):worldView()); /* new players start zoomed on Home waters */ mapList=false; pickedSpot=pickedSpot||G.s.spot; footOpen=isZoomed(); renderMapKey(); drawMap(); renderMapFoot(); clearInterval(mapTimer); mapTimer=setInterval(function(){ if($('mapOv').hidden){ clearInterval(mapTimer); return; } drawMap(); },60000);
   loadWorld().then(function(){ drawPins(); renderMapFoot(); }).catch(function(){}); }
 function isZoomed(){ var r=$('mapWrap').getBoundingClientRect(); return r.width/(view.lon1-view.lon0)>9; }
 function toXY(lon,lat,w,h){ return [(lon-view.lon0)/(view.lon1-view.lon0)*w,(view.lat0-lat)/(view.lat0-view.lat1)*h]; }
@@ -422,8 +442,10 @@ var pinCache={};
 function pinSprite(kind,color){ var key=kind+color; if(pinCache[key]) return pinCache[key];
   var rows, map={k:'#0B1420',F:color,f:shadeHex(color,0.6),w:'#FFFFFF',Y:'#FFC94A',y:'#C98A12',S:'#F2C9A0',R:'#D93A3A',g:'#5A7598'};
   if(kind==='here') rows=["..kRRRk...",".kRRRRRk..",".kSSSSSk..","..kSSSk...","...kkk....","...kFk....","..kFFFk...","...kFk....","....k.....","....k....."];
-  else if(kind==='locked') rows=["..kkkk..","..kgggk.","..kggggk","..kgggk.","..kk....","..k.....","..k.....","..k....."];
+  else if(kind==='locked') rows=["..kkkk..","..kFFFk.","..kFFFFk","..kfffk.","..gg....","..g.....","..g.....","..g....."];
+  else if(kind==='have') rows=["..kkkk..","..kFFFk.","..kFFFFk","..kfffk.","..kk....","..k.....","..k.....","kGkGk...",".kGk...."]; // green base = you have it
   else rows=["..kkkk..","..kFFFk.","..kFFFFk","..kfffk.","..kk....","..k.....","..k.....","..k....."];
+  map.G='#5CF08A';
   var c=A.spriteCanvas(rows,map); pinCache[key]=c.toDataURL(); return pinCache[key]; }
 function starSprite(owned){ var key='star'+owned; if(pinCache[key]) return pinCache[key]; var c=A.spriteCanvas(["..k..",".kYk.","kYYYk",".kYk.","..k.."],{k:'#3A2200',Y:owned?'#8A7A5A':'#FFC94A'}); pinCache[key]=c.toDataURL(); return pinCache[key]; }
 function shadeHex(h,k){ var n=parseInt(h.slice(1),16), r=(n>>16)&255, g=(n>>8)&255, b=n&255; return 'rgb('+Math.round(r*k)+','+Math.round(g*k)+','+Math.round(b*k)+')'; }
@@ -436,8 +458,8 @@ function drawPins(){
   list.sort(function(a,b){ return a.prio-b.prio; });
   if(zoomed) list.forEach(function(o){ placed.push([o.x-6,o.y-16,12,16]); });
   list.slice().reverse().forEach(function(o){ var s=o.s, here=s.id===G.s.spot;
-    var b=el('button','pin'+(here?' here':'')+(o.own?'':' locked')+(s.id===pickedSpot?' picked':'')); b.type='button'; b.style.left=o.x+'px'; b.style.top=o.y+'px'; b.title=s.name+(o.own?'':' (needs a ticket)'); b.setAttribute('aria-label',b.title);
-    var img=document.createElement('img'); img.className='px'; img.alt=''; img.src=pinSprite(here?'here':o.own?'flag':'locked',D.REGION_BY_ID[s.region].color); img.style.width=(here?10:8)*ps+'px'; b.appendChild(img);
+    var b=el('button','pin'+(here?' here':'')+(o.own?'':' locked')+(s.id===pickedSpot?' picked':'')); b.type='button'; b.style.left=o.x+'px'; b.style.top=o.y+'px'; b.title=s.name+' · '+D.spotTier(s.id).name+(o.own?'':' (needs a ticket)'); b.setAttribute('aria-label',b.title);
+    var img=document.createElement('img'); img.className='px'; img.alt=''; img.src=pinSprite(here?'here':o.own?'have':'locked',here?D.REGION_BY_ID[s.region].color:D.spotTier(s.id).color); img.style.width=(here?10:8)*ps+'px'; b.appendChild(img);
     if(o.leg&&(zoomed||here)){ var st=document.createElement('img'); st.className='px star'+(o.leg.owner?' owned':''); st.alt=''; st.src=starSprite(!!o.leg.owner); st.style.width=5*ps+'px'; b.appendChild(st); }
     b.onclick=function(e){ e.stopPropagation(); if(suppressClick){ suppressClick=false; return; } pickedSpot=s.id; footOpen=true; if(!zoomed){ view=regionView(s.region); drawMap(); } else drawPins(); renderMapFoot(); };
     pins.appendChild(b); });
