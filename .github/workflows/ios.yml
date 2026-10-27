@@ -71,7 +71,7 @@ jobs:
             grep -E "error:|error |Error Domain|No Accounts|No profiles|provisioning|Signing for|requires a development team|not found|xcodebuild: error" "$RUNNER_TEMP/archive.log" | sort -u | head -n 25 | while IFS= read -r l; do echo "::error::${l:0:400}"; done
             exit 1
           fi
-      - name: Upload to TestFlight
+      - name: Sign for the App Store
         run: |
           /usr/libexec/PlistBuddy -c "Add :teamID string $TEAM_ID" ExportOptions.plist
           set +e
@@ -81,10 +81,21 @@ jobs:
             -authenticationKeyPath "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
             -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" > "$RUNNER_TEMP/export.log" 2>&1
           code=$?
-          tail -n 60 "$RUNNER_TEMP/export.log"
-          if [ $code -ne 0 ]; then
-            grep -E "error|Error|failed|No signing|profile|certificate|ITMS|not permitted|Validation" "$RUNNER_TEMP/export.log" | grep -v "^\s*$" | sort -u | head -n 25 | while IFS= read -r l; do echo "::error::${l:0:400}"; done
-            ls "$RUNNER_TEMP"/export* 2>/dev/null; cat "$RUNNER_TEMP"/*/IDEDistribution*.log 2>/dev/null | grep -iE "error|fail" | head -n 15 | while IFS= read -r l; do echo "::error::${l:0:400}"; done
+          tail -n 40 "$RUNNER_TEMP/export.log"
+          IPA=$(ls "$RUNNER_TEMP"/export/*.ipa 2>/dev/null | head -1)
+          if [ $code -ne 0 ] || [ -z "$IPA" ]; then
+            grep -E "error|Error|failed|No signing|profile|certificate|not permitted" "$RUNNER_TEMP/export.log" | sort -u | head -n 25 | while IFS= read -r l; do echo "::error::${l:0:400}"; done
+            exit 1
+          fi
+          echo "IPA=$IPA" >> "$GITHUB_ENV"
+      - name: Upload to TestFlight
+        run: |
+          set +e
+          xcrun altool --upload-app -f "$IPA" -t ios --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID" > "$RUNNER_TEMP/upload.log" 2>&1
+          code=$?
+          cat "$RUNNER_TEMP/upload.log" | tail -n 40
+          if [ $code -ne 0 ] || grep -qiE "ERROR ITMS|Failed to upload|error:" "$RUNNER_TEMP/upload.log"; then
+            grep -iE "ERROR|error:|ITMS|failed" "$RUNNER_TEMP/upload.log" | sort -u | head -n 25 | while IFS= read -r l; do echo "::error::${l:0:400}"; done
             exit 1
           fi
       - name: Done
