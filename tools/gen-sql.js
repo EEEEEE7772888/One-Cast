@@ -20,9 +20,10 @@ out.push('insert into species_baits (species,bait,w) values '+sb.join(',')+';');
 out.push('insert into spot_species (spot,species,w) values '+ss.join(',')+';');
 out.push('insert into legend_presets (spot,name,species,tier,lb,bait,period,min_wait,min_line,clue,colors) values '+D.LEGEND_PRESETS.map(p=>`(${q(p.spot)},${q(p.name)},${q(p.species)},${q(p.tier)},${p.lb},${q(p.bait)},${q(p.period)},${p.minWait},${p.line},${q(p.clue)},${j(p.colors)})`).join(',')+' on conflict (spot) do nothing;');
 const key=process.argv[2]||null;
-out.push(key?`insert into admin (k) select ${q(key)} where not exists (select 1 from admin);`:"-- insert into admin (k) select 'pick-a-long-secret' where not exists (select 1 from admin);");
 out.push('');
-fs.writeFileSync(path.join(__dirname,'../sql/data.sql'),out.join('\n'));
+// the public sql/data.sql never contains the admin key; only the private full file (argv[3]) does
+fs.writeFileSync(path.join(__dirname,'../sql/data.sql'),out.join('\n')+"-- insert into admin (k) select 'pick-a-long-secret' where not exists (select 1 from admin);\n");
+if(key) out.push(`insert into admin (k) select ${q(key)} where not exists (select 1 from admin);`, '');
 const full=['-- ONE CAST: full server setup. Paste the whole file into Supabase: SQL Editor > New query > Run. Safe to run again later.',key?'-- Your admin key (keep it secret, it is for the admin page only): '+key:"-- Admin key: set your own with   insert into admin (k) values ('pick-a-long-secret');   (a private copy of this file may already do it)",'',
  fs.readFileSync(path.join(__dirname,'../sql/schema.sql'),'utf8'), out.join('\n'), fs.readFileSync(path.join(__dirname,'../sql/functions.sql'),'utf8')].join('\n');
 const outPath=process.argv[3]||path.join(__dirname,'../setup.sql'); fs.writeFileSync(outPath,full);
