@@ -74,10 +74,18 @@ jobs:
       - name: Upload to TestFlight
         run: |
           /usr/libexec/PlistBuddy -c "Add :teamID string $TEAM_ID" ExportOptions.plist
+          set +e
           xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/OneCast.xcarchive" \
             -exportOptionsPlist ExportOptions.plist -exportPath "$RUNNER_TEMP/export" \
             -allowProvisioningUpdates \
-            -authenticationKeyPath ~/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
-            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+            -authenticationKeyPath "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" > "$RUNNER_TEMP/export.log" 2>&1
+          code=$?
+          tail -n 60 "$RUNNER_TEMP/export.log"
+          if [ $code -ne 0 ]; then
+            grep -E "error|Error|failed|No signing|profile|certificate|ITMS|not permitted|Validation" "$RUNNER_TEMP/export.log" | grep -v "^\s*$" | sort -u | head -n 25 | while IFS= read -r l; do echo "::error::${l:0:400}"; done
+            ls "$RUNNER_TEMP"/export* 2>/dev/null; cat "$RUNNER_TEMP"/*/IDEDistribution*.log 2>/dev/null | grep -iE "error|fail" | head -n 15 | while IFS= read -r l; do echo "::error::${l:0:400}"; done
+            exit 1
+          fi
       - name: Done
         run: echo "Uploaded version $APP_VERSION (build $BUILD_NUMBER). It shows up in App Store Connect -> TestFlight in about 10-30 minutes."
