@@ -32,7 +32,10 @@ jobs:
           node-version: 22
       - name: Check secrets
         run: |
+          # strip stray spaces/line breaks that sneak in when pasting secrets
+          for v in TEAM_ID ASC_KEY_ID ASC_ISSUER_ID; do clean=$(printf '%s' "${!v}" | tr -d '[:space:]'); echo "$v=$clean" >> "$GITHUB_ENV"; echo "$v length: ${#clean}"; done
           for v in TEAM_ID ASC_KEY_ID ASC_ISSUER_ID; do [ -n "${!v}" ] || { echo "::error::Missing secret for $v"; exit 1; }; done
+          t=$(printf '%s' "$TEAM_ID" | tr -d '[:space:]'); [[ "$t" =~ ^[A-Z0-9]{10}$ ]] || echo "::error::APPLE_TEAM_ID should be 10 capital letters/numbers (developer.apple.com > Account > Membership details). It is ${#t} characters."
           [ -n "${{ secrets.ASC_KEY_P8 }}" ] || { echo "::error::Missing secret ASC_KEY_P8"; exit 1; }
       - name: Pick Xcode
         run: |
