@@ -54,6 +54,12 @@ function playerLine(p){ var d=document.createElement('div'); d.className='line';
   gb.onclick=function(){ if(!confirm('Give the one-of-one Dev Flagship to '+p.name+'#'+p.tag+'?\n\nOnly give it to your own account.')) return;
     rpc('admin_player',{p_pid:p.pid,p_action:'giveboat',p_value:'devboat'}).then(function(){ alert('Done! '+p.name+' now has the Dev Flagship. Reload the game to see it.'); }).catch(function(e){ alert(e.message); }); };
   b.appendChild(gb);
+  var bs=document.createElement('select'); bs.className='pbtn'; bs.title='Pick a bait to gift';
+  window.OC.BAITS.forEach(function(x){ var o=document.createElement('option'); o.value=x.id; o.textContent=x.name; bs.appendChild(o); });
+  var gbt=document.createElement('button'); gbt.className='pbtn gold'; gbt.textContent='GIFT BAIT';
+  gbt.onclick=function(){ var bt=window.OC.BAITS.filter(function(x){ return x.id===bs.value; })[0];
+    rpc('admin_player',{p_pid:p.pid,p_action:'givebait',p_value:bs.value}).then(function(){ alert(p.name+' now has '+bt.name+'. (If they already had it, nothing changed.)'); }).catch(function(e){ alert(e.message); }); };
+  b.appendChild(bs); b.appendChild(gbt);
   d.appendChild(b); return d; }
 function load(){
   rpc('admin_overview',{}).then(function(o){

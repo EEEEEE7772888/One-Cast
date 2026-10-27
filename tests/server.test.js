@@ -318,6 +318,11 @@ console.log('dev boat and crew rides');
   // a stranded player (old bug, or a deleted captain) is fixed on their next move
   sql(`update players set spot='arcticdeep' where pid='${G2.pid}'`);
   ok(rpc('cast_line',[G2.pid,G2.secret,0,'worm']).line.idx===0&&rpc('get_state',[G2.pid,G2.secret]).spot==='basslake','stranded players are moved home before they can fish');
+  // admin can gift any bait, once
+  ok(rpc('admin_player',[K,G1.pid,'givebait','jig']).ok===true&&rpc('get_state',[G1.pid,G1.secret]).baits.includes('jig'),'admin gifts a bait');
+  rpc('admin_player',[K,G1.pid,'givebait','jig']); ok(rpc('get_state',[G1.pid,G1.secret]).baits.filter(b=>b==='jig').length===1,'gifting twice does not duplicate it');
+  ok(rpc('admin_player',[K,G1.pid,'givebait','dynamite']).error==='no such bait','unknown bait refused');
+  ok(rpc('admin_player',['wrong-key',G1.pid,'givebait','jig']).error==='not the admin key','only the admin can gift bait');
   // other boats still hold 3
   const T=mk('SmallBoat'), q=[mk('Q1'),mk('Q2'),mk('Q3'),mk('Q4')]; q.forEach(x=>fr(T,x));
   q.slice(0,3).forEach(x=>{ rpc('crew_invite',[T.pid,T.secret,x.pid]); rpc('crew_respond',[x.pid,x.secret,T.pid,true]); });

@@ -941,6 +941,9 @@ begin
     when 'hide' then update players set hidden = (p_value = 'true') where pid = p_pid;
     when 'ban' then update players set banned = (p_value = 'true') where pid = p_pid;
     when 'coins' then update players set coins = coins + p_value::bigint where pid = p_pid;
+    when 'givebait' then
+      if not exists (select 1 from baits where id = p_value) then perform oc_fail('no such bait'); end if;
+      update players set baits = array_append(baits, p_value) where pid = p_pid and not (p_value = any(baits));
     when 'giveboat' then
       if not exists (select 1 from gear where id = p_value and kind = 'boat') then perform oc_fail('no such boat'); end if;
       update players set gear = jsonb_set(jsonb_set(gear, '{boats}', (select to_jsonb(array(select distinct x from jsonb_array_elements_text(coalesce(gear -> 'boats', '["paddle"]'::jsonb) || to_jsonb(p_value)) x)))), '{boat}', to_jsonb(p_value)) where pid = p_pid;
