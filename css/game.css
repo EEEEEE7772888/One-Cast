@@ -548,3 +548,7 @@ a{color:var(--frost)}
 @media (max-width:420px){.bb{grid-template-columns:58px auto minmax(0,1fr);gap:6px}.bb-bar i{width:9px}}
 .row .row-bars{grid-column:1/-1}
 .row .row-bars .bbars{margin:2px 0 0}
+.lure-how{margin:0;padding:0 0 0 22px;display:grid;gap:3px;font:17px/1.1 var(--term);color:#C8D4E4}
+.lure-how b{color:var(--ice);font-weight:400}
+.lure-how li::marker{color:var(--gold);font:9px var(--pixel)}
+@media (max-width:420px){.lure-how{font-size:16px;gap:2px}}

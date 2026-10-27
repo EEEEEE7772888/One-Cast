@@ -10,12 +10,24 @@ D.LURES=['crank','jig'];
 D.isLure=function(b){ return D.LURES.indexOf(b)>=0; };
 
 var TIP={crank:'Hold to reel. Keep the speed in the green.',jig:'Tap to hop the jig. Fish hit it on the way down.'};
+/* step-by-step help shown under the lure picture */
+var HOW={
+  crank:['<b>Hold</b> the button (or Space) to reel. Let go to slow down.',
+         'Keep the <b style="color:#FFC94A">yellow mark</b> inside the <b style="color:#5CF08A">green</b> part of the bar at the top. Too slow and it stops wobbling, too fast and fish ignore it.',
+         'When the button flashes <b style="color:#FF8A8D">STRIKE! TAP!</b>, tap it right away. You have about 1 second.',
+         'The blue bar is how far away your lure is. If it reaches you with no bite, cast again.'],
+  jig:['<b>Tap</b> the button (or Space) to hop the jig up off the bottom.',
+       'Then <b>wait</b> and let it sink. Fish only bite while it is <b>falling</b>, not while it goes up.',
+       'Tap again every 1 to 3 seconds. Tapping too fast means it never falls; waiting too long leaves it lying on the bottom.',
+       'When the button flashes <b style="color:#FF8A8D">STRIKE! TAP!</b>, tap it right away. You have about 1 second.']
+};
 L.start=function(line){
   G=root.G; L.stop(true);
   st={line:line,idx:line.idx,bait:line.bait,bite:Date.parse(line.biteAt),dist:100,speed:0,speeds:[],holding:false,h:0,lastTap:-99,tapCount:0,strikeAt:0,phase:'work',t:0,lastMsg:''};
   L.active=true; $('lureBox').hidden=false;
   $('lureName').textContent=line.bait==='crank'?'CRANKBAIT':'JIG';
   $('lureTip').textContent=TIP[line.bait];
+  $('lureHow').innerHTML=HOW[line.bait].map(function(t){ return '<li>'+t+'</li>'; }).join('');
   setBtn(line.bait==='crank'?'HOLD TO REEL':'HOP',false);
   say('');
   var last=performance.now();
