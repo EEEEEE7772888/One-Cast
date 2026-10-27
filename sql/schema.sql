@@ -221,6 +221,7 @@ create table if not exists public.crews (
   check (guest <> host)
 );
 create index if not exists crews_host on public.crews (host);
+alter table public.crews add column if not exists from_spot text; -- where a guest was before hopping aboard; they go back there when they hop off
 
 -- Players from before boats: everyone gets the paddleboard, and old boat gear turns into the matching boats.
 update public.players set gear = gear

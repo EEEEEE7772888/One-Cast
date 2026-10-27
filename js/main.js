@@ -30,7 +30,7 @@ G.bump=function(){ var c=$('coinChip'); c.classList.remove('bump'); void c.offse
 G.fail=function(e){ if(e&&e.offline){ G.toast("Can't reach the server right now. Try again in a moment."); } else G.toast((e&&e.message)||'Something went wrong.'); };
 /* What you can do at a spot with the boat you have out (or your host's boat if you're riding along). */
 G.boatId=function(){ return (G.s.crew&&G.s.crew.guest&&G.s.crew.boat)||G.s.gear.boat||'paddle'; };
-G.hasRig=function(){ return (G.s.gear.methods||[]).indexOf('deeprig')>=0; };
+G.hasRig=function(){ return (G.s.gear.methods||[]).indexOf('deeprig')>=0||G.boatId()==='devboat'; }; // the Dev Flagship has one built in
 G.access=function(spot){ spot=spot||G.spot(); var b=D.GEAR_BY_ID[G.boatId()]||D.GEAR_BY_ID.paddle, lvl=b.lvl;
   var blocked=spot.method==='boat'&&lvl<spot.need?(spot.need===1?'kayak':'skiff'):null;
   var small=(spot.method==='troll'&&lvl<5)||(spot.method==='deep'&&!G.hasRig());

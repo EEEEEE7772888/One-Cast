@@ -259,6 +259,7 @@ D.GEAR=[
  {id:'sportfisher',name:'Sportfisher',price:60000,kind:'boat',lvl:5,perk:{troll:0.8,salt:0.9},desc:'Outriggers and a fighting chair. Needed to troll for tuna and marlin. Trolling bites 20% sooner.'},
  {id:'trawler',name:'Expedition trawler',price:250000,kind:'boat',lvl:6,perk:{deep:0.8,polar:0.8,troll:0.85},desc:'An ice-class steel boat with a crane. Deep-drop and polar bites come 20% sooner.'},
  {id:'yacht',name:'Golden mega yacht',price:1500000,kind:'boat',lvl:7,perk:{all:0.78},desc:'The flex. Bites come 22% sooner everywhere, and everyone can see it.'},
+ {id:'devboat',name:'Dev Flagship',price:0,kind:'boat',lvl:8,perk:{all:0.7},secret:true,crew:12,desc:'One of one. Only the maker of One Cast has it. Fishes every water on Earth with a deep-drop rig built in, bites come 30% sooner, and it carries a crew of 12.'},
  {id:'deeprig',name:'Deep-drop rig',price:150000,kind:'method',lvl:1,desc:'An electric reel and 1,000 feet of braided line. Without it, deep-drop spots only give you small fish near the surface.'}
 ];
 
@@ -350,7 +351,7 @@ D.SPOT_BY_ID={}; D.SPOTS.forEach(function(s){ D.SPOT_BY_ID[s.id]=s; });
 D.REGION_BY_ID={}; D.REGIONS.forEach(function(r){ D.REGION_BY_ID[r.id]=r; });
 D.BAIT_BY_ID={}; D.BAITS.forEach(function(b){ D.BAIT_BY_ID[b.id]=b; });
 D.GEAR_BY_ID={}; D.GEAR.forEach(function(g){ D.GEAR_BY_ID[g.id]=g; });
-D.BOATS=D.GEAR.filter(function(g){ return g.kind==='boat'; });
+D.BOATS=D.GEAR.filter(function(g){ return g.kind==='boat'&&!g.secret; }); // the Dev Flagship is never in the shop
 D.boatPerk=function(boatId,spot){ var b=D.GEAR_BY_ID[boatId]; if(!b) return 1; var p=b.perk||{}; return p.all||p[spot.water]||(spot.region==='arctic'||spot.region==='southern'?p.polar:0)||1; };
 D.ITEM_BY_ID={}; D.ITEMS.forEach(function(i){ D.ITEM_BY_ID[i.id]=i; });
 D.spotSpecies=function(spotId){ return S.filter(function(s){ return s.spots[spotId]>0; }); };

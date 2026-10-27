@@ -283,5 +283,46 @@ console.log('lures and jigs');
   ok(rpc('cast_line',[L.pid,L.secret,0,'jig']).line.bait==='jig','jigs cast at Bass Lake'); rpc('reel_line',[L.pid,L.secret,0]);
 }
 
+console.log('dev boat and crew rides');
+{
+  const K='oc-admin-testkey', mk=(n)=>{ const P={pid:uuid(),secret:'d'.repeat(10)+uuid().replace(/-/g,'').slice(0,20)}; rpc('login',[P.pid,P.secret,n]); return P; };
+  const H=mk('DevCap'), G1=mk('Guest1'), G2=mk('Guest2'), Y=mk('YachtGuy');
+  const fr=(a,b)=>{ const [x,y]=[a.pid,b.pid].sort(); sql(`insert into friends (a,b,status,requested_by) values ('${x}','${y}','accepted','${x}') on conflict do nothing`); };
+  // nobody can buy it, not even a yacht owner with money
+  sql(`update players set coins=99999999, gear=jsonb_set(gear,'{boats}','["paddle","kayak","skiff","bassboat","console","sportfisher","trawler","yacht"]') where pid='${Y.pid}'`);
+  ok(rpc('buy',[Y.pid,Y.secret,'gear','devboat']).error==='that boat is not for sale','the Dev Flagship cannot be bought');
+  ok(rpc('set_boat',[Y.pid,Y.secret,'devboat']).error==='you do not own that boat','cannot take out a boat you were not given');
+  ok(rpc('admin_player',['wrong-key',H.pid,'giveboat','devboat']).error==='not the admin key','only the admin can give it');
+  ok(rpc('admin_player',[K,H.pid,'giveboat','devboat']).ok===true,'admin gives the Dev Flagship');
+  let sH=rpc('get_state',[H.pid,H.secret]); ok(sH.gear.boat==='devboat'&&sH.gear.boats.includes('devboat')&&sH.gear.boats.includes('paddle'),'captain has it out');
+  rpc('admin_player',[K,H.pid,'giveboat','devboat']); ok(rpc('get_state',[H.pid,H.secret]).gear.boats.filter(b=>b==='devboat').length===1,'giving twice does not duplicate it');
+  // captain sails to the Arctic (has the ticket); guests do not
+  sql(`update players set regions = regions || '{arctic}'::text[] where pid='${H.pid}'`);
+  ok(rpc('travel',[H.pid,H.secret,'arcticdeep']).spot==='arcticdeep','captain goes to the Arctic deep');
+  fr(H,G1); fr(H,G2);
+  rpc('crew_invite',[H.pid,H.secret,G1.pid]); rpc('crew_invite',[H.pid,H.secret,G2.pid]);
+  ok(rpc('crew_respond',[G1.pid,G1.secret,H.pid,true]).cap===12,'dev boat carries 12 guests');
+  rpc('crew_respond',[G2.pid,G2.secret,H.pid,true]);
+  ok(rpc('get_state',[G1.pid,G1.secret]).spot==='arcticdeep','guest rides to the Arctic');
+  sql(`update players set baits = baits || '{deepbait}'::text[] where pid='${G1.pid}'`);
+  let gc=rpc('cast_line',[G1.pid,G1.secret,0,'deepbait']); ok(gc.line&&gc.small===false,'guest fishes the Arctic with the built-in deep rig (full-size fish)');
+  // hop off: back home, and no more Arctic
+  rpc('crew_leave',[G1.pid,G1.secret]);
+  let s1=rpc('get_state',[G1.pid,G1.secret]); ok(s1.spot==='basslake'&&!s1.crew.guest,'guest hops off and is back at Bass Lake');
+  ok(rpc('travel',[G1.pid,G1.secret,'arcticdeep']).error==='you need a ticket to that region first','guest cannot go back to the Arctic for free');
+  ok(s1.lines.length===1,'the line cast while aboard is still theirs to reel');
+  // captain ends the trip: remaining guests go home too
+  rpc('crew_leave',[H.pid,H.secret]);
+  ok(rpc('get_state',[G2.pid,G2.secret]).spot==='basslake','ending the trip sends every guest home');
+  ok(rpc('get_state',[H.pid,H.secret]).spot==='arcticdeep','captain stays in the Arctic');
+  // a stranded player (old bug, or a deleted captain) is fixed on their next move
+  sql(`update players set spot='arcticdeep' where pid='${G2.pid}'`);
+  ok(rpc('cast_line',[G2.pid,G2.secret,0,'worm']).line.idx===0&&rpc('get_state',[G2.pid,G2.secret]).spot==='basslake','stranded players are moved home before they can fish');
+  // other boats still hold 3
+  const T=mk('SmallBoat'), q=[mk('Q1'),mk('Q2'),mk('Q3'),mk('Q4')]; q.forEach(x=>fr(T,x));
+  q.slice(0,3).forEach(x=>{ rpc('crew_invite',[T.pid,T.secret,x.pid]); rpc('crew_respond',[x.pid,x.secret,T.pid,true]); });
+  ok(rpc('crew_invite',[T.pid,T.secret,q[3].pid]).error==='your boat is full (3 guests)','regular boats still hold 3 guests');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);

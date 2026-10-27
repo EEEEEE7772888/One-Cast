@@ -89,6 +89,8 @@ S.measure=function(){
   var m=method();
   if(m==='troll') horizonY=Math.max(Math.round(H*0.42),centerB+18);
   else horizonY=Math.max(Math.round(H*0.24),centerB+22);
+  // the Dev Flagship is tall: drop the waterline so its decks sit below the spot text (but keep some water above the panel)
+  if((m==='boat'||m==='troll'||m==='deep')&&S.hooks.boat&&S.hooks.boat()==='devboat') horizonY=Math.max(horizonY,Math.min(centerB+40,panelTop-46));
   floorTarget=panelTop; if(floorTarget<horizonY+40) floorTarget=horizonY+40;
   if(!floorY) floorY=floorTarget;
 };
@@ -319,7 +321,7 @@ S.draw=function(ms){
 
   /* angler */
   var fX=aX-(fx&&fx.big&&(m==='ice'||m==='shore')?Math.min(12,Math.max(0,Math.round(A.fishCanvas(fx.sp,fx.L,false,fx.variant,fx.colors).height/2)-6)):0), fY=aY;
-  drawCrew(m,aX,aY,t,wt,fy);
+  drawCrew(m,aX,aY,t,wt,fy,boatInfo);
   ctx.drawImage(A.fisherCanvas(S.hooks.outfit()),fX,fY);
   if(lt<0.5){ var g2=ctx.createRadialGradient(fX-3,fY+15,0,fX-3,fY+15,22); g2.addColorStop(0,'rgba(255,200,110,'+(0.35*(1-lt*2)).toFixed(2)+')'); g2.addColorStop(1,'rgba(255,200,110,0)'); ctx.fillStyle=g2; ctx.fillRect(fX-26,fY-8,48,40); }
   A.drawSprite(ctx,[".k.","yYy","yYy","kkk"],{k:'#2A2A2A',y:'#C98A12',Y:'#FFE08A'},fX-4,fY+14);
@@ -386,14 +388,20 @@ function drawBoat(aX,bob,wt,t,moving){
   ctx.fillStyle='rgba(20,70,120,0.55)'; for(var y=Math.max(wt,top);y<top+bb.h;y++){ var row=bb.rows[y-top]; for(var x=0;x<row.length;x++) if(row[x]!=='.') ctx.fillRect(x0+x,y,1,1); }
   ctx.fillStyle='rgba(230,245,255,0.55)'; for(x=0;x<bb.w;x+=2) ctx.fillRect(x0+x+((Math.floor(t*4))&1),wt,1,1);
   if(moving){ for(var i=0;i<18;i++){ var wx=x0-1-i*2-Math.floor((t*18)%2), wy=wt+Math.round(Math.sin(i*0.8+t*4)*1); P(wx,wy,'rgba(240,250,255,'+(0.7-i*0.035).toFixed(2)+')'); } for(i=0;i<8;i++) P(x0+bb.w+i-2,wt+1+(i%2),'rgba(240,250,255,0.5)'); }
+  if(bb.devboat){ // neon underglow on the water and blinking nav lights
+    var gl=0.25+0.15*Math.sin(t*2.4); for(x=4;x<bb.w-8;x++){ var a=gl*(1-Math.abs(x-bb.w/2)/(bb.w/2)); ctx.fillStyle='rgba(60,240,255,'+a.toFixed(3)+')'; ctx.fillRect(x0+x,wt+1+(x%3===0?1:0),1,2); }
+    (bb.lights||[]).forEach(function(L,i){ if(Math.floor(t*2+i*0.7)%2===0){ ctx.globalAlpha=0.35; ctx.fillStyle=L[2]; ctx.fillRect(x0+L[0]-1,top+L[1]-1,3,3); ctx.globalAlpha=1; P(x0+L[0],top+L[1],L[2]); } });
+  }
   return {x0:x0,top:top,bb:bb};
 }
 /* friends on your crew: they stand next to you with their own rods */
-function drawCrew(m,aX,aY,t,wt,fy){
+function drawCrew(m,aX,aY,t,wt,fy,bi){
   var crew=S.hooks.crew?S.hooks.crew():[]; if(!crew.length) return;
   crew.forEach(function(c,k){
     var dir=(m==='shore'||m==='ice')?-1:1, x=aX+dir*16*(k+1); if(x<2||x>W-16) x=aX-dir*16*(k+1);
-    var fc=A.fisherCanvas(c.outfit||root.OC.DEFAULT_OUTFIT); ctx.save(); ctx.translate(x+fc.width,0); ctx.scale(-1,1); ctx.drawImage(fc,0,aY); ctx.restore();
+    var fc=A.fisherCanvas(c.outfit||root.OC.DEFAULT_OUTFIT), seat=bi&&bi.bb.seats&&bi.bb.seats[k];
+    if(seat){ x=bi.x0+seat[0]-Math.round(fc.width/2); aY=bi.top+seat[1]-fc.height; } // big boats: everyone gets a spot on one of the decks
+    ctx.save(); ctx.translate(x+fc.width,0); ctx.scale(-1,1); ctx.drawImage(fc,0,aY); ctx.restore();
     var hooked=(c.lines||[]).some(function(l){ return Date.parse(l.biteAt)<=root.NET.now(); }), out=(c.lines||[]).length>0;
     var hx=x-2, hy=aY+9, tx=x-10, ty=aY-6+(hooked?3+Math.round(Math.sin(t*24)*1.5):0);
     line(hx,hy,tx,ty,'#3B2A1E');

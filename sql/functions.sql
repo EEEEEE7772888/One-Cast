@@ -22,7 +22,12 @@ begin
   if p.pid is null then perform oc_fail('no player'); end if;
   if p.secret <> p_secret then perform oc_fail('not your game'); end if;
   if p.banned then perform oc_fail('banned'); end if;
-  update players set last_seen = now() where pid = p_pid;
+  -- stranded? (rode a friend's boat somewhere, then the trip ended) -> back to home waters
+  if not exists (select 1 from spots s where s.id = p.spot and s.region = any(p.regions))
+     and not exists (select 1 from crews c where c.guest = p.pid and c.status = 'aboard' and c.spot = p.spot) then
+    p.spot := 'basslake';
+  end if;
+  update players set last_seen = now(), spot = p.spot where pid = p_pid;
   return p;
 end $$;
 
@@ -336,7 +341,7 @@ begin
   if host is not null then select * into h from players where pid = host; g := h.gear; else g := p.gear; end if;
   boat := coalesce(g ->> 'boat', 'paddle');
   select lvl, perk into boat_lvl, pk from gear where id = boat; boat_lvl := coalesce(boat_lvl, 0);
-  rig := coalesce(g -> 'methods' ? 'deeprig', false);
+  rig := coalesce(g -> 'methods' ? 'deeprig', false) or boat = 'devboat';
   small := (sp.method = 'troll' and boat_lvl < 5) or (sp.method = 'deep' and not rig);
   mult := (case when coalesce((p.gear ->> 'comfort')::boolean, false) then 0.75 else 1 end)
         * coalesce((pk ->> 'all')::numeric, (pk ->> sp.water)::numeric, (case when sp.region in ('arctic','southern') then (pk ->> 'polar')::numeric end), 1);
@@ -356,6 +361,7 @@ begin
   if not (p_bait = any(p.baits)) then perform oc_fail('you do not own that bait'); end if;
   if not exists (select 1 from method_baits where method = sp.method and bait = p_bait) then perform oc_fail('that bait does not work here'); end if;
   select * into ac from oc_access(p, sp);
+  if not (sp.region = any(p.regions)) and ac.host is null then perform oc_fail('you need your own ticket to fish here'); end if;
   if sp.need > 0 and sp.method = 'boat' and ac.boat_lvl < sp.need then perform oc_fail(case when sp.need = 1 then 'take out a kayak or bigger boat to fish here' else 'take out a skiff or bigger boat to fish this salt water' end); end if;
   if p_bait = 'deepbait' and not ac.rig then perform oc_fail('you need the deep-drop rig to use that'); end if;
   if p_bait = 'lure' and ac.boat_lvl < 5 then perform oc_fail('trolling lures need a sportfisher or bigger boat'); end if;
@@ -508,6 +514,7 @@ begin
     update players set coins = coins - price, baits = array_append(baits, p_id) where pid = p_pid;
   elsif p_kind = 'gear' then
     select * into g from gear where id = p_id; if g.id is null then perform oc_fail('no such gear'); end if;
+    if g.kind = 'boat' and g.lvl >= 8 then perform oc_fail('that boat is not for sale'); end if;
     price := g.price;
     if g.kind in ('line','reel','lines','finder') then
       if (gr ->> g.kind)::int >= g.lvl then perform oc_fail('you already own that'); end if;
@@ -592,7 +599,7 @@ begin
   v_host := coalesce(c.host, me);
   return jsonb_build_object(
     'host', v_host, 'hostName', (select name || '#' || tag from players where pid = v_host), 'boat', (select gear ->> 'boat' from players where pid = v_host),
-    'spot', (select spot from players where pid = v_host), 'guest', c.guest is not null,
+    'spot', (select spot from players where pid = v_host), 'guest', c.guest is not null, 'cap', oc_crew_cap(v_host),
     'members', (select coalesce(jsonb_agg(jsonb_build_object('pid', p.pid, 'name', p.name, 'tag', p.tag, 'outfit', p.outfit, 'host', p.pid = v_host, 'online', p.last_seen > now() - interval '5 minutes',
         'lines', (select coalesce(jsonb_agg(jsonb_build_object('idx', l.idx, 'bait', l.bait, 'castAt', l.cast_at, 'biteAt', l.bite_at) order by l.idx), '[]'::jsonb) from lines l where l.pid = p.pid),
         'recent', (select coalesce(jsonb_agg(jsonb_build_object('id', f.id, 'sp', f.species, 'lb', f.lb, 'variant', f.variant, 'legend', f.legend_id, 'at', f.caught_at) order by f.caught_at desc), '[]'::jsonb)
@@ -603,6 +610,17 @@ begin
     'now', now());
 end $$;
 
+create or replace function public.oc_crew_cap(p_host uuid) returns int language sql stable as $$
+  select case when (select gear ->> 'boat' from players where pid = p_host) = 'devboat' then 12 else 3 end $$;
+
+-- a guest hopping off goes back to where they were, unless they have their own ticket for where the boat is
+create or replace function public.oc_crew_home(p_guest uuid) returns void language plpgsql as $$
+begin
+  update players pl set spot = c.from_spot from crews c, spots s
+   where c.guest = pl.pid and pl.pid = p_guest and c.status = 'aboard' and c.from_spot is not null
+     and s.id = pl.spot and not (s.region = any(pl.regions));
+end $$;
+
 create or replace function public.crew_invite(p_pid uuid, p_secret text, p_friend uuid) returns jsonb language plpgsql security definer set search_path = public as $$
 declare p public.players; x uuid; y uuid; cur public.crews;
 begin
@@ -610,7 +628,7 @@ begin
   x := least(p_pid, p_friend); y := greatest(p_pid, p_friend);
   if not exists (select 1 from friends where a = x and b = y and status = 'accepted') then perform oc_fail('you can only invite friends'); end if;
   if exists (select 1 from crews where guest = p_pid and status = 'aboard') then perform oc_fail('you are on someone else''s boat right now'); end if;
-  if (select count(*) from crews where host = p_pid and status = 'aboard') >= 3 then perform oc_fail('your boat is full (3 guests)'); end if;
+  if (select count(*) from crews where host = p_pid and status = 'aboard') >= oc_crew_cap(p_pid) then perform oc_fail('your boat is full (' || oc_crew_cap(p_pid) || ' guests)'); end if;
   select * into cur from crews where guest = p_friend;
   if cur.guest is not null and cur.status = 'aboard' then perform oc_fail('they are already on a boat'); end if;
   insert into crews (guest, host, status, spot, created_at) values (p_friend, p_pid, 'invited', p.spot, now())
@@ -626,8 +644,9 @@ begin
   if not p_accept then delete from crews where guest = p_pid; return oc_crew_json(p_pid); end if;
   if exists (select 1 from lines where pid = p_pid) then perform oc_fail('reel in your lines before you hop aboard'); end if;
   if exists (select 1 from crews where host = p_pid and status = 'aboard') then perform oc_fail('you have your own crew right now'); end if;
+  if (select count(*) from crews where host = p_host and status = 'aboard') >= oc_crew_cap(p_host) then perform oc_fail('that boat is full'); end if;
   select * into h from players where pid = p_host;
-  update crews set status = 'aboard', spot = h.spot, created_at = now() where guest = p_pid;
+  update crews set status = 'aboard', spot = h.spot, from_spot = p.spot, created_at = now() where guest = p_pid;
   update players set spot = h.spot where pid = p_pid;
   return oc_crew_json(p_pid);
 end $$;
@@ -636,6 +655,8 @@ create or replace function public.crew_leave(p_pid uuid, p_secret text) returns 
 declare p public.players;
 begin
   p := oc_auth(p_pid, p_secret);
+  perform oc_crew_home(p_pid);
+  perform oc_crew_home(c.guest) from crews c where c.host = p_pid;
   delete from crews where guest = p_pid or host = p_pid;
   return oc_crew_json(p_pid);
 end $$;
@@ -920,6 +941,9 @@ begin
     when 'hide' then update players set hidden = (p_value = 'true') where pid = p_pid;
     when 'ban' then update players set banned = (p_value = 'true') where pid = p_pid;
     when 'coins' then update players set coins = coins + p_value::bigint where pid = p_pid;
+    when 'giveboat' then
+      if not exists (select 1 from gear where id = p_value and kind = 'boat') then perform oc_fail('no such boat'); end if;
+      update players set gear = jsonb_set(jsonb_set(gear, '{boats}', (select to_jsonb(array(select distinct x from jsonb_array_elements_text(coalesce(gear -> 'boats', '["paddle"]'::jsonb) || to_jsonb(p_value)) x)))), '{boat}', to_jsonb(p_value)) where pid = p_pid;
     else perform oc_fail('unknown action');
   end case;
   update reports set handled = true where target = p_pid;

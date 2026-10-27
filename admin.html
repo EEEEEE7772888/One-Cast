@@ -50,6 +50,10 @@ function playerLine(p){ var d=document.createElement('div'); d.className='line';
   cp.onclick=function(){ if(!confirm('Remove '+p.name+'#'+p.tag+"'s password? They can set a new one in SAVE YOUR GAME.")) return;
     rpc('admin_player',{p_pid:p.pid,p_action:'clearpw',p_value:''}).then(function(){ alert('Password cleared.'); }).catch(function(e){ alert(e.message); }); };
   b.appendChild(cp);
+  var gb=document.createElement('button'); gb.className='pbtn gold'; gb.textContent='GIVE DEV BOAT';
+  gb.onclick=function(){ if(!confirm('Give the one-of-one Dev Flagship to '+p.name+'#'+p.tag+'?\n\nOnly give it to your own account.')) return;
+    rpc('admin_player',{p_pid:p.pid,p_action:'giveboat',p_value:'devboat'}).then(function(){ alert('Done! '+p.name+' now has the Dev Flagship. Reload the game to see it.'); }).catch(function(e){ alert(e.message); }); };
+  b.appendChild(gb);
   d.appendChild(b); return d; }
 function load(){
   rpc('admin_overview',{}).then(function(o){
