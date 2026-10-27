@@ -501,3 +501,7 @@ a{color:var(--frost)}
 /* first launch inside the app: point website players at their existing account */
 .app-welcome{margin:0;padding:10px 12px;border:3px solid var(--gold);background:var(--panel-lo);font:18px/1.2 var(--term);color:var(--ice)}
 .app-welcome b{color:var(--gold);font-weight:normal}
+
+/* your profile: change name */
+.rename-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+.rename .err{color:#FF8A8D;min-height:1em;margin:6px 0 0;font-size:14px}

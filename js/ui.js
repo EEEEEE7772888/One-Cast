@@ -287,12 +287,29 @@ UI.profile=function(pid){
     if(p.badges.length) body.appendChild(el('p','note','Badges: '+p.badges.map(function(b){ var a=G.ACH.filter(function(x){ return x.id===b; })[0]; return a?esc(a.name):''; }).filter(Boolean).join(' · ')));
     body.appendChild(el('div','gear-group','TROPHY WALL'));
     var grid=el('div','grid'); p.best.slice(0,9).forEach(function(f){ var card=fishCard(f,null); card.onclick=function(){ reactTo(f,p); }; grid.appendChild(card); }); if(!p.best.length) grid.appendChild(el('div','empty','No fish kept yet.')); body.appendChild(grid);
+    if(pid===G.s.pid) body.appendChild(renameBox());
     if(pid!==G.s.pid){ var row=el('div','reset-row'); var isFriend=G.s.friends.some(function(f){ return f.pid===pid&&f.status==='accepted'; }), pending=G.s.friends.some(function(f){ return f.pid===pid; });
       if(!pending){ var add=el('button','pbtn gold','ADD FRIEND'); add.type='button'; add.onclick=function(){ N.me('friend_request',{p_name:p.name,p_tag:p.tag}).then(function(r){ G.toast(r.status==='accepted'?'You are now friends!':'Friend request sent.',2600,'good'); G.refresh(true); }).catch(G.fail); }; row.appendChild(add); }
       if(isFriend){ var tr=el('button','pbtn gold','TRADE'); tr.type='button'; tr.onclick=function(){ openTrade(pid); }; row.appendChild(tr); }
       var rep=el('button','pbtn danger','REPORT'); rep.type='button'; rep.onclick=function(){ report(p); }; row.appendChild(rep); body.appendChild(row); body.appendChild(el('p','note',isFriend?'Tap a fish on the wall to send a sticker.':'Friends can react to each other\'s catches with stickers.')); }
   }).catch(function(e){ body.innerHTML='<div class="empty">'+esc(e.message)+'</div>'; });
 };
+/* your own profile: change your name (the server allows it once a week and checks for bad words) */
+function renameBox(){
+  var box=el('div','rename'); box.appendChild(el('div','gear-group','CHANGE YOUR NAME'));
+  var row=el('div','rename-row'), inp=document.createElement('input'); inp.className='field'; inp.id='renameIn'; inp.maxLength=16; inp.autocomplete='off'; inp.spellcheck=false; inp.value=G.s.name; inp.setAttribute('aria-label','New name');
+  var go=el('button','pbtn gold','SAVE NAME'); go.type='button'; row.appendChild(inp); row.appendChild(go); box.appendChild(row);
+  var err=el('p','err'); err.id='renameErr'; box.appendChild(err);
+  box.appendChild(el('p','note','2 to 16 letters, numbers or _. You can change it once a week. Your #tag might change if someone already has that name.'));
+  function save(){ var n=inp.value.trim(); err.textContent='';
+    if(n===G.s.name){ err.textContent='That is already your name.'; return; }
+    if(!/^[A-Za-z0-9_]{2,16}$/.test(n)){ err.textContent='Use 2 to 16 letters, numbers or _ (no spaces).'; return; }
+    go.disabled=true;
+    N.me('set_name',{p_name:n}).then(function(r){ G.s.name=r.name; G.s.tag=r.tag; G.toast('You are now '+r.name+'#'+r.tag+'!',2800,'good'); G.renderAll(); UI.profile(G.s.pid); })
+     .catch(function(e){ go.disabled=false; var m=String(e.message||e); err.textContent=m==='bad name'?'That name is not allowed. Try another one.':m==='you can change your name once a week'?'You can only change your name once a week. Try again later.':m; }); }
+  go.onclick=save; inp.addEventListener('keydown',function(e){ if(e.key==='Enter') save(); });
+  return box;
+}
 function reactTo(f,p){ if(p.pid===G.s.pid) return; var body=el('div','stickers'); D.STICKERS.forEach(function(s){ var b=el('button','sticker',s.text); b.type='button'; b.onclick=function(){ N.me('react',{p_fish:f.id,p_sticker:s.id}).then(function(){ cfDone(false); G.toast('Sent "'+s.text+'" to '+p.name+'.',2200,'good'); }).catch(function(e){ cfDone(false); G.fail(e); }); }; body.appendChild(b); }); UI.confirm({title:'REACT TO '+D.SP_BY_ID[f.sp].name.toUpperCase(),body:body,note:'Stickers are the only chat in One Cast. Pick one.',yes:'CLOSE',no:'CANCEL',danger:false}); }
 function report(p){ $('reportWho').textContent='Report '+p.name+'#'+p.tag+'. The admin will take a look.'; var box=$('reportReasons'); box.innerHTML=''; D.REPORT_REASONS.forEach(function(r){ var b=el('button','pbtn',r.text.toUpperCase()); b.type='button'; b.onclick=function(){ N.me('report_player',{p_target:p.pid,p_reason:r.id}).then(function(){ G.toast('Thanks. Report sent.',2400,'good'); UI.closeAll(); }).catch(G.fail); }; box.appendChild(b); }); UI.open('reportOv'); }
 
@@ -356,6 +373,7 @@ UI.crewTick=function(){
 };
 UI.startCrewPoll=function(){ clearInterval(crewPoll); crewPoll=setInterval(function(){ if(!G.s||document.hidden) return; var c=G.s.crew, active=c&&((c.members||[]).length>1||(c.invites||[]).length); if(!active&&Math.random()>0.25) return; N.me('get_crew').then(function(cc){ var was=G.s.crew&&G.s.crew.guest; G.s.crew=cc; if(was&&!cc.guest){ G.toast('The captain ended the trip. You headed back.',3200,'info'); G.refresh(true).then(function(){ SC.layout(); G.renderAll(); }); } UI.crewTick(); if(!$('friendsOv').hidden) renderCrewBox(); }).catch(function(){}); },8000); };
 $('crewChip').onclick=function(){ UI.open('friendsOv'); };
+$('profBtn').onclick=function(){ if(G.s) UI.profile(G.s.pid); };
 
 /* ---------- news ---------- */
 function renderNews(){ var ul=$('newsList'); ul.innerHTML='<li>Loading...</li>'; N.rpc('get_news',{p_after:0}).then(function(rows){ ul.innerHTML=''; if(!rows.length) ul.innerHTML='<li class="empty">Nothing yet. Go make news.</li>'; rows.forEach(function(n){ var li=el('li',n.kind); var ic=el('span','ic'); if(n.data&&n.data.sp) ic.appendChild(A.fishImg(n.data.sp,22,false,1.5,n.data.variant,n.data.colors,'')); else ic.appendChild(icon(n.kind==='season'?'trophy':'news')); li.appendChild(ic); li.appendChild(el('div',null,'<div class="nt">'+esc(n.text)+'</div><div class="nw">'+timeAgo(n.at)+(n.pid?' · <a href="#" data-pid="'+n.pid+'">profile</a>':'')+'</div>')); ul.appendChild(li); }); ul.querySelectorAll('a[data-pid]').forEach(function(a){ a.onclick=function(e){ e.preventDefault(); UI.profile(a.getAttribute('data-pid')); }; }); if(rows.length){ G.prefs({newsSeen:rows[0].id}); UI.renderMenuBadge(); } }).catch(function(e){ ul.innerHTML='<li class="empty">'+esc(e.message)+'</li>'; }); }
