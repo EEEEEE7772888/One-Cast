@@ -47,6 +47,8 @@ create table if not exists public.lines (
   primary key (pid, idx)
 );
 
+alter table public.lines add column if not exists fight_until timestamptz; -- crankbait fight: the reel is allowed until then
+
 create table if not exists public.fish (
   id bigserial primary key,
   pid uuid not null references public.players(pid) on delete cascade,

@@ -50,6 +50,8 @@ create table if not exists public.lines (
   primary key (pid, idx)
 );
 
+alter table public.lines add column if not exists fight_until timestamptz; -- crankbait fight: the reel is allowed until then
+
 create table if not exists public.fish (
   id bigserial primary key,
   pid uuid not null references public.players(pid) on delete cascade,
@@ -611,6 +613,35 @@ end $$;
 
 create or replace function public.oc_is_lure(p_bait text) returns boolean language sql immutable as $$ select p_bait in ('crank', 'jig') $$;
 
+-- Crankbait hook-set: starts the fight. Returns how hard the fish fights (0-1): bigger and more valuable fish are harder.
+create or replace function public.lure_strike(p_pid uuid, p_secret text, p_idx int) returns jsonb language plpgsql security definer set search_path = public as $$
+declare p public.players; ln public.lines; s public.species; frac numeric; val numeric; d numeric;
+begin
+  p := oc_auth(p_pid, p_secret);
+  select * into ln from lines where pid = p_pid and idx = p_idx for update;
+  if ln.pid is null then perform oc_fail('no line there'); end if;
+  if ln.bait <> 'crank' then perform oc_fail('only crankbaits fight'); end if;
+  if now() < ln.bite_at then perform oc_fail('nothing has hit it yet'); end if;
+  if ln.fight_until is null and now() > ln.bite_at + interval '4 seconds' then
+    delete from lines where pid = p_pid and idx = p_idx; return jsonb_build_object('result', 'missed', 'now', now()); end if;
+  select * into s from species where id = ln.species;
+  frac := case when s.max_lb > s.min_lb then greatest(0, least(1, (ln.lb - s.min_lb) / (s.max_lb - s.min_lb))) else 0.5 end;
+  val := greatest(1, ln.lb * s.rate);
+  d := greatest(0.1, least(1, 0.15 + 0.55 * power(frac, 0.7) + 0.30 * least(1, log(val) / 4)));
+  if ln.variant is not null and ln.variant <> '' then d := least(1, d + 0.1); end if;
+  update lines set fight_until = coalesce(fight_until, now() + interval '90 seconds') where pid = p_pid and idx = p_idx;
+  return jsonb_build_object('result', 'fight', 'difficulty', round(d, 2), 'now', now());
+end $$;
+
+-- A lure fish that got away (turned away, slow hook-set, or lost in the fight): the line comes back empty.
+create or replace function public.lure_lose(p_pid uuid, p_secret text, p_idx int) returns jsonb language plpgsql security definer set search_path = public as $$
+declare p public.players;
+begin
+  p := oc_auth(p_pid, p_secret);
+  delete from lines where pid = p_pid and idx = p_idx and oc_is_lure(bait);
+  return jsonb_build_object('result', 'lost', 'now', now());
+end $$;
+
 create or replace function public.cast_line(p_pid uuid, p_secret text, p_idx int, p_bait text) returns jsonb language plpgsql security definer set search_path = public as $$
 declare p public.players; sp public.spots; mins numeric; r record; per text; ln public.lines; ac record; bite timestamptz;
 begin
@@ -648,7 +679,7 @@ begin
   delete from lines where pid = p_pid and idx = p_idx;
   if now() < ln.bite_at then return jsonb_build_object('result', 'early', 'now', now()); end if;
   -- a lure strike has to be answered within a few seconds, or the fish spits the hook
-  if oc_is_lure(ln.bait) and now() > ln.bite_at + interval '4 seconds' then return jsonb_build_object('result', 'missed', 'now', now()); end if;
+  if oc_is_lure(ln.bait) and now() > ln.bite_at + interval '4 seconds' and not (ln.fight_until is not null and now() <= ln.fight_until) then return jsonb_build_object('result', 'missed', 'now', now()); end if;
   select * into sp from spots where id = ln.spot;
   per := oc_period(ln.bite_at, sp.tz);
   mins := extract(epoch from (ln.bite_at - ln.cast_at)) / 60;
@@ -1271,7 +1302,7 @@ end $$;
 
 -- ============ permissions ============
 do $$ declare r record; begin
-  for r in select p.proname, pg_get_function_identity_arguments(p.oid) args from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and (p.proname like 'oc\_%' or p.proname in ('login','get_state','set_prefs','set_outfit','set_name','claim_founder','cast_line','reel_line','sell_fish','buy','travel','release_legend','friend_request','friend_respond','trade_open','get_trade','trade_set','trade_ready','trade_confirm','trade_cancel','get_trade_history','react','report_player','suggest_lake','get_board','get_news','get_legends','get_profile','get_season','get_world','set_boat','crew_invite','crew_respond','crew_leave','get_crew','set_password','login_password','delete_account','admin_overview','admin_find','admin_player','admin_report','admin_suggestion','admin_news')) loop
+  for r in select p.proname, pg_get_function_identity_arguments(p.oid) args from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and (p.proname like 'oc\_%' or p.proname in ('login','get_state','set_prefs','set_outfit','set_name','claim_founder','cast_line','reel_line','lure_strike','lure_lose','sell_fish','buy','travel','release_legend','friend_request','friend_respond','trade_open','get_trade','trade_set','trade_ready','trade_confirm','trade_cancel','get_trade_history','react','report_player','suggest_lake','get_board','get_news','get_legends','get_profile','get_season','get_world','set_boat','crew_invite','crew_respond','crew_leave','get_crew','set_password','login_password','delete_account','admin_overview','admin_find','admin_player','admin_report','admin_suggestion','admin_news')) loop
     execute format('revoke all on function public.%I(%s) from public, anon, authenticated', r.proname, r.args);
     if r.proname not like 'oc\_%' then execute format('grant execute on function public.%I(%s) to anon, authenticated', r.proname, r.args); end if;
   end loop;

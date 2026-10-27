@@ -281,6 +281,29 @@ console.log('lures and jigs');
   rpc('cast_line',[L.pid,L.secret,0,'jig']); sql(`update lines set bite_at=now()-interval '10 seconds' where pid='${L.pid}'`);
   ok(rpc('reel_line',[L.pid,L.secret,0]).result==='missed','too slow on the hook-set and the fish gets away');
   ok(rpc('cast_line',[L.pid,L.secret,0,'jig']).line.bait==='jig','jigs cast at Bass Lake'); rpc('reel_line',[L.pid,L.secret,0]);
+  // crankbait fight
+  const nFish=()=>+sql(`select count(*) from fish where pid='${L.pid}'`);
+  rpc('cast_line',[L.pid,L.secret,0,'crank']);
+  ok(rpc('lure_strike',[L.pid,L.secret,0]).error==='nothing has hit it yet','no fight before the strike');
+  sql(`update lines set bite_at=now()-interval '1 second' where pid='${L.pid}'`);
+  let fs=rpc('lure_strike',[L.pid,L.secret,0]); ok(fs.result==='fight'&&fs.difficulty>=0.1&&fs.difficulty<=1,'hook-set starts a fight (difficulty '+fs.difficulty+')');
+  sql(`update lines set bite_at=now()-interval '30 seconds' where pid='${L.pid}'`);
+  let before=nFish(), won=rpc('reel_line',[L.pid,L.secret,0]); ok(['catch','snap','nothing'].includes(won.result),'winning a 30 second fight still lands the fish ('+won.result+')');
+  rpc('cast_line',[L.pid,L.secret,0,'crank']); sql(`update lines set bite_at=now()-interval '1 second' where pid='${L.pid}'`); rpc('lure_strike',[L.pid,L.secret,0]);
+  before=nFish(); ok(rpc('lure_lose',[L.pid,L.secret,0]).result==='lost'&&nFish()===before&&+sql(`select count(*) from lines where pid='${L.pid}'`)===0,'losing the fight: no fish, line comes back');
+  rpc('cast_line',[L.pid,L.secret,0,'crank']); sql(`update lines set bite_at=now()-interval '10 seconds' where pid='${L.pid}'`);
+  ok(rpc('lure_strike',[L.pid,L.secret,0]).result==='missed','too slow to set the hook: no fight');
+  rpc('cast_line',[L.pid,L.secret,0,'crank']); sql(`update lines set bite_at=now()-interval '1 second' where pid='${L.pid}'`); rpc('lure_strike',[L.pid,L.secret,0]);
+  sql(`update lines set fight_until=now()-interval '1 second', bite_at=now()-interval '100 seconds' where pid='${L.pid}'`);
+  ok(rpc('reel_line',[L.pid,L.secret,0]).result==='missed','a fight cannot last forever');
+  rpc('cast_line',[L.pid,L.secret,0,'jig']); sql(`update lines set bite_at=now()-interval '1 second' where pid='${L.pid}'`);
+  before=nFish(); rpc('lure_lose',[L.pid,L.secret,0]); ok(nFish()===before,'a fish that turned away is not secretly caught');
+  ok(rpc('lure_strike',[L.pid,L.secret,0]).error==='no line there','nothing left after losing');
+  rpc('cast_line',[L.pid,L.secret,0,'worm']); ok(rpc('lure_lose',[L.pid,L.secret,0]).result==='lost'&&+sql(`select count(*) from lines where pid='${L.pid}'`)===1,'lure_lose never touches a bait line'); rpc('reel_line',[L.pid,L.secret,0]);
+  // difficulty grows with size
+  rpc('cast_line',[L.pid,L.secret,0,'crank']); sql(`update lines set bite_at=now()-interval '1 second', species='largemouth', lb=1, variant=null where pid='${L.pid}'`); const dSmall=rpc('lure_strike',[L.pid,L.secret,0]).difficulty; rpc('lure_lose',[L.pid,L.secret,0]);
+  rpc('cast_line',[L.pid,L.secret,0,'crank']); sql(`update lines set bite_at=now()-interval '1 second', species='largemouth', lb=20, variant=null where pid='${L.pid}'`); const dBig=rpc('lure_strike',[L.pid,L.secret,0]).difficulty; rpc('lure_lose',[L.pid,L.secret,0]);
+  ok(dBig>dSmall+0.3,'a 20 lb bass fights much harder than a 1 lb one ('+dSmall+' vs '+dBig+')');
 }
 
 console.log('dev boat and crew rides');
