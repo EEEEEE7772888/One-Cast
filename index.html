@@ -63,7 +63,8 @@
     <p class="lure-tip" id="lureTip" hidden></p>
     <canvas id="lureCanvas" class="px" width="160" height="56"></canvas>
     <div class="lure-dist" aria-hidden="true"><i id="lureDist"></i></div>
-    <ol class="lure-how" id="lureHow"></ol>
+    <div class="lure-howbox" id="lureHowBox"><button class="mk-x lure-howx" id="lureHowX" type="button" aria-label="Hide the instructions">X</button><ol class="lure-how" id="lureHow"></ol></div>
+    <button class="lure-howshow" id="lureHowShow" type="button" hidden>? HOW TO PLAY</button>
     <p class="lure-msg" id="lureMsg" aria-live="polite"></p>
     <button class="go lure-btn" id="lureBtn" type="button">HOLD TO REEL</button>
   </div>
@@ -170,6 +171,7 @@
     <div class="map-wrap" id="mapWrap"><canvas id="mapCanvas" class="px"></canvas><div class="pins" id="pins"></div>
       <div class="map-tools"><button class="pbtn" id="mapZoomIn" type="button" aria-label="Zoom in">+</button><button class="pbtn" id="mapZoomOut" type="button" aria-label="Zoom out">-</button><button class="pbtn" id="mapHere" type="button" title="Go to where you are">ME</button></div>
       <div class="map-key" id="mapKey" hidden></div>
+      <div class="map-tix" id="mapTix"></div>
       <div class="map-foot" id="mapFoot"></div></div>
   </div></div>
   <div class="overlay" id="travelOv" hidden><div class="dialog"><div class="travel-scene"><canvas id="travelCanvas" class="px"></canvas></div><p class="travel-text" id="travelTxt"></p></div></div>

@@ -424,8 +424,22 @@ function renderMapKey(){
       list.appendChild(b); }); });
   box.appendChild(list);
 }
-$('mapKeyBtn').onclick=function(){ keyOpen=!keyOpen; if(keyOpen&&window.innerWidth<700){ footOpen=false; renderMapFoot(); } renderMapKey(); };
-function renderMap(){ view=view?clampView(view):(G.s.regions.length<=1?regionView(G.spot().region):worldView()); /* new players start zoomed on Home waters */ mapList=false; pickedSpot=pickedSpot||G.s.spot; footOpen=isZoomed(); renderMapKey(); drawMap(); renderMapFoot(); clearInterval(mapTimer); mapTimer=setInterval(function(){ if($('mapOv').hidden){ clearInterval(mapTimer); return; } drawMap(); },60000);
+$('mapKeyBtn').onclick=function(){ keyOpen=!keyOpen; if(keyOpen&&window.innerWidth<700){ footOpen=false; renderMapFoot(); if(tixOpen){ tixOpen=false; renderMapTix(); } } renderMapKey(); };
+/* ---- my tickets: a small corner panel listing the regions you can travel to, and their waters ---- */
+var tixOpen=false;
+function renderMapTix(){
+  var box=$('mapTix'); box.innerHTML=''; var mine=D.REGIONS.filter(function(r){ return G.s.regions.indexOf(r.id)>=0; });
+  var t=el('button','mt-toggle','<span class="mt-ic"></span>MY TICKETS <b>'+mine.length+'/'+D.REGIONS.length+'</b><span class="mt-arrow">'+(tixOpen?'▲':'▼')+'</span>'); t.type='button'; t.setAttribute('aria-expanded',String(tixOpen));
+  t.onclick=function(){ tixOpen=!tixOpen; if(tixOpen&&window.innerWidth<700&&keyOpen){ keyOpen=false; renderMapKey(); } renderMapTix(); }; box.appendChild(t);
+  box.classList.toggle('open',tixOpen); if(!tixOpen) return;
+  var list=el('div','mt-list');
+  mine.forEach(function(r){ list.appendChild(el('div','mt-region','<i style="background:'+r.color+'"></i>'+esc(r.name.toUpperCase())));
+    D.SPOTS.filter(function(s){ return s.region===r.id; }).forEach(function(s){ var tier=D.spotTier(s.id), b=el('button','mt-spot'+(s.id===G.s.spot?' here':''),'<i style="background:'+tier.color+'" title="'+tier.name+'"></i>'+esc(s.name)+(s.id===G.s.spot?' <span class="tag">YOU</span>':''));
+      b.type='button'; b.onclick=function(){ pickedSpot=s.id; footOpen=true; if(window.innerWidth<700){ tixOpen=false; renderMapTix(); } view=regionView(s.region); drawMap(); renderMapFoot(); }; list.appendChild(b); }); });
+  var left=D.REGIONS.length-mine.length; list.appendChild(el('p','mt-note',left?left+' more region'+(left>1?'s':'')+' to unlock. Tap a locked flag to see the ticket price.':'You have every ticket in the game!'));
+  box.appendChild(list);
+}
+function renderMap(){ view=view?clampView(view):(G.s.regions.length<=1?regionView(G.spot().region):worldView()); /* new players start zoomed on Home waters */ mapList=false; pickedSpot=pickedSpot||G.s.spot; footOpen=isZoomed(); renderMapKey(); renderMapTix(); drawMap(); renderMapFoot(); clearInterval(mapTimer); mapTimer=setInterval(function(){ if($('mapOv').hidden){ clearInterval(mapTimer); return; } drawMap(); },60000);
   loadWorld().then(function(){ drawPins(); renderMapFoot(); }).catch(function(){}); }
 function isZoomed(){ var r=$('mapWrap').getBoundingClientRect(); return r.width/(view.lon1-view.lon0)>9; }
 function toXY(lon,lat,w,h){ return [(lon-view.lon0)/(view.lon1-view.lon0)*w,(view.lat0-lat)/(view.lat0-view.lat1)*h]; }

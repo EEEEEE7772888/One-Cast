@@ -27,7 +27,7 @@ L.start=function(line){
   L.active=true; $('lureBox').hidden=false;
   $('lureName').textContent=line.bait==='crank'?'CRANKBAIT':'JIG';
   $('lureTip').textContent=TIP[line.bait];
-  $('lureHow').innerHTML=HOW[line.bait].map(function(t){ return '<li>'+t+'</li>'; }).join('');
+  $('lureHow').innerHTML=HOW[line.bait].map(function(t){ return '<li>'+t+'</li>'; }).join(''); showHow(line.bait);
   setBtn(line.bait==='crank'?'HOLD TO REEL':'HOP',false);
   say('');
   var last=performance.now();
@@ -36,6 +36,10 @@ L.start=function(line){
   G.renderPanel();
 };
 L.stop=function(silent){ L.active=false; cancelAnimationFrame(raf); if($('lureBox')) $('lureBox').hidden=true; st=null; if(!silent&&root.G) root.G.renderPanel(); };
+/* the instructions can be closed with X (remembered per bait) and brought back with HOW TO PLAY */
+function howKey(b){ return 'onecast.lureHowHidden.'+b; }
+function showHow(b){ var hidden=false; try{ hidden=localStorage.getItem(howKey(b))==='1'; }catch(e){} $('lureHowBox').hidden=hidden; $('lureHowShow').hidden=!hidden; }
+function setHow(hide){ if(!st) return; try{ localStorage.setItem(howKey(st.bait),hide?'1':'0'); }catch(e){} showHow(st.bait); }
 function setBtn(t,strike){ var b=$('lureBtn'); b.textContent=t; b.classList.toggle('strike',!!strike); }
 function say(t){ if(st&&t===st.lastMsg) return; if(st) st.lastMsg=t; $('lureMsg').textContent=t; }
 function inZone(){ // is the lure doing what fish want right now?
@@ -103,6 +107,7 @@ function bind(){
   b.addEventListener('pointerup',function(){ press(false); }); b.addEventListener('pointerleave',function(){ press(false); }); b.addEventListener('pointercancel',function(){ press(false); });
   window.addEventListener('keydown',function(e){ if(L.active&&(e.code==='Space'||e.key===' ')){ e.preventDefault(); if(!e.repeat) press(true); } });
   window.addEventListener('keyup',function(e){ if(L.active&&(e.code==='Space'||e.key===' ')) press(false); });
+  $('lureHowX').onclick=function(){ setHow(true); }; $('lureHowShow').onclick=function(){ setHow(false); };
   $('lureQuit').onclick=function(){ if(!st) return; st.phase='done'; finish('You reeled the lure in.'); };
 }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',bind); else bind();
