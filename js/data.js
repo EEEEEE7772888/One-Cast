@@ -38,6 +38,7 @@ D.SPOTS=[
  {id:'bigbear',region:'home',name:'Big Bear Lake',method:'shore',tz:'America/Los_Angeles',lat:34.24,lon:-116.9,scene:'mountain',famous:true,where:'California',known:'Mountain trout',desc:'High in the mountains. Rainbow trout and crappie.'},
  {id:'neuse',region:'home',name:'Neuse River',method:'shore',tz:'America/New_York',lat:35.27,lon:-77.58,scene:'river',famous:true,where:'North Carolina',known:'Spring striped bass runs up from the sound',desc:'A slow, dark coastal river. Stripers, catfish and bass.'},
  {id:'newriver',region:'home',name:'New River',method:'shore',tz:'America/New_York',lat:36.43,lon:-81.42,scene:'river_mountain',famous:true,where:'North Carolina',known:'One of the oldest rivers on Earth, full of smallmouth',desc:'Rocky riffles and deep green pools. Smallmouth and muskie.'},
+ {id:'hatteras',region:'home',name:'Cape Hatteras Point',method:'shore',tz:'America/New_York',lat:35.22,lon:-75.53,scene:'beach',famous:true,where:'Outer Banks, North Carolina',known:'Surf fishing for giant red drum, next to the famous striped lighthouse',desc:'Salt water and big surf, free for everyone. Red drum, bluefish, pompano and spot right off the sand.'},
  /* Northwoods */
  {id:'lakeofthewoods',region:'northwoods',name:'Lake of the Woods',method:'ice',tz:'America/Winnipeg',lat:49.3,lon:-94.8,scene:'ice_pines',desc:'Walleye capital of the world. Ice shacks for miles.'},
  {id:'millelacs',region:'northwoods',name:'Mille Lacs',method:'ice',tz:'America/Chicago',lat:46.2,lon:-93.6,scene:'ice_pines',desc:'Giant muskie and walleye under thick ice.'},
@@ -112,7 +113,7 @@ D.BAIT_GEAR={deepbait:'deeprig'};
 D.BAIT_BOAT={lure:5};
 D.CREW_BONUS=0.9; D.CREW_MAX=3;
 /* What kind of water each spot is, and which boat level you need to fish it. */
-var SALT={everglades:1,keysflats:1,gulfreefs:1,gbr:1}, WATER_OF={kona:'troll',openpacific:'troll',gulfofalaska:'deep',arcticdeep:'deep',rosssea:'deep',greenland:'polar'};
+var SALT={hatteras:1,everglades:1,keysflats:1,gulfreefs:1,gbr:1}, WATER_OF={kona:'troll',openpacific:'troll',gulfofalaska:'deep',arcticdeep:'deep',rosssea:'deep',greenland:'polar'};
 D.SPOTS.forEach(function(s){ s.water=WATER_OF[s.id]||(SALT[s.id]?'salt':'fresh'); s.need=s.method==='boat'?(s.water==='salt'?2:1):s.method==='troll'?5:0; });
 
 /* ---------- Activity by time of day. Dawn and dusk double the trophy chance for every fish. ---------- */
@@ -141,7 +142,7 @@ sp({id:'crappie',name:'Black crappie',min:0.3,max:4.5,k:12.5,rate:21,act:'lowlig
 sp({id:'largemouth',name:'Largemouth bass',min:0.5,max:22,k:11.6,rate:18,act:'bass',look:'largemouth',minWait:15,maxWait:900,baits:{minnow:4,cut:0.5,sucker:0.5,crank:5,jig:3},spots:{basslake:4,farmpond:2,harlemmeer:3,lakefork:8,guntersville:7,lanier:2,clearlake:7,basslakeca:2,okeechobee:6,everglades:2,biwa:5,minnetonka:3,neuse:4}});
 sp({id:'smallmouth',name:'Smallmouth bass',min:0.5,max:11,k:12,rate:21,act:'day',look:'smallmouth',minWait:20,maxWait:1200,baits:{minnow:3,cut:0.5,sucker:0.3,crank:4,jig:5},spots:{basslake:1,walden:4,lanier:1,simcoe:2,superior:2,michigan:5,millelacs:3,newriver:8}});
 sp({id:'spotted',name:'Spotted bass',min:0.5,max:10,k:11.8,rate:21,act:'day',look:'spotted',minWait:15,maxWait:900,baits:{minnow:4,cut:0.3,crank:5,jig:3},spots:{lanier:6,guntersville:2}});
-sp({id:'striper',name:'Striped bass',min:2,max:70,k:13.5,rate:8,act:'lowlight',look:'striper',minWait:40,maxWait:0,baits:{minnow:3,cut:2,sucker:3,crank:2,jig:3},spots:{lanier:4,harlemmeer:0.5,columbia:1,neuse:5}});
+sp({id:'striper',name:'Striped bass',min:2,max:70,k:13.5,rate:8,act:'lowlight',look:'striper',minWait:40,maxWait:0,baits:{minnow:3,cut:2,sucker:3,crank:2,jig:3},spots:{lanier:4,harlemmeer:0.5,columbia:1,neuse:5,hatteras:1.5}});
 sp({id:'carp',name:'Common carp',min:2,max:60,k:13,rate:6,act:'day',look:'carp',minWait:20,maxWait:0,baits:{worm:2,cut:3},spots:{harlemmeer:6,farmpond:2,clearlake:2,ebro:3,biwa:2,thaipark:1,neuse:1.5,newriver:0.4}});
 sp({id:'channel',name:'Channel catfish',min:1,max:50,k:14.4,rate:9,act:'night',look:'channel',minWait:30,maxWait:0,baits:{minnow:0.5,cut:6,sucker:1},spots:{basslake:2,farmpond:4,lakefork:2,clearlake:4,mississippi:3,okeechobee:2,neuse:4,newriver:2}});
 sp({id:'bluecat',name:'Blue catfish',min:5,max:140,k:14,rate:24,act:'night',look:'bluecat',minWait:120,maxWait:0,baits:{cut:5,sucker:4},spots:{mississippi:5,lakefork:1,neuse:3}});
@@ -162,6 +163,14 @@ sp({id:'kokanee',name:'Kokanee salmon',min:0.5,max:6,k:12.7,rate:15,act:'day',lo
 sp({id:'lakesturgeon',name:'Lake sturgeon',min:20,max:240,k:16.3,rate:24,act:'night',look:'sturgeon',minWait:600,maxWait:0,baits:{cut:1.5,sucker:3},spots:{winnebago:5,superior:3,lakeofthewoods:1}});
 sp({id:'whitesturgeon',name:'White sturgeon',min:30,max:1100,k:16,rate:36,act:'night',look:'sturgeon',minWait:720,maxWait:0,baits:{cut:2,sucker:4},spots:{columbia:4}});
 sp({id:'gar',name:'Alligator gar',min:20,max:300,k:17,rate:30,act:'day',look:'gar',minWait:300,maxWait:0,baits:{cut:4,sucker:3},spots:{mississippi:4}});
+/* surf fishing, Cape Hatteras (free salt water in Home waters) */
+sp({id:'reddrum',name:'Red drum',min:2,max:94,k:13.4,rate:14,act:'lowlight',look:'reddrum',minWait:30,maxWait:0,baits:{worm:0.4,minnow:1,cut:5,shrimp:3,mullet:4},spots:{hatteras:4}});
+sp({id:'bluefish',name:'Bluefish',min:1,max:31,k:14,rate:15,act:'day',look:'bluefish',minWait:10,maxWait:0,baits:{worm:0.5,minnow:3,cut:5,crank:2,shrimp:1,mullet:2},spots:{hatteras:5}});
+sp({id:'spot',name:'Spot',min:0.1,max:1.3,k:11.5,rate:30,act:'panfish',look:'spot',minWait:0,maxWait:120,baits:{worm:6,shrimp:3,cut:0.5},spots:{hatteras:6}});
+sp({id:'croaker',name:'Atlantic croaker',min:0.2,max:5,k:12,rate:22,act:'any',look:'croaker',minWait:0,maxWait:240,baits:{worm:5,shrimp:3,cut:1},spots:{hatteras:5}});
+sp({id:'pompano',name:'Florida pompano',min:0.5,max:8,k:11,rate:45,act:'day',look:'pompano',minWait:10,maxWait:0,baits:{worm:3,shrimp:4},spots:{hatteras:3}});
+sp({id:'flounder',name:'Southern flounder',min:1,max:20,k:13,rate:22,act:'lowlight',look:'flounder',minWait:20,maxWait:0,baits:{minnow:4,shrimp:2,cut:1,jig:1},spots:{hatteras:3}});
+sp({id:'spanish',name:'Spanish mackerel',min:1,max:13,k:15,rate:25,act:'day',look:'spanish',minWait:10,maxWait:0,baits:{minnow:2,crank:3,shrimp:1,cut:1},spots:{hatteras:3}});
 sp({id:'drum',name:'Freshwater drum',min:2,max:50,k:13,rate:17,act:'any',look:'drum',minWait:20,maxWait:0,baits:{cut:4,minnow:1,jig:2},spots:{mississippi:5,winnebago:2}});
 sp({id:'bowfin',name:'Bowfin',min:2,max:20,k:14.5,rate:8,act:'day',look:'bowfin',minWait:30,maxWait:0,baits:{minnow:2,cut:4,crank:1},spots:{everglades:3,okeechobee:3,mississippi:1,neuse:1.5}});
 sp({id:'floridagar',name:'Florida gar',min:2,max:20,k:17,rate:9,act:'day',look:'floridagar',minWait:30,maxWait:0,baits:{minnow:3,cut:3,crank:1},spots:{everglades:4,okeechobee:3}});
@@ -302,6 +311,7 @@ D.LEGEND_DOUBLE_DAYS=14;
 D.LEGEND_PRESETS=[
  {spot:'basslake',name:'Old Bucketmouth',species:'largemouth',tier:'findable',lb:25,bait:'minnow',period:'dawn',minWait:60,line:30,clue:'A bass as big as a bucket, seen rolling in the shallows at first light. Old-timers say it only takes a live minnow after a long, quiet wait.',colors:{b:'#2E4A24',d:'#1A2C14',bel:'#D8CC98',fin:'#24381C',spot:'#0C140A'}},
  {spot:'neuse',name:'The Neuse Ghost',species:'striper',tier:'findable',lb:52,bait:'sucker',period:'dusk',minWait:120,line:60,clue:'A pale striper as long as a canoe paddle, seen chasing shad up the Neuse at dusk. It only takes a whole sucker after a long wait.',colors:{b:'#A8B4C0',d:'#5E6874',bel:'#EEF2F5',fin:'#6E7884',spot:'#2A3038'}},
+ {spot:'hatteras',name:'Old Hatteras',species:'reddrum',tier:'findable',lb:94,bait:'cut',period:'dusk',minWait:180,line:60,clue:'A bull red as old as the lighthouse, the size of the world record. It cruises the point at dusk and only takes cut bait that has soaked for three hours.',colors:{b:'#B8602A',d:'#7A3A16',bel:'#F0DCC0',fin:'#A0562A',spot:'#0A0A0A'}},
  {spot:'newriver',name:'Old Bronzeback',species:'smallmouth',tier:'findable',lb:11.5,bait:'crank',period:'dawn',minWait:0,line:30,clue:'The New River is older than the mountains around it, and so is this smallmouth. It only hits a crankbait worked just right at first light.',colors:{b:'#8A6A3A',d:'#4E3A1E',bel:'#E0CFA0',fin:'#6A5030',spot:'#2E2210'}},
  {spot:'farmpond',name:'Mudbelly',species:'channel',tier:'findable',lb:60,bait:'cut',period:'night',minWait:120,line:60,clue:'The farmer swears a catfish in the pond ate a duck. It only moves at night, when cut bait sits on the bottom for a couple of hours.',colors:{b:'#4A4036',d:'#2E2822',bel:'#C8B890',fin:'#3A3028',spot:'#1A1612'}},
  {spot:'lakefork',name:'The Texas Hog',species:'largemouth',tier:'findable',lb:28,bait:'sucker',period:'dusk',minWait:90,line:30,clue:'The biggest bass in Texas. It wants a big meal at dusk, nothing less than a whole sucker.',colors:{b:'#5A7A2E',d:'#36501C',bel:'#F0E8B0',fin:'#4A6626',spot:'#1E2C12'}},

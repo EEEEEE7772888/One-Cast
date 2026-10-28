@@ -13,6 +13,13 @@ A.spriteCanvas=function(rows,map,cls){ var c=document.createElement('canvas'); c
 var L={
  bluegill:{b:'#3E7F86',d:'#24525A',bel:'#F0A23A',fin:'#2E6168',spot:'#1B2E3A',pat:'bars',ht:.6,ear:1},
  pumpkinseed:{b:'#6A9A5A',d:'#3E6A3A',bel:'#F0B040',fin:'#4E7A48',spot:'#E06A3A',pat:'spots',ht:.6,ear:1},
+ reddrum:{b:'#C8763A',d:'#8A4A22',bel:'#F2E2CC',fin:'#B06A3A',spot:'#141414',pat:'none',ht:.3},
+ bluefish:{b:'#5A8AA0',d:'#2E5A72',bel:'#E8EEF2',fin:'#4A7A90',spot:'#1A2A34',pat:'none',ht:.28},
+ spot:{b:'#A8B0B8',d:'#6A7480',bel:'#F4F0E0',fin:'#C8B060',spot:'#2A2A2A',pat:'bars',ht:.45,ear:1},
+ croaker:{b:'#B8A880',d:'#7A6A4A',bel:'#F0E8D0',fin:'#C8A060',spot:'#6A5A3A',pat:'spots',ht:.38,whisk:1},
+ pompano:{b:'#C8D0D4',d:'#7A8A9A',bel:'#F2D84A',fin:'#E8C840',spot:'#7A8A9A',pat:'none',ht:.55},
+ flounder:{b:'#8A7A5A',d:'#5A4E38',bel:'#F0EEE4',fin:'#6E6248',spot:'#3A3226',pat:'mottle',ht:.5,flat:1},
+ spanish:{b:'#A8C0CC',d:'#3A6A8A',bel:'#F4F6F8',fin:'#6A8A9A',spot:'#E8C030',pat:'spots',ht:.22},
  perch:{b:'#C9B23A',d:'#8C7A1E',bel:'#F1E7B5',fin:'#E07A2A',spot:'#3E5A2A',pat:'bars',ht:.36},
  crappie:{b:'#A9B8A0',d:'#6E7F68',bel:'#E4EADF',fin:'#8B9C84',spot:'#2E3B2E',pat:'spots',ht:.55},
  largemouth:{b:'#5E7F3A',d:'#3D5626',bel:'#E9E2B8',fin:'#4F6B30',spot:'#24331A',pat:'stripe',ht:.4},

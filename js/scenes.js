@@ -63,7 +63,8 @@ var T={
  thai:{sky:'tropic',back:'temple',trees:'palm',ground:'#5A8A3A',water:['#5A7A4A','#1A2A14']},
  japan:{sky:'temperate',back:'mountains',trees:'round',torii:1,ground:'#5A8A4A',water:['#2F84A0','#134262']},
  outback_river:{sky:'dry',back:'flat',trees:'gum',ground:'#B85A3A',water:['#6A6A3A','#2A2A14']},
- reef:{sky:'tropic',back:'open',trees:'palm',island:1,water:['#2AB8C8','#0A5A78']}
+ reef:{sky:'tropic',back:'open',trees:'palm',island:1,water:['#2AB8C8','#0A5A78']},
+ beach:{sky:'temperate',back:'open',trees:'none',beach:1,lighthouse:1,ground:'#E2CC8E',water:['#2E86A8','#0C3456']}
 };
 S.themeOf=function(spot){ return T[spot&&spot.scene]||T.pond; };
 
@@ -206,6 +207,14 @@ function drawBarn(dk){ var x=Math.round(W*0.72), c=shade('#9A2E2A',0.2+dk), r=sh
 function drawCastle(dk){ var x=Math.round(W*0.7), c=shade('#6A6A6A',0.25+dk), d=shade('#4A4A4A',0.25+dk); R(x,horizonY-14,22,12,c); R(x,horizonY-20,5,18,d); R(x+17,horizonY-20,5,18,d); for(var i=0;i<5;i+=2){ P(x+i,horizonY-21,d); P(x+17+i,horizonY-21,d); } P(x+9,horizonY-9,'#F8D878'); }
 function drawTemple(dk){ var x=Math.round(W*0.7), g=shade('#E0B030',0.15+dk), r=shade('#B03030',0.2+dk); R(x,horizonY-10,14,8,r); for(var i=0;i<9;i++) R(x+6-Math.floor(i*0.6),horizonY-10-i,Math.max(1,3+Math.floor((9-i)*0.6)),1,g); R(x+6,horizonY-22,2,4,g); }
 function drawTorii(dk){ var x=Math.round(W*0.68), r=shade('#D83A2A',0.15+dk); R(x,horizonY-12,2,10,r); R(x+10,horizonY-12,2,10,r); R(x-2,horizonY-13,16,2,r); R(x-1,horizonY-10,14,1,r); }
+/* Cape Hatteras Lighthouse: black-and-white spiral, red brick base, black lantern; the light sweeps at night */
+function drawLighthouse(dk,t,night){ var x0=Math.max(4,dockEnd()-46), base=horizonY-3, h=34, wht=shade('#F4F2EA',0.15+dk), blk=shade('#1A1A1E',0.1+dk), brick=shade('#9A3A2A',0.2+dk);
+  for(var y=0;y<h;y++){ var wdt=7-Math.floor(y/h*3), xl=x0+Math.floor((7-wdt)/2), yy=base-y;
+    for(var i=0;i<wdt;i++){ var c=y<4?brick:(Math.floor((y+i*1.6)/5)%2?blk:wht); P(xl+i,yy,c); } }
+  var top=base-h; R(x0,top,7,1,blk); R(x0+1,top-4,5,4,blk); R(x0+2,top-3,3,2,night?'#FFE680':shade('#C8D8E0',0.2+dk)); R(x0+2,top-6,3,2,blk); P(x0+3,top-7,blk);
+  if(night){ var a=(t*0.9)%(Math.PI*2), cx=x0+3, cy=top-2; for(var r=3;r<46;r++){ var bx=Math.round(cx+Math.cos(a)*r), by=Math.round(cy+Math.sin(a)*r*0.25); if(by<horizonY-1) P(bx,by,'rgba(255,236,150,'+(0.5-r/100).toFixed(2)+')'); } } }
+/* low sand dunes with sea oats behind the beach */
+function drawDunes(dk){ var de=dockEnd(), c=shade('#D8C080',0.2+dk), o=shade('#9A9A4A',0.2+dk); for(var x=0;x<de+6;x++){ var hy=horizonY-3-Math.round(3+2*Math.sin(x*0.17)+Math.sin(x*0.43)); R(x,hy,1,horizonY-hy,c); if(x%5===2){ P(x,hy-1,o); P(x,hy-2,o); P(x+1,hy-3,o); } } }
 function drawIsland(dk){ var x=Math.round(W*0.75), s=shade('#E8D8A0',0.15+dk); for(var i=0;i<24;i++) R(x+i,horizonY-Math.round(3*Math.sin(Math.PI*i/24)),1,Math.round(3*Math.sin(Math.PI*i/24))+1,s); drawTrees('palm',dk,10,horizonY-1); }
 
 /* ---- the frame ---- */
@@ -245,6 +254,7 @@ S.draw=function(ms){
   if(th.back==='shelf') drawShelf(dk);
   if(th.back==='volcano'){ drawVolcano(dk,lt); drawHills(shade('#3A6A3A',0.2+dk),3,dk); }
   if(th.island) drawIsland(dk);
+  if(th.beach) drawDunes(dk); if(th.lighthouse) drawLighthouse(dk,t,lt<0.35);
   if(th.barn) drawBarn(dk); if(th.castle) drawCastle(dk); if(th.back==='temple') drawTemple(dk); if(th.torii) drawTorii(dk);
   if(th.trees&&th.trees!=='none'&&th.back!=='open'&&!th.island) drawTrees(th.trees,dk,th.trees==='jungle'?9:th.trees==='acacia'?26:th.trees==='palm'?16:th.back==='skyline'?14:7);
   if(m==='troll'){ for(i=0;i<3;i++){ var bxx=Math.floor((hash(i*5.1)*W*1.6+t*9+scroll*0.6)%(W*1.6))-W*0.3, byy=8+Math.round(hash(i*2.3)*horizonY*0.5+Math.sin(t*2+i)*2), fl=Math.floor(t*4+i)%2; P(bxx,byy,'#1B1F2A'); P(bxx-1,byy+(fl?1:0),'#1B1F2A'); P(bxx+1,byy+(fl?1:0),'#1B1F2A'); } }
@@ -303,8 +313,14 @@ S.draw=function(ms){
   }
   if(m==='shore'){
     var de=dockEnd(), pl=shade('#8A6A3A',0.2+dkL), pd=shade('#5A4020',0.25+dkL), gr=shade(th.ground||'#4E7A3A',0.2+dkL);
-    for(x=0;x<de-18;x++){ var gy2=horizonY-3-Math.round(Math.sin(x*0.3)*0.5); R(x,gy2,1,wt-gy2+2,gr); }
-    R(de-22,horizonY-4,22,2,pl); R(de-22,horizonY-2,22,1,pd); for(x=de-20;x<de;x+=5) R(x,horizonY-1,1,wt-horizonY+8,pd);
+    if(th.beach){ // sand running down into the surf, with foam that washes in and out
+      var wet=shade('#B8A06A',0.2+dkL); for(x=0;x<de+8;x++){ var gy3=horizonY-3+Math.max(0,Math.round((x-de+4)*0.6)); R(x,gy3,1,wt-gy3+3,x>de-6?wet:gr); }
+      var sw=Math.round(Math.sin(t*1.4)*3); for(x=de-4+sw;x<de+14+sw;x++) if((x+Math.floor(t*3))%3) P(x,wt+(x>de+8+sw?1:0),'rgba(250,252,255,'+(0.75*Math.max(0.3,lt)).toFixed(2)+')');
+      for(x=de+20;x<W;x+=1){ var f=Math.sin(x*0.21+t*1.8)+Math.sin(x*0.07-t*0.9); if(f>1.3) P(x,wt+2+Math.round(Math.sin(x*0.5)),'rgba(240,248,255,'+(0.45*Math.max(0.3,lt)).toFixed(2)+')'); }
+    } else {
+      for(x=0;x<de-18;x++){ var gy2=horizonY-3-Math.round(Math.sin(x*0.3)*0.5); R(x,gy2,1,wt-gy2+2,gr); }
+      R(de-22,horizonY-4,22,2,pl); R(de-22,horizonY-2,22,1,pd); for(x=de-20;x<de;x+=5) R(x,horizonY-1,1,wt-horizonY+8,pd);
+    }
     aY=horizonY-18-hop;
     /* rods for other lines, stuck in a holder on the dock */
     var ls=S.hooks.lines?S.hooks.lines():[]; var selI=S.hooks.sel?S.hooks.sel():0;

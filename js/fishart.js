@@ -14,6 +14,8 @@ function dark(c,t){ return mix(c,'#000000',t); }
 /* Body plans. tail: fork | deepfork | crescent | round | square | shark | eel | fan
    dorsal: soft | spiny | long | back | sail | tiny | none ; adipose: small fin near tail (salmon, catfish) */
 var PLAN={
+ reddrum:{tail:'square',dorsal:'spiny',ocellus:1}, bluefish:{tail:'fork',dorsal:'spiny',mouth:0.15,jaw:1}, spot:{tail:'fork',dorsal:'spiny',mouth:0.05},
+ croaker:{tail:'square',dorsal:'spiny',whisk:1}, pompano:{tail:'deepfork',dorsal:'soft'}, flounder:{tail:'fan',dorsal:'flat'}, spanish:{tail:'crescent',dorsal:'spiny',finlets:1},
  bluegill:{tail:'square',dorsal:'spiny',mouth:0.05}, pumpkinseed:{tail:'square',dorsal:'spiny',mouth:0.05}, perch:{tail:'fork',dorsal:'spiny'},
  crappie:{tail:'square',dorsal:'spiny',mouth:0.1}, largemouth:{tail:'square',dorsal:'spiny',mouth:0.2,jaw:1}, smallmouth:{tail:'square',dorsal:'spiny',mouth:0.15,jaw:1},
  spotted:{tail:'square',dorsal:'spiny',mouth:0.16,jaw:1}, striper:{tail:'fork',dorsal:'spiny'}, carp:{tail:'fork',dorsal:'long',whisk:1},
