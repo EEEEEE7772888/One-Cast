@@ -19,6 +19,7 @@ D.SPECIES.forEach(s=>{ Object.keys(s.baits).forEach(b=>{ if(s.baits[b]>0) sb.pus
 out.push('insert into species_baits (species,bait,w) values '+sb.join(',')+';');
 out.push('insert into spot_species (spot,species,w) values '+ss.join(',')+';');
 out.push('insert into legend_presets (spot,name,species,tier,lb,bait,period,min_wait,min_line,clue,colors) values '+D.LEGEND_PRESETS.map(p=>`(${q(p.spot)},${q(p.name)},${q(p.species)},${q(p.tier)},${p.lb},${q(p.bait)},${q(p.period)},${p.minWait},${p.line},${q(p.clue)},${j(p.colors)})`).join(',')+' on conflict (spot) do nothing;');
+out.push('insert into config (k,v) values (\'derby\','+j(D.DERBY)+') on conflict (k) do update set v=excluded.v;');
 const key=process.argv[2]||null;
 out.push('');
 // the public sql/data.sql never contains the admin key; only the private full file (argv[3]) does

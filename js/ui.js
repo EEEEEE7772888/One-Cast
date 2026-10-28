@@ -5,10 +5,11 @@ var D=window.OC, A=window.ART, N=window.NET, M=window.WMAP, SC=window.SCENE, G=w
 function $(id){ return document.getElementById(id); }
 function el(tag,cls,html){ var e=document.createElement(tag); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e; }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
-var OVERLAYS=['rodOv','dockOv','menuOv','tackleOv','baitOv','gearOv','shopOv','bucketOv','fishOv','cardOv','journalOv','legendOv','achOv','boardOv','friendsOv','tradeOv','profileOv','newsOv','mapOv','guideOv','saveOv','helpOv','awayOv','reportOv','suggestOv'];
+var OVERLAYS=['derbyOv','rodOv','dockOv','menuOv','tackleOv','baitOv','gearOv','shopOv','bucketOv','fishOv','cardOv','journalOv','legendOv','achOv','boardOv','friendsOv','tradeOv','profileOv','newsOv','mapOv','guideOv','saveOv','helpOv','awayOv','reportOv','suggestOv'];
 var RENDER={rodOv:renderRods,guideOv:renderGuide,dockOv:renderDock,menuOv:renderMenu,tackleOv:renderTackle,baitOv:renderBaitShop,gearOv:renderGear,shopOv:renderShop,bucketOv:renderBucket,journalOv:renderJournal,legendOv:renderLegends,achOv:renderAch,boardOv:renderBoard,friendsOv:renderFriends,newsOv:renderNews,mapOv:renderMap,saveOv:renderSave};
 UI.open=function(id){ OVERLAYS.forEach(function(o){ if(o!==id&&o!=='cardOv') $(o).hidden=true; }); $(id).hidden=false; if(RENDER[id]) RENDER[id](); var f=$(id).querySelector('.x,button,select,input'); if(f&&id!=='mapOv') try{ f.focus({preventScroll:true}); }catch(e){} if(id==='mapOv') G.coachEvent&&G.coachEvent('map'); };
 UI.closeAll=function(){ OVERLAYS.forEach(function(o){ $(o).hidden=true; }); $('resetAsk').hidden=true; $('reset').hidden=false; if(G.tradeId){ stopTradePoll(); } if(G.s){ G.renderAll(); G.checkAch(); } };
+UI.RENDER=RENDER;
 UI.anyOpen=function(){ return OVERLAYS.some(function(o){ return !$(o).hidden; }); };
 UI.afterRefresh=function(){ UI.crewTick(); if(!$('menuOv').hidden) renderMenu(); if(!$('friendsOv').hidden) renderFriends(); if(!$('bucketOv').hidden) renderBucket(); };
 document.querySelectorAll('[data-close]').forEach(function(b){ b.addEventListener('click',UI.closeAll); });
@@ -41,6 +42,7 @@ function renderMenu(){
     ['hat','CLOTHES','Dress your angler','shopOv'],
     ['book','FISH JOURNAL',Object.keys(G.s.journal).filter(function(k){ return k.indexOf('legend:')!==0; }).length+' of '+D.SPECIES.length+' species','journalOv'],
     ['book','GUIDEBOOKS',(G.s.gear.books||[]).length+' of 2 · best times, baits and legend secrets','guideOv'],
+    ['trophy','WEEKEND DERBY',UI.derbyBlurb?UI.derbyBlurb():'Biggest fish of the weekend wins','derbyOv'],
     ['trophy','LEADERBOARD','World, region and species boards','boardOv'],
     ['friends','FRIENDS AND TRADING',G.s.friends.filter(function(f){ return f.status==='accepted'; }).length+' friends'+(G.s.trades.length?' · '+G.s.trades.length+' open trade'+(G.s.trades.length>1?'s':''):'')+pendingTxt(),'friendsOv'],
     ['news','WORLD NEWS',unread?unread+' new':'Legends, records and rare fish','newsOv'],

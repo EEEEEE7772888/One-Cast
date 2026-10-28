@@ -568,7 +568,95 @@ begin
   if ln.variant is not null then
     perform oc_news(ln.variant, p_pid, p.name || '#' || p.tag || ' caught a ' || ln.variant || ' ' || (select name from species where id = ln.species) || '!', jsonb_build_object('sp', ln.species, 'lb', ln.lb, 'variant', ln.variant, 'fish', f.id)); end if;
   res := jsonb_build_object('result', 'catch', 'fish', oc_fish_json(f), 'newSpecies', nsp, 'newBest', nbest, 'worldRecord', worldrec, 'minutes', round(mins), 'daily', dl, 'reward', reward, 'now', now());
+  res := res || jsonb_build_object('derby', oc_derby_enter(p_pid, f));
   return res;
+end $$;
+
+-- ============ the weekend derby ============
+-- The derby for the weekend at or after ts (Saturday 00:00 to Monday 00:00, US Eastern). Made on first use.
+create or replace function public.oc_derby_at(ts timestamptz) returns public.derbies language plpgsql as $$
+declare cfg jsonb; tz text; loc timestamp; sat date; dkey text; d public.derbies; rot jsonb; n int;
+begin
+  select c.v into cfg from config c where c.k = 'derby';
+  tz := coalesce(cfg ->> 'tz', 'America/New_York');
+  loc := ts at time zone tz;
+  sat := loc::date + (6 - extract(isodow from loc)::int);
+  dkey := 'd' || to_char(sat, 'YYYY-MM-DD');
+  select * into d from derbies where key = dkey;
+  if d.key is null then
+    rot := coalesce(cfg -> 'rotation', '["largemouth"]'::jsonb); n := jsonb_array_length(rot);
+    insert into derbies (key, species, starts_at, ends_at)
+      values (dkey, rot ->> (((((sat - date '2026-01-03') / 7) % n) + n) % n), (sat::timestamp) at time zone tz, ((sat + 2)::timestamp) at time zone tz)
+      on conflict (key) do nothing;
+    select * into d from derbies where key = dkey;
+  end if;
+  return d;
+end $$;
+
+-- Pays out every derby that has ended: prizes for the top 3 (and the cap for 1st), a little something for everyone who entered.
+create or replace function public.oc_derby_award() returns void language plpgsql as $$
+declare d public.derbies; cfg jsonb; rec record; rk int; res jsonb; prize bigint; sp text; hat text;
+begin
+  select c.v into cfg from config c where c.k = 'derby';
+  hat := coalesce(cfg ->> 'hat', 'hat_derby');
+  for d in select * from derbies where not awarded and ends_at <= now() order by ends_at for update skip locked loop
+    res := '[]'::jsonb; rk := 0;
+    select name into sp from species where id = d.species;
+    for rec in select e.*, p.name, p.tag from derby_entries e join players p on p.pid = e.pid
+               where e.derby = d.key and not p.banned and not p.hidden order by e.lb desc, e.caught_at loop
+      rk := rk + 1;
+      prize := coalesce((cfg -> 'prizes' ->> (rk - 1))::bigint, 0) + coalesce((cfg ->> 'entry')::bigint, 0);
+      update players set coins = coins + prize,
+        items = (case when rk = 1 and not (hat = any(items)) then array_append(items, hat) else items end),
+        stats = stats || jsonb_build_object('derbies', coalesce((stats ->> 'derbies')::int, 0) + 1, 'derbyWins', coalesce((stats ->> 'derbyWins')::int, 0) + (case when rk = 1 then 1 else 0 end))
+        where pid = rec.pid;
+      if rk <= 10 then res := res || jsonb_build_object('rank', rk, 'pid', rec.pid, 'name', rec.name, 'tag', rec.tag, 'lb', rec.lb, 'variant', rec.variant, 'prize', prize); end if;
+    end loop;
+    update derbies set awarded = true, results = res where key = d.key;
+    if rk > 0 then
+      perform oc_news('derby', (res -> 0 ->> 'pid')::uuid, (res -> 0 ->> 'name') || '#' || (res -> 0 ->> 'tag') || ' won the ' || sp || ' Derby with a ' || oc_fmt_lb((res -> 0 ->> 'lb')::numeric) || ' fish! ' || rk || ' angler' || (case when rk = 1 then '' else 's' end) || ' entered.',
+        jsonb_build_object('sp', d.species, 'lb', (res -> 0 ->> 'lb')::numeric, 'derby', d.key));
+    end if;
+  end loop;
+end $$;
+
+-- Called for every kept catch: during a derby, a fish of the featured kind is entered (only your biggest counts).
+create or replace function public.oc_derby_enter(p_pid uuid, f public.fish) returns jsonb language plpgsql as $$
+declare d public.derbies; prev numeric; rk int; n int; best numeric;
+begin
+  d := oc_derby_at(now());
+  if now() < d.starts_at or now() >= d.ends_at or f.species <> d.species or f.legend_id is not null then return null; end if;
+  select lb into prev from derby_entries where derby = d.key and pid = p_pid;
+  if prev is null or f.lb > prev then
+    insert into derby_entries (derby, pid, lb, inches, variant, spot, caught_at) values (d.key, p_pid, f.lb, f.inches, f.variant, f.spot, now())
+      on conflict (derby, pid) do update set lb = excluded.lb, inches = excluded.inches, variant = excluded.variant, spot = excluded.spot, caught_at = excluded.caught_at;
+  end if;
+  best := greatest(coalesce(prev, 0), f.lb);
+  select count(*) + 1 into rk from derby_entries e join players p on p.pid = e.pid where e.derby = d.key and not p.hidden and not p.banned and (e.lb > best or (e.lb = best and e.pid <> p_pid and e.caught_at < (select caught_at from derby_entries where derby = d.key and pid = p_pid)));
+  select count(*) into n from derby_entries where derby = d.key;
+  return jsonb_build_object('key', d.key, 'sp', d.species, 'lb', f.lb, 'best', best, 'improved', prev is null or f.lb > prev, 'first', prev is null, 'rank', rk, 'entrants', n);
+end $$;
+
+-- The derby page: this weekend's (or the next) derby, the live top 10, your place, and last weekend's winners.
+create or replace function public.get_derby(p_pid uuid default null) returns jsonb language plpgsql security definer set search_path = public as $$
+declare d public.derbies; cfg jsonb; board jsonb; me jsonb; last public.derbies; n int; myrank int;
+begin
+  perform oc_derby_award();
+  select c.v into cfg from config c where c.k = 'derby';
+  d := oc_derby_at(now());
+  if now() >= d.ends_at then d := oc_derby_at(now() + interval '2 days'); end if; -- Monday: show next weekend
+  select coalesce(jsonb_agg(x order by x.rank), '[]'::jsonb) into board from (
+    select row_number() over (order by e.lb desc, e.caught_at) as rank, e.pid, p.name, p.tag, e.lb, e.inches, e.variant, e.spot, e.caught_at as at
+    from derby_entries e join players p on p.pid = e.pid where e.derby = d.key and not p.hidden and not p.banned order by e.lb desc, e.caught_at limit 10) x;
+  select count(*) into n from derby_entries e join players p on p.pid = e.pid where e.derby = d.key and not p.hidden and not p.banned;
+  if p_pid is not null then
+    select jsonb_build_object('lb', e.lb, 'inches', e.inches, 'rank', (select count(*) + 1 from derby_entries o join players q on q.pid = o.pid where o.derby = d.key and not q.hidden and not q.banned and (o.lb > e.lb or (o.lb = e.lb and o.caught_at < e.caught_at))))
+      into me from derby_entries e where e.derby = d.key and e.pid = p_pid;
+  end if;
+  select * into last from derbies where awarded and key < d.key order by key desc limit 1;
+  return jsonb_build_object('key', d.key, 'sp', d.species, 'startsAt', d.starts_at, 'endsAt', d.ends_at, 'live', now() >= d.starts_at and now() < d.ends_at,
+    'board', board, 'entrants', n, 'me', me, 'prizes', cfg -> 'prizes', 'entry', cfg -> 'entry',
+    'last', case when last.key is null then null else jsonb_build_object('key', last.key, 'sp', last.species, 'results', last.results) end, 'now', now());
 end $$;
 
 create or replace function public.oc_fmt_lb(lb numeric) returns text language plpgsql immutable as $$

@@ -163,6 +163,7 @@ G.reel=function(){
     NATIVE.buzz(f.legend||r.newBest?'big':'catch');
     G.renderAll(); G.coachEvent('reel');
     setTimeout(function(){ UI.showCard(G.last); },wait+350);
+    if(r.derby&&UI.derbyCatch) setTimeout(function(){ UI.derbyCatch(r.derby); },wait+900);
     if(r.daily) G.s.daily=r.daily;
   }).catch(function(e){ G.fail(e); if(!e.offline) G.refresh(true); }).then(function(){ G.busy=false; G.renderPanel(); });
 };

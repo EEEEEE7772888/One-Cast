@@ -293,6 +293,25 @@ D.GEAR=[
  {id:'deeprig',name:'Deep-drop rig',price:150000,kind:'method',lvl:1,desc:'An electric reel and 1,000 feet of braided line. Without it, deep-drop spots only give you small fish near the surface.'}
 ];
 
+/* ---------- The weekend derby. Every Saturday and Sunday (US Eastern time) one Home waters fish is featured;
+   the biggest one caught that weekend wins. Everyone who enters gets a little something. ---------- */
+D.DERBY={tz:'America/New_York',
+  rotation:['largemouth','rainbow','channel','crappie','smallmouth','reddrum','carp','brown','striper','bluegill','walleye','bluefish'],
+  prizes:[20000,8000,2500], entry:250, hat:'hat_derby',
+  /* a hand-written tip for each featured fish (the derby page adds where, baits and times from the fish data) */
+  tips:{largemouth:'Big bass hide near cover and feed hardest at dawn and dusk. Jerkbaits and crankbaits get fast strikes from good ones; a minnow left to soak for a long time is how the real giants get caught.',
+    rainbow:'Davidson River and Big Bear Lake are loaded with rainbows. A dry fly drifted without drag is the most fun, and a minnow left out longer finds the big ones.',
+    channel:'Channel cats love smelly bait. Put cut bait out, be patient, and the longer it soaks the bigger the cat. Night is great.',
+    crappie:'Crappie bite best when the light is low. Jigs and minnows both work; they school up, so if you catch one, cast right back.',
+    smallmouth:'Smallmouth love clear, rocky water: New River is the place. Jigs and jerkbaits fished well catch the biggest bronzebacks.',
+    reddrum:'Cape Hatteras Point is red drum heaven, and it is free. Cut bait or live mullet, soak it long, and fish at dusk for a bull red.',
+    carp:'Carp are slow and heavy. Cut bait or worms, then wait. The biggest ones come after a long soak.',
+    brown:'Browns are sneaky and bite best in low light. Fish Davidson River at dusk with a dry fly or a minnow, and give it time.',
+    striper:'Stripers roam Lake Lanier, the Neuse River and Cape Hatteras. Low light is best; suckers and cut bait catch the monsters.',
+    bluegill:'Everyone can catch bluegill, so this one comes down to luck and patience. Worms get lots of bites, and minnows find the bigger bulls.',
+    walleye:'Walleye live in the New River and bite best at dusk and at night. Jigs and jerkbaits fished well, or a minnow left to soak.',
+    bluefish:'Bluefish crash bait in the surf at Cape Hatteras in daylight. Cut bait and jerkbaits both work; they are fast and they fight.'}};
+
 /* ---------- Clothes shop (cosmetic). ---------- */
 D.ITEMS=[
  {id:'skin_1',slot:'skin',name:'Fair',price:0,c:{S:'#F2C9A0',s:'#D9A77A'}},
@@ -310,6 +329,7 @@ D.ITEMS=[
  {id:'hat_river',slot:'hat',name:'River Master cap',price:0,prize:true,hat:'champ',c:{B:'#2E7D3A',Y:'#FFC94A',b:'#1A4A22'}},
  {id:'hat_tide',slot:'hat',name:'Tide Master cap',price:0,prize:true,hat:'champ',c:{B:'#1E5AA8',Y:'#46D8D0',b:'#0E3060'}},
  {id:'hat_master',slot:'hat',name:'Master Angler crown',price:0,prize:true,hat:'crown',c:{Y:'#E8F6FF',y:'#8FB8D8',J:'#B07CFF',U:'#5CF08A'}},
+ {id:'hat_derby',slot:'hat',name:'Derby Champion cap',price:0,prize:true,hat:'champ',c:{B:'#C8302A',Y:'#FFC94A',b:'#7A1A16'}},
  {id:'hat_founder',slot:'hat',name:'Founder cap',price:0,prize:true,hat:'champ',c:{B:'#0A1530',Y:'#9FD3F2',b:'#14294C'}},
  {id:'coat_orange',slot:'coat',name:'Orange parka',price:0,c:{O:'#E8732A',o:'#B5521A',G:'#2B2F3A'}},
  {id:'coat_green',slot:'coat',name:'Fishing vest',price:200,c:{O:'#5E7F3A',o:'#3D5626',G:'#2B2F3A'}},

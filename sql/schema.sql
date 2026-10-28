@@ -262,6 +262,27 @@ do $$ begin
   end if;
 end $$;
 
+-- The weekend derby: one row per weekend (key d<saturday date>), and each player's biggest fish of the featured kind.
+create table if not exists public.derbies (
+  key text primary key,
+  species text not null,
+  starts_at timestamptz not null,
+  ends_at timestamptz not null,
+  awarded boolean not null default false,
+  results jsonb not null default '[]'
+);
+create table if not exists public.derby_entries (
+  derby text not null references public.derbies(key) on delete cascade,
+  pid uuid not null references public.players(pid) on delete cascade,
+  lb numeric(9,3) not null,
+  inches numeric(7,2),
+  variant text,
+  spot text,
+  caught_at timestamptz not null default now(),
+  primary key (derby, pid)
+);
+create index if not exists derby_entries_board on public.derby_entries (derby, lb desc, caught_at);
+
 -- Lock everything down. The website only gets the functions.
 do $$ declare t text; begin
   for t in select tablename from pg_tables where schemaname='public' loop

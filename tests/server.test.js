@@ -476,5 +476,37 @@ console.log('hard lures, snags, rods and reels');
   ok(rpc('get_state',[O.pid,O.secret]).gear.reel===3,'the migration only runs once');
 }
 
+console.log('weekend derby');
+{
+  const mk=(n)=>{ const P={pid:uuid(),secret:'g'.repeat(10)+uuid().replace(/-/g,'').slice(0,20)}; rpc('login',[P.pid,P.secret,n]); return P; };
+  let d=rpc('get_derby',[null]);
+  const sat=new Date(d.startsAt);
+  ok(d.key&&D.DERBY.rotation.includes(d.sp)&&[48,49,47].includes((new Date(d.endsAt)-sat)/3600e3),'there is always a derby this or next weekend, Saturday and Sunday (48 hours, 49 when the clocks fall back) ('+d.key+', '+d.sp+')');
+  ok(new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short',hour:'numeric',hour12:false}).format(sat).replace(/\s/g,'')==='Sat,00'||/Sat.*24|Sat.*00/.test(new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short',hour:'2-digit',hour12:false}).format(sat)),'it starts Saturday at midnight Eastern');
+  // make it live now, featuring largemouth
+  sql(`update derbies set species='largemouth', starts_at=now()-interval '1 hour', ends_at=now()+interval '1 hour' where key='${d.key}'`);
+  const X=mk('DerbyA'), Y=mk('DerbyB'), Z=mk('DerbyC'), W=mk('DerbyD');
+  const catchFish=(P,sp,lb)=>{ sql(`update players set baits=baits||'{minnow}', spot='basslake' where pid='${P.pid}'`); rpc('cast_line',[P.pid,P.secret,0,'minnow']); sql(`update lines set bite_at=now()-interval '1 second', species='${sp}', lb=${lb}, inches=10, snap=false, legend_roll=0.99 where pid='${P.pid}'`); return rpc('reel_line',[P.pid,P.secret,0]); };
+  let r=catchFish(X,'largemouth',5); ok(r.result==='catch'&&r.derby&&r.derby.first&&r.derby.rank===1,'a largemouth during the derby is entered: #1');
+  r=catchFish(X,'bluegill',1); ok(r.result==='catch'&&r.derby===null,'other fish do not count');
+  r=catchFish(Y,'largemouth',8); ok(r.derby.rank===1,'a bigger one takes #1');
+  r=catchFish(X,'largemouth',3); ok(r.derby.improved===false&&r.derby.best==5&&r.derby.rank===2,'a smaller fish does not replace your best');
+  catchFish(Z,'largemouth',2); catchFish(W,'largemouth',1);
+  d=rpc('get_derby',[X.pid]); ok(d.live&&d.board.length===4&&d.board[0].name==='DerbyB'&&d.me.rank===2&&+d.me.lb===5,'the board and your place');
+  // sell the fish: the entry stays
+  const fx=rpc('get_state',[X.pid,X.secret]).fish.map(f=>f.id); rpc('sell_fish',[X.pid,X.secret,fx]); ok(rpc('get_derby',[X.pid]).me.rank===2,'selling your fish does not take it out of the derby');
+  // end it and pay out
+  const before={}; [X,Y,Z,W].forEach(P=>before[P.pid]=rpc('get_state',[P.pid,P.secret]).coins);
+  sql(`update derbies set starts_at=now()-interval '3 hours', ends_at=now()-interval '1 second' where key='${d.key}'`);
+  rpc('get_derby',[null]);
+  const gain=P=>rpc('get_state',[P.pid,P.secret]).coins-before[P.pid];
+  ok(gain(Y)===20250&&gain(X)===8250&&gain(Z)===2750&&gain(W)===250,'prizes: $20,000 / $8,000 / $2,500 for the top 3, plus $250 for everyone who entered');
+  ok(rpc('get_state',[Y.pid,Y.secret]).items.includes('hat_derby'),'the winner gets the Derby Champion cap');
+  rpc('get_derby',[null]); ok(rpc('get_state',[Y.pid,Y.secret]).coins-before[Y.pid]===20250,'prizes are only paid once');
+  ok(/DerbyB#\d+ won the Largemouth bass Derby with a 8 lb fish! 4 anglers entered\./.test(sql("select text from news where kind='derby' order by id desc limit 1")),'the winner is in the world news');
+  ok(JSON.parse(sql(`select results from derbies where key='${d.key}'`))[0].name==='DerbyB','the results are kept for the derby page');
+  sql(`insert into derbies (key,species,starts_at,ends_at,awarded,results) select 'd2000-01-01',species,starts_at,ends_at,true,results from derbies where key='${d.key}'; delete from derbies where key='${d.key}'`); const after=rpc('get_derby',[null]); ok(after.last&&after.last.results[0].name==='DerbyB'&&after.key!=='d2000-01-01','last weekend\'s winners show on the derby page'); sql(`delete from derbies where key='d2000-01-01'`);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);
