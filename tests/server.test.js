@@ -377,6 +377,19 @@ console.log('dev boat and crew rides');
     const fail=rpc('trade_confirm',[P2.pid,P2.secret,t.id]); ok(fail.status==='failed'&&/coins/.test(fail.reason),'a trade that cannot finish ends cleanly with a reason');
     ok(sql(`select status from trades where id=${t.id}`)==='failed'&&sql(`select pid from fish where id=${fid}`)===P2.pid,'nothing was swapped and the trade is not stuck open');
     const t2=rpc('trade_open',[P1.pid,P1.secret,P2.pid]); ok(t2.id!==t.id&&t2.status==='open','a new trade can start right away'); }
+  // fish index rewards
+  { const I=mk('Indexer'); const fresh=sql(`select string_agg(x,',') from oc_index_species('fresh') x`).split(',');
+    ok(rpc('claim_index',[I.pid,I.secret,'fresh']).error==='you still need '+fresh.length+' more fish','cannot claim an unfinished section');
+    sql(`update players set journal=(select jsonb_object_agg(x,'{"n":1,"best":1}'::jsonb) from oc_index_species('fresh') x) where pid='${I.pid}'`);
+    const c0=+sql(`select coins from players where pid='${I.pid}'`), r=rpc('claim_index',[I.pid,I.secret,'fresh']);
+    ok(r.ok&&r.reward===50000&&r.items.includes('hat_river')&&r.coins===c0+50000,'freshwater section pays $50,000 and the River Master cap');
+    ok(rpc('claim_index',[I.pid,I.secret,'fresh']).error==='you already claimed that reward','each reward only once');
+    ok(/more fish/.test(rpc('claim_index',[I.pid,I.secret,'salt']).error),'saltwater still needs its own fish');
+    sql(`update players set journal=(select jsonb_object_agg(x,'{"n":1,"best":1}'::jsonb) from oc_index_species('all') x) where pid='${I.pid}'`);
+    ok(rpc('claim_index',[I.pid,I.secret,'salt']).reward===100000,'saltwater section pays $100,000');
+    const all=rpc('claim_index',[I.pid,I.secret,'all']); ok(all.reward===1000000&&all.items.includes('hat_master'),'the whole index pays $1,000,000 and the Master Angler crown');
+    ok(+sql(`select count(*) from news where kind='index' and pid='${I.pid}'`)===3,'finishing a section makes world news');
+    ok(rpc('claim_index',[I.pid,I.secret,'gold']).error==='no such reward','unknown reward refused'); }
   // other boats still hold 3
   const T=mk('SmallBoat'), q=[mk('Q1'),mk('Q2'),mk('Q3'),mk('Q4')]; q.forEach(x=>fr(T,x));
   q.slice(0,3).forEach(x=>{ rpc('crew_invite',[T.pid,T.secret,x.pid]); rpc('crew_respond',[x.pid,x.secret,T.pid,true]); });

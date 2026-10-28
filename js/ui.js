@@ -228,6 +228,7 @@ function renderJournal(){
   spots.forEach(function(s){ D.spotSpecies(s.id).forEach(function(sp){ if(!seen[sp.id]){ seen[sp.id]=1; list.push(sp); } }); });
   if(all) D.SPECIES.forEach(function(sp){ if(!seen[sp.id]){ seen[sp.id]=1; list.push(sp); } });
   list.sort(function(a,b){ return a.max-b.max; });
+  renderIndexRewards(all);
   var caught=list.filter(function(s){ return G.s.journal[s.id]; }).length;
   $('journalNote').innerHTML=all?'You have caught <b>'+caught+' of '+list.length+'</b> fish in the game. The ones you have not caught yet are blacked out. Tap any fish for where and how to catch it.'
     :D.REGION_BY_ID[jRegion].name+': <b>'+caught+' of '+list.length+'</b> species across '+spots.map(function(s){ return '<b>'+esc(s.name)+'</b>'; }).join(', ')+'. Tap a fish for where and how to catch it.';
@@ -235,6 +236,20 @@ function renderJournal(){
     c.appendChild(el('span','nm',j?esc(sp.name):'???')); c.appendChild(el('span','v',j?'best '+D.fmtWeight(+j.best):'not yet'));
     if(j&&(j.golden||j.albino)) c.appendChild(el('span','sub',(j.golden?'golden ':'')+(j.albino?'albino':'')));
     c.onclick=function(){ journalDetail(sp,j); }; body.appendChild(c); });
+}
+/* rewards for finishing the index: freshwater, saltwater, everything */
+function renderIndexRewards(show){
+  var box=$('indexRewards'); box.hidden=!show; if(!show) return; box.innerHTML='';
+  var got=(G.s.stats&&G.s.stats.index)||{};
+  D.INDEX_REWARDS.forEach(function(r){ var sec=D.indexSection(r.id), have=sec.filter(function(sp){ return G.s.journal[sp.id]; }).length, done=have>=sec.length, claimed=!!got[r.id], it=D.ITEM_BY_ID[r.item];
+    var row=el('div','idx-r'+(claimed?' claimed':done?' ready':'')+(r.id==='all'?' big':''));
+    row.appendChild(el('div','idx-t','<b>'+esc(r.name.toUpperCase())+'</b><span>'+have+' / '+sec.length+'</span>'));
+    var bar=el('div','idx-bar'); var fill=el('i'); fill.style.width=Math.round(have/sec.length*100)+'%'; bar.appendChild(fill); row.appendChild(bar);
+    var foot=el('div','idx-f','<span class="idx-prize">'+D.money(r.coins)+' + '+esc(it?it.name:'a prize')+'</span>');
+    if(claimed) foot.appendChild(el('span','tag green','CLAIMED'));
+    else if(done){ var b=el('button','pbtn gold','CLAIM'); b.type='button'; b.onclick=function(){ b.disabled=true; N.me('claim_index',{p_kind:r.id}).then(function(x){ G.s.coins=x.coins; G.s.items=x.items; G.s.stats=x.stats; G.toast((r.id==='all'?'YOU CAUGHT EVERY FISH IN THE GAME! ':'Section complete! ')+'+'+D.money(x.reward)+' and the '+(it?it.name:'prize')+' (wear it in the Clothes shop).',5000,'good'); if(window.NATIVE) NATIVE.buzz('big'); G.renderAll(); renderJournal(); }).catch(function(e){ b.disabled=false; G.fail(e); }); }; foot.appendChild(b); }
+    else foot.appendChild(el('span','idx-left',(sec.length-have)+' to go'));
+    row.appendChild(foot); box.appendChild(row); });
 }
 function journalDetail(sp,j){
   var body=$('fishBody'); body.innerHTML=''; $('fishTitle').textContent=j?sp.name.toUpperCase():'UNKNOWN FISH';

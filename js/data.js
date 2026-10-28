@@ -286,6 +286,9 @@ D.ITEMS=[
  {id:'hat_captain',slot:'hat',name:'Captain\'s hat',price:8000,hat:'captain',c:{R:'#F4F4F4',W:'#F4F4F4',C:'#14294C',r:'#14294C',Y:'#FFC94A'}},
  {id:'hat_crown',slot:'hat',name:'Gold crown',price:100000,hat:'crown',c:{Y:'#FFC94A',y:'#C98A12',J:'#E5484D',U:'#3FA7F0'}},
  {id:'hat_champ',slot:'hat',name:'Champion cap',price:0,prize:true,hat:'champ',c:{B:'#3A78D8',Y:'#FFC94A',b:'#1D4A8C'}},
+ {id:'hat_river',slot:'hat',name:'River Master cap',price:0,prize:true,hat:'champ',c:{B:'#2E7D3A',Y:'#FFC94A',b:'#1A4A22'}},
+ {id:'hat_tide',slot:'hat',name:'Tide Master cap',price:0,prize:true,hat:'champ',c:{B:'#1E5AA8',Y:'#46D8D0',b:'#0E3060'}},
+ {id:'hat_master',slot:'hat',name:'Master Angler crown',price:0,prize:true,hat:'crown',c:{Y:'#E8F6FF',y:'#8FB8D8',J:'#B07CFF',U:'#5CF08A'}},
  {id:'hat_founder',slot:'hat',name:'Founder cap',price:0,prize:true,hat:'champ',c:{B:'#0A1530',Y:'#9FD3F2',b:'#14294C'}},
  {id:'coat_orange',slot:'coat',name:'Orange parka',price:0,c:{O:'#E8732A',o:'#B5521A',G:'#2B2F3A'}},
  {id:'coat_green',slot:'coat',name:'Fishing vest',price:200,c:{O:'#5E7F3A',o:'#3D5626',G:'#2B2F3A'}},
@@ -347,6 +350,12 @@ D.LEGEND_PRESETS=[
 ];
 
 /* ---------- Season prizes and misc constants. ---------- */
+/* Fish index rewards: catch every freshwater fish, every saltwater fish, then every fish in the game. */
+D.INDEX_REWARDS=[
+ {id:'fresh',name:'Every freshwater fish',coins:50000,item:'hat_river'},
+ {id:'salt',name:'Every saltwater fish',coins:100000,item:'hat_tide'},
+ {id:'all',name:'Every fish in the game',coins:1000000,item:'hat_master'}
+];
 D.SEASON_PRIZES=[25000,15000,8000];
 D.SEASON_PRIZE_TOP10=2000;
 D.VARIANT_MULT={golden:10,albino:5};
@@ -408,6 +417,8 @@ D.baitStats=function(id){ D._bs=D._bs||{}; if(D._bs[id]) return D._bs[id]; var b
   var m=b.biteMean, speed=m<=2?5:m<=15?4:m<=60?3:m<=150?2:1;
   var methods=Object.keys(D.METHOD_BAITS).filter(function(k){ return D.METHOD_BAITS[k].indexOf(id)>=0; });
   return (D._bs[id]={speed:speed,wait:m,tier:tier,value:Math.round(v),methods:methods,active:id==='crank'||id==='jig'}); };
+D.indexSection=function(kind){ D._isec=D._isec||{}; if(D._isec[kind]) return D._isec[kind];
+  return (D._isec[kind]=D.SPECIES.filter(function(sp){ if(kind==='all') return true; return Object.keys(sp.spots).some(function(k){ var s=D.SPOT_BY_ID[k]; return sp.spots[k]>0&&s&&(kind==='fresh'?s.water==='fresh':s.water!=='fresh'); }); })); };
 D.spotTier=function(spotId){ var v=D.spotValue(spotId), t=D.FISH_TIERS[0]; D.FISH_TIERS.forEach(function(x){ if(v>=x.min) t=x; }); return t; };
 D.fishValue=function(id,lb,variant){ var s=D.SP_BY_ID[id]; if(!s||s.protected) return 0; return Math.max(1,Math.round(lb*s.rate*(D.VARIANT_MULT[variant]||1))); };
 D.biteMinutes=function(rnd,spotId,bait,comfort,smallOnly){

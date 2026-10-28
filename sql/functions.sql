@@ -699,6 +699,32 @@ begin
   return oc_crew_json(p_pid);
 end $$;
 
+-- ============ fish index rewards ============
+create or replace function public.oc_index_species(p_kind text) returns setof text language sql stable as $$
+  select id from species where p_kind = 'all'
+  union
+  select distinct ss.species from spot_species ss join spots s on s.id = ss.spot
+   where p_kind <> 'all' and ss.w > 0 and (case when p_kind = 'fresh' then s.water = 'fresh' else s.water <> 'fresh' end) $$;
+
+create or replace function public.claim_index(p_pid uuid, p_secret text, p_kind text) returns jsonb language plpgsql security definer set search_path = public as $$
+declare p public.players; prize bigint; item text; missing int; label text;
+begin
+  p := oc_auth(p_pid, p_secret);
+  if p_kind = 'fresh' then prize := 50000; item := 'hat_river'; label := 'every freshwater fish';
+  elsif p_kind = 'salt' then prize := 100000; item := 'hat_tide'; label := 'every saltwater fish';
+  elsif p_kind = 'all' then prize := 1000000; item := 'hat_master'; label := 'EVERY FISH IN THE GAME';
+  else perform oc_fail('no such reward'); end if;
+  if coalesce((p.stats -> 'index' ->> p_kind)::boolean, false) then perform oc_fail('you already claimed that reward'); end if;
+  select count(*) into missing from oc_index_species(p_kind) x where not (p.journal ? x);
+  if missing > 0 then perform oc_fail('you still need ' || missing || ' more fish'); end if;
+  update players set coins = coins + prize,
+    items = case when item = any(items) then items else array_append(items, item) end,
+    stats = jsonb_set(stats, '{index}', coalesce(stats -> 'index', '{}'::jsonb) || jsonb_build_object(p_kind, true))
+    where pid = p_pid returning * into p;
+  perform oc_news('index', p_pid, p.name || '#' || p.tag || ' caught ' || label || '!', jsonb_build_object('kind', p_kind));
+  return jsonb_build_object('ok', true, 'coins', p.coins, 'items', to_jsonb(p.items), 'stats', p.stats, 'reward', prize, 'item', item, 'now', now());
+end $$;
+
 -- ============ blocking ============
 create or replace function public.oc_blocked(a uuid, b uuid) returns boolean language sql stable as $$
   select exists (select 1 from blocks where (blocker = a and blocked = b) or (blocker = b and blocked = a)) $$;
@@ -1081,7 +1107,7 @@ end $$;
 
 -- ============ permissions ============
 do $$ declare r record; begin
-  for r in select p.proname, pg_get_function_identity_arguments(p.oid) args from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and (p.proname like 'oc\_%' or p.proname in ('login','get_state','set_prefs','set_outfit','set_name','claim_founder','cast_line','reel_line','lure_strike','lure_lose','sell_fish','buy','travel','release_legend','friend_request','friend_respond','trade_open','get_trade','trade_set','trade_ready','trade_confirm','trade_cancel','get_trade_history','react','report_player','block_player','suggest_lake','get_board','get_news','get_legends','get_profile','get_season','get_world','set_boat','crew_invite','crew_respond','crew_leave','get_crew','set_password','login_password','delete_account','admin_overview','admin_find','admin_player','admin_report','admin_suggestion','admin_news')) loop
+  for r in select p.proname, pg_get_function_identity_arguments(p.oid) args from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and (p.proname like 'oc\_%' or p.proname in ('login','get_state','set_prefs','set_outfit','set_name','claim_founder','cast_line','reel_line','lure_strike','lure_lose','sell_fish','buy','travel','release_legend','friend_request','friend_respond','trade_open','get_trade','trade_set','trade_ready','trade_confirm','trade_cancel','get_trade_history','react','report_player','block_player','claim_index','suggest_lake','get_board','get_news','get_legends','get_profile','get_season','get_world','set_boat','crew_invite','crew_respond','crew_leave','get_crew','set_password','login_password','delete_account','admin_overview','admin_find','admin_player','admin_report','admin_suggestion','admin_news')) loop
     execute format('revoke all on function public.%I(%s) from public, anon, authenticated', r.proname, r.args);
     if r.proname not like 'oc\_%' then execute format('grant execute on function public.%I(%s) to anon, authenticated', r.proname, r.args); end if;
   end loop;
