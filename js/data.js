@@ -297,7 +297,7 @@ D.GEAR=[
    the biggest one caught that weekend wins. Everyone who enters gets a little something. ---------- */
 D.DERBY={tz:'America/New_York',
   rotation:['largemouth','rainbow','channel','crappie','smallmouth','reddrum','carp','brown','striper','bluegill','walleye','bluefish'],
-  prizes:[20000,8000,2500], entry:250, hat:'hat_derby',
+  prizes:[20000,8000,2500], entry:25, hat:'hat_derby',
   /* a hand-written tip for each featured fish (the derby page adds where, baits and times from the fish data) */
   tips:{largemouth:'Big bass hide near cover and feed hardest at dawn and dusk. Jerkbaits and crankbaits get fast strikes from good ones; a minnow left to soak for a long time is how the real giants get caught.',
     rainbow:'Davidson River and Big Bear Lake are loaded with rainbows. A dry fly drifted without drag is the most fun, and a minnow left out longer finds the big ones.',
