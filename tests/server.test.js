@@ -399,7 +399,7 @@ console.log('dev boat and crew rides');
     ok(g.legends.length>5&&bl&&bl.bait==='minnow'&&bl.period==='dawn'&&bl.minLine===30,'the guidebook reveals each freshwater legend\'s bait, time and line');
     ok(g.legends.every(l=>sql(`select water from spots where id='${l.spot}'`)==='fresh'),'freshwater book only covers fresh water');
     ok(rpc('get_guide',[R.pid,R.secret,'salt']).error==='buy the guidebook first','the saltwater book is separate');
-    ok(rpc('buy',[R.pid,R.secret,'gear','book_salt']).coins===20000-2000-12000,'saltwater guidebook costs $12,000');
+    ok(rpc('buy',[R.pid,R.secret,'gear','book_salt']).coins===20000-1500-6000,'saltwater guidebook costs $6,000');
     ok(rpc('get_guide',[R.pid,R.secret,'salt']).legends.some(l=>l.spot==='hatteras'&&l.bait==='cut'),'saltwater book covers Old Hatteras'); }
   // other boats still hold 3
   const T=mk('SmallBoat'), q=[mk('Q1'),mk('Q2'),mk('Q3'),mk('Q4')]; q.forEach(x=>fr(T,x));
