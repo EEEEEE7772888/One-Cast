@@ -12,14 +12,16 @@ const mb=[]; Object.keys(D.METHOD_BAITS).forEach(m=>D.METHOD_BAITS[m].forEach(b=
 out.push('insert into method_baits (method,bait) values '+mb.join(',')+';');
 out.push('delete from gear where id in (\'boat\',\'offshore\');');
 out.push('insert into gear (id,name,price,kind,lvl,perk) values '+D.GEAR.map(g=>`(${q(g.id)},${q(g.name)},${g.price},${q(g.kind)},${g.lvl},${j(g.perk||{})})`).join(',')+' on conflict (id) do update set name=excluded.name, price=excluded.price, kind=excluded.kind, lvl=excluded.lvl, perk=excluded.perk;');
-out.push('insert into items (id,slot,price,prize) values '+D.ITEMS.map(i=>`(${q(i.id)},${q(i.slot)},${i.price},${!!i.prize})`).join(',')+' on conflict (id) do update set slot=excluded.slot, price=excluded.price, prize=excluded.prize;');
-out.push('insert into species (id,name,min_lb,max_lb,k,rate,protected,act,min_wait,max_wait,small) values '+D.SPECIES.map(s=>`(${q(s.id)},${q(s.name)},${s.min},${s.max},${s.k},${s.rate},${!!s.protected},${j(D.ACT_PROFILES[s.act])},${s.minWait},${s.maxWait||0},${!!s.small})`).join(',')+' on conflict (id) do update set name=excluded.name, min_lb=excluded.min_lb, max_lb=excluded.max_lb, k=excluded.k, rate=excluded.rate, protected=excluded.protected, act=excluded.act, min_wait=excluded.min_wait, max_wait=excluded.max_wait, small=excluded.small;');
+out.push('insert into items (id,slot,price,prize,event) values '+D.ITEMS.map(i=>`(${q(i.id)},${q(i.slot)},${i.price},${!!i.prize},${i.event?q(i.event):'null'})`).join(',')+' on conflict (id) do update set slot=excluded.slot, price=excluded.price, prize=excluded.prize, event=excluded.event;');
+out.push('insert into species (id,name,min_lb,max_lb,k,rate,protected,act,min_wait,max_wait,small,event) values '+D.ALL_SPECIES.map(s=>`(${q(s.id)},${q(s.name)},${s.min},${s.max},${s.k},${s.rate},${!!s.protected},${j(D.ACT_PROFILES[s.act])},${s.minWait},${s.maxWait||0},${!!s.small},${s.event?q(s.event):'null'})`).join(',')+' on conflict (id) do update set name=excluded.name, min_lb=excluded.min_lb, max_lb=excluded.max_lb, k=excluded.k, rate=excluded.rate, protected=excluded.protected, act=excluded.act, min_wait=excluded.min_wait, max_wait=excluded.max_wait, small=excluded.small, event=excluded.event;');
 const sb=[], ss=[];
-D.SPECIES.forEach(s=>{ Object.keys(s.baits).forEach(b=>{ if(s.baits[b]>0) sb.push(`(${q(s.id)},${q(b)},${s.baits[b]})`); }); Object.keys(s.spots).forEach(sp=>{ if(s.spots[sp]>0) ss.push(`(${q(sp)},${q(s.id)},${s.spots[sp]})`); }); });
+D.ALL_SPECIES.forEach(s=>{ Object.keys(s.baits).forEach(b=>{ if(s.baits[b]>0) sb.push(`(${q(s.id)},${q(b)},${s.baits[b]})`); }); Object.keys(s.spots).forEach(sp=>{ if(s.spots[sp]>0) ss.push(`(${q(sp)},${q(s.id)},${s.spots[sp]})`); }); });
 out.push('insert into species_baits (species,bait,w) values '+sb.join(',')+';');
 out.push('insert into spot_species (spot,species,w) values '+ss.join(',')+';');
 out.push('insert into legend_presets (spot,name,species,tier,lb,bait,period,min_wait,min_line,clue,colors) values '+D.LEGEND_PRESETS.map(p=>`(${q(p.spot)},${q(p.name)},${q(p.species)},${q(p.tier)},${p.lb},${q(p.bait)},${q(p.period)},${p.minWait},${p.line},${q(p.clue)},${j(p.colors)})`).join(',')+' on conflict (spot) do nothing;');
+out.push('insert into config (k,v) values (\'events\','+j(D.EVENTS)+') on conflict (k) do update set v=excluded.v;');
 out.push('insert into config (k,v) values (\'derby\','+j(D.DERBY)+') on conflict (k) do update set v=excluded.v;');
+out.push("update derbies d set species = (select v -> 'special' -> d.key ->> 'sp' from config where k = 'derby') where not awarded and (select v -> 'special' -> d.key ->> 'sp' from config where k = 'derby') is not null;");
 const key=process.argv[2]||null;
 out.push('');
 // the public sql/data.sql never contains the admin key; only the private full file (argv[3]) does

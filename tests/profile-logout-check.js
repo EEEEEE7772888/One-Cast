@@ -1,6 +1,6 @@
 // Your own profile: name change sits at the top, and LOG OUT signs you out of this device (warning first if there is no password).
 const {chromium}=require('playwright');
-const B='http://localhost:8810',Q='/?server='+B+'&key=test';
+const B='http://localhost:'+(process.env.PORT||8810),Q='/?server='+B+'&key=test';
 (async()=>{ const br=await chromium.launch(); const p=await br.newPage({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true}); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.route('https://fonts.googleapis.com/**',r=>r.fulfill({status:200,contentType:'text/css',body:''}));
   await p.goto(B+Q); await p.waitForTimeout(900); await p.fill('#nameIn','Leaver'); await p.keyboard.press('Enter'); await p.waitForTimeout(1500);

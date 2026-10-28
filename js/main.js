@@ -50,6 +50,7 @@ G.apply=function(s){
   if(G.sel>=G.lineCount()) G.sel=0;
   if(!first) SC.measure();
   G.renderAll();
+  if(UI.eventIntro) UI.eventIntro();
 };
 /* hard lures: how many are in the tackle box (the one tied on counts if it has casts left) */
 G.lureCount=function(id){ var l=((G.s.gear||{}).lures||{})[id]; if(!l) return 0; return (l.n||0)+((l.left||0)>0?1:0); };
@@ -167,7 +168,7 @@ G.reel=function(){
     if(r.daily) G.s.daily=r.daily;
   }).catch(function(e){ G.fail(e); if(!e.offline) G.refresh(true); }).then(function(){ G.busy=false; G.renderPanel(); });
 };
-SC.hooks={state:function(){ return G.s; },sel:function(){ return G.sel; },selLine:function(){ return G.line(); },lines:G.lines,lineCount:G.lineCount,method:G.method,spot:G.spot,hourAt:G.hourAt,outfit:function(){ return G.s.outfit; },boat:function(){ return G.boatId(); },crew:function(){ var c=G.s.crew; if(!c||!c.members) return []; return c.members.filter(function(x){ return x.pid!==G.s.pid&&c.spot===G.s.spot; }); },bait:function(){ return G.bait; },afterCatch:function(){ G.renderPanel(); G.refresh(true); }};
+SC.hooks={state:function(){ return G.s; },sel:function(){ return G.sel; },selLine:function(){ return G.line(); },lines:G.lines,lineCount:G.lineCount,method:G.method,spot:G.spot,hourAt:G.hourAt,outfit:function(){ return G.s.outfit; },boat:function(){ return G.boatId(); },paint:function(){ return G.s.crew&&G.s.crew.guest?null:(G.s.outfit||{}).paint; },crew:function(){ var c=G.s.crew; if(!c||!c.members) return []; return c.members.filter(function(x){ return x.pid!==G.s.pid&&c.spot===G.s.spot; }); },bait:function(){ return G.bait; },afterCatch:function(){ G.renderPanel(); G.refresh(true); }};
 
 /* ---------- travel ---------- */
 G.travelTo=function(spotId){
@@ -271,7 +272,7 @@ G.ACH=[
  {id:'rich',name:'Loaded',desc:'Earn $100,000 selling fish',n:function(s){ return [Math.min(100000,s.stats.earned||0),100000]; }},
  {id:'fourlines',name:'Four on the Floor',desc:'Own four lines',n:function(s){ return [s.gear.lines||1,4]; }}
 ];
-function speciesCount(s){ return Object.keys(s.journal).filter(function(k){ return k.indexOf('legend:')!==0; }).length; }
+function speciesCount(s){ return Object.keys(s.journal).filter(function(k){ return k.indexOf('legend:')!==0&&D.SP_BY_ID[k]&&!D.SP_BY_ID[k].event; }).length; }
 function saltCaught(s){ return Object.keys(s.journal).some(function(k){ var sp=D.SP_BY_ID[k]; return sp&&Object.keys(sp.baits).some(function(b){ return D.BAIT_BY_ID[b].water==='salt'; }); }); }
 /* password tip: stays on screen until the player sets a password or closes it with X */
 G.renderTip=function(){ if(!G.s) return; $('tipBox').hidden=!(!G.s.hasPw&&(G.s.stats.catches||0)>=3&&!G.s.prefs.pwTip2); };

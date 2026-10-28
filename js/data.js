@@ -248,6 +248,21 @@ sp({id:'silverfish',name:'Antarctic silverfish',small:true,min:0.05,max:0.8,k:13
 sp({id:'toothfish',name:'Antarctic toothfish',min:20,max:300,k:13.5,rate:2500,act:'deep',look:'toothfish',minWait:300,maxWait:0,baits:{deepbait:6,squid:3},spots:{rosssea:7}});
 sp({id:'icefish',name:'Mackerel icefish',min:0.5,max:7,k:14,rate:900,act:'deep',look:'icefish',minWait:20,maxWait:600,baits:{squid:6,deepbait:1},spots:{rosssea:6}});
 D.SPECIES=S;
+/* ---------- Events. Limited-time fish, clothes and paint. An event is on from start until end (exact times). ---------- */
+D.EVENTS={halloween:{name:'Halloween',start:'2026-10-28T00:00:00-04:00',end:'2026-11-02T00:00:00-05:00'}};
+D.eventOn=function(id,now){ var e=D.EVENTS[id]; if(!e) return false; now=now||(root.NET&&root.NET.now?root.NET.now():Date.now()); return now>=Date.parse(e.start)&&now<Date.parse(e.end); };
+/* Spooky fish: only bite while Halloween is on, all over Home waters. They are not part of the index (so nobody misses out). */
+var HOME_FRESH={basslake:2,farmpond:2,walden:2,harlemmeer:2,lakefork:2,guntersville:2,lanier:2,clearlake:2,basslakeca:2,bigbear:2,neuse:2,newriver:2,davidson:2};
+D.EVENT_SPECIES=[
+ {id:'ghostcarp',name:'Ghost carp',event:'halloween',min:3,max:45,k:13,rate:60,act:'night',look:'ghostcarp',minWait:3,maxWait:0,baits:{worm:3,cut:3,minnow:1,sucker:1},spots:HOME_FRESH,
+  desc:'A pale, see-through carp that only shows up around Halloween. It glows faintly at night.'},
+ {id:'pumpkinbass',name:"Jack-o'-lantern bass",event:'halloween',min:1,max:16,k:11.6,rate:90,act:'lowlight',look:'pumpkinbass',minWait:2,maxWait:0,baits:{jerk:4,crank:4,jig:3,minnow:2,worm:0.5},spots:{basslake:2,farmpond:1.5,lakefork:2,guntersville:2,clearlake:2,lanier:1.5,neuse:1.5,basslakeca:1.5},
+  desc:'An orange bass with a grin carved down its side. Bites best when the light is low.'},
+ {id:'phantomdrum',name:'Phantom drum',event:'halloween',min:5,max:70,k:13,rate:70,act:'night',look:'phantomdrum',minWait:10,maxWait:0,baits:{cut:4,mullet:3,shrimp:2,worm:1},spots:{hatteras:2},
+  desc:'A purple drum with a glowing green eyespot, said to haunt the surf at Cape Hatteras on Halloween nights.'}
+];
+D.EVENT_SPECIES.forEach(function(o){ o.rate=Math.max(1,Math.round(o.rate*D.VALUE_MULT)); });
+D.ALL_SPECIES=S.concat(D.EVENT_SPECIES);
 
 /* ---------- Gear. Each buys once. ---------- */
 D.LINE_TESTS=[15,30,60,150,400,1000];
@@ -271,7 +286,7 @@ D.GEAR=[
  {id:'rod3',name:'Bass casting rod',price:150,kind:'rod',lvl:3,desc:'Stiff backbone for hook-sets. Fish are 13% bigger.'},
  {id:'rod4',name:'Surf rod',price:250,kind:'rod',lvl:4,desc:'Twelve feet long, casts a mile. Fish are 18% bigger.'},
  {id:'rod5',name:'Graphite pro rod',price:500,kind:'rod',lvl:5,desc:'Feels every bump. Fish are 24% bigger.'},
- {id:'rod6',name:'Custom tournament rod',price:1200,kind:'rod',lvl:6,desc:'Hand-wrapped by a rod builder. Fish are 30% bigger.'},
+ {id:'rod6',name:'Custom tournament rod',price:5000,fixed:true,kind:'rod',lvl:6,desc:'Hand-wrapped by a rod builder. Fish are 30% bigger.'},
  {id:'hole2',name:'Second line',price:400,kind:'lines',lvl:2,desc:'Fish two lines at once.'},
  {id:'hole3',name:'Third line',price:1250,kind:'lines',lvl:3,desc:'Fish three lines at once.'},
  {id:'hole4',name:'Fourth line',price:4250,kind:'lines',lvl:4,desc:'Fish four lines at once, the most allowed.'},
@@ -298,8 +313,11 @@ D.GEAR=[
 D.DERBY={tz:'America/New_York',
   rotation:['largemouth','rainbow','channel','crappie','smallmouth','reddrum','carp','brown','striper','bluegill','walleye','bluefish'],
   prizes:[20000,8000,2500], entry:25, hat:'hat_derby',
+  /* special weekends: the featured fish for that weekend instead of the rotation */
+  special:{'d2026-10-31':{sp:'ghostcarp',name:'Halloween Ghost Carp Derby'}},
   /* a hand-written tip for each featured fish (the derby page adds where, baits and times from the fish data) */
-  tips:{largemouth:'Big bass hide near cover and feed hardest at dawn and dusk. Jerkbaits and crankbaits get fast strikes from good ones; a minnow left to soak for a long time is how the real giants get caught.',
+  tips:{ghostcarp:'Ghost carp only show up for Halloween, in every freshwater spot in Home waters. They are night fish, so fish after dark (local time at the spot) with worms or cut bait, and let it soak: the longer the wait, the bigger the ghost.',
+    largemouth:'Big bass hide near cover and feed hardest at dawn and dusk. Jerkbaits and crankbaits get fast strikes from good ones; a minnow left to soak for a long time is how the real giants get caught.',
     rainbow:'Davidson River and Big Bear Lake are loaded with rainbows. A dry fly drifted without drag is the most fun, and a minnow left out longer finds the big ones.',
     channel:'Channel cats love smelly bait. Put cut bait out, be patient, and the longer it soaks the bigger the cat. Night is great.',
     crappie:'Crappie bite best when the light is low. Jigs and minnows both work; they school up, so if you catch one, cast right back.',
@@ -329,9 +347,13 @@ D.ITEMS=[
  {id:'hat_river',slot:'hat',name:'River Master cap',price:0,prize:true,hat:'champ',c:{B:'#2E7D3A',Y:'#FFC94A',b:'#1A4A22'}},
  {id:'hat_tide',slot:'hat',name:'Tide Master cap',price:0,prize:true,hat:'champ',c:{B:'#1E5AA8',Y:'#46D8D0',b:'#0E3060'}},
  {id:'hat_master',slot:'hat',name:'Master Angler crown',price:0,prize:true,hat:'crown',c:{Y:'#E8F6FF',y:'#8FB8D8',J:'#B07CFF',U:'#5CF08A'}},
+ {id:'hat_witch',slot:'hat',name:'Witch hat',price:400,event:'halloween',hat:'witch',c:{R:'#6A3A9A',r:'#4A2A6A',Y:'#FF9A1A'}},
+ {id:'hat_pumpkin',slot:'hat',name:'Pumpkin head',price:650,event:'halloween',hat:'pumpkin',c:{R:'#F07A1A',k:'#2A1206',g:'#3A7A2A'}},
  {id:'hat_derby',slot:'hat',name:'Derby Champion cap',price:0,prize:true,hat:'champ',c:{B:'#C8302A',Y:'#FFC94A',b:'#7A1A16'}},
  {id:'hat_founder',slot:'hat',name:'Founder cap',price:0,prize:true,hat:'champ',c:{B:'#0A1530',Y:'#9FD3F2',b:'#14294C'}},
  {id:'coat_orange',slot:'coat',name:'Orange parka',price:0,c:{O:'#E8732A',o:'#B5521A',G:'#2B2F3A'}},
+ {id:'coat_vampire',slot:'coat',name:'Vampire cape',price:550,event:'halloween',c:{O:'#151018',o:'#8A1020',G:'#C8202A'}},
+ {id:'coat_skeleton',slot:'coat',name:'Skeleton hoodie',price:450,event:'halloween',c:{O:'#1A1A22',o:'#E8E8E8',G:'#E8E8E8'}},
  {id:'coat_green',slot:'coat',name:'Fishing vest',price:200,c:{O:'#5E7F3A',o:'#3D5626',G:'#2B2F3A'}},
  {id:'coat_blue',slot:'coat',name:'Rain jacket',price:500,c:{O:'#2F7CD8',o:'#1D4F8C',G:'#2B2F3A'}},
  {id:'coat_hawaii',slot:'coat',name:'Aloha shirt',price:3000,c:{O:'#E04A6A',o:'#F0C040',G:'#2B2F3A'}},
@@ -344,7 +366,17 @@ D.ITEMS=[
  {id:'boots_black',slot:'boots',name:'Black boots',price:0,c:{K:'#1B1B24',k:'#0A0A10'}},
  {id:'boots_rubber',slot:'boots',name:'Rubber boots',price:200,c:{K:'#E8C840',k:'#B89A20'}},
  {id:'boots_sandals',slot:'boots',name:'Sandals',price:300,c:{K:'#D9A77A',k:'#8A5A3A'}},
- {id:'boots_white',slot:'boots',name:'Deck boots',price:1200,c:{K:'#F4F4F4',k:'#B8C0C8'}}
+ {id:'boots_white',slot:'boots',name:'Deck boots',price:1200,c:{K:'#F4F4F4',k:'#B8C0C8'}},
+ {id:'paint_red',slot:'paint',name:'Fire engine red',price:300,paint:{H:'#C8302A',h:'#E8574A',S:'#F4F4F4'}},
+ {id:'paint_blue',slot:'paint',name:'Deep sea blue',price:300,paint:{H:'#1E4A8C',h:'#2F6AC0',S:'#F4F4F4'}},
+ {id:'paint_green',slot:'paint',name:'Forest green',price:300,paint:{H:'#2E5A30',h:'#3F7A42',S:'#E8D27A'}},
+ {id:'paint_white',slot:'paint',name:'Classic white',price:300,paint:{H:'#E8EEF4',h:'#FFFFFF',S:'#1E4A8C'}},
+ {id:'paint_black',slot:'paint',name:'Midnight black',price:500,paint:{H:'#14161E',h:'#2A2E3A',S:'#E5484D'}},
+ {id:'paint_camo',slot:'paint',name:'Duck camo',price:600,paint:{H:'#5A5A3A',h:'#7A6A4A',S:'#3A4A2A'}},
+ {id:'paint_pink',slot:'paint',name:'Bubblegum pink',price:500,paint:{H:'#E86AA8',h:'#F49AC8',S:'#FFFFFF'}},
+ {id:'paint_gold',slot:'paint',name:'Solid gold',price:6500,paint:{H:'#C99A1A',h:'#FFD04A',S:'#FFF2B0'}},
+ {id:'paint_pumpkin',slot:'paint',name:'Pumpkin patch',price:500,event:'halloween',paint:{H:'#E8701A',h:'#FF9A3A',S:'#1A0E06'}},
+ {id:'paint_haunted',slot:'paint',name:'Haunted purple',price:650,event:'halloween',paint:{H:'#3A1A5A',h:'#5A2A8A',S:'#5CF08A'}}
 ];
 D.SLOTS=[{id:'hat',name:'HATS'},{id:'coat',name:'COATS'},{id:'pants',name:'PANTS'},{id:'boots',name:'BOOTS'},{id:'skin',name:'SKIN'}];
 D.DEFAULT_OUTFIT={hat:'hat_red',coat:'coat_orange',pants:'pants_navy',boots:'boots_black',skin:'skin_1'};
@@ -407,7 +439,7 @@ D.STICKERS=[{id:'noway',text:'No way!'},{id:'lucky',text:'Lucky!'},{id:'huge',te
 D.REPORT_REASONS=[{id:'name',text:'Bad username'},{id:'realname',text:'Uses a real name'},{id:'cheat',text:'Cheating'},{id:'scam',text:'Trade scam'},{id:'other',text:'Other'}];
 
 /* ---------- Lookups and the shared math. ---------- */
-D.SP_BY_ID={}; S.forEach(function(s){ D.SP_BY_ID[s.id]=s; });
+D.SP_BY_ID={}; D.ALL_SPECIES.forEach(function(s){ D.SP_BY_ID[s.id]=s; });
 D.SPOT_BY_ID={}; D.SPOTS.forEach(function(s){ D.SPOT_BY_ID[s.id]=s; });
 D.REGION_BY_ID={}; D.REGIONS.forEach(function(r){ D.REGION_BY_ID[r.id]=r; });
 /* Fish are worth 40% less, so everything you buy costs less too (except hard lures, which cost what they do in real life).
@@ -416,7 +448,7 @@ D.PRICE_MULT=0.75;  // shops: 25% below the original prices
 D.TICKET_MULT=0.6;  // map tickets: 40% below, the same cut as fish
 D.tidyPrice=function(x,mult){ if(!x) return 0; var v=x*(mult||D.PRICE_MULT), step=v<100?5:v<1000?10:v<10000?50:v<100000?500:5000; return Math.max(step,Math.round(v/step)*step); };
 D.BAITS.forEach(function(b){ if(!b.uses) b.price=D.tidyPrice(b.price); });
-D.GEAR.forEach(function(g){ g.price=D.tidyPrice(g.price); });
+D.GEAR.forEach(function(g){ if(!g.fixed) g.price=D.tidyPrice(g.price); }); // fixed: priced on purpose, no discount
 D.ITEMS.forEach(function(i){ i.price=D.tidyPrice(i.price); });
 D.REGIONS.forEach(function(r){ r.ticket=D.tidyPrice(r.ticket,D.TICKET_MULT); });
 D.BAIT_BY_ID={}; D.BAITS.forEach(function(b){ D.BAIT_BY_ID[b.id]=b; });
@@ -426,7 +458,7 @@ D.boatPerk=function(boatId,spot){ var b=D.GEAR_BY_ID[boatId]; if(!b) return 1; v
 D.ITEM_BY_ID={}; D.ITEMS.forEach(function(i){ D.ITEM_BY_ID[i.id]=i; });
 D.spotSpecies=function(spotId){ return S.filter(function(s){ return s.spots[spotId]>0; }); };
 D.speciesWeights=function(spotId,bait,minutes,period,smallOnly){
-  return S.map(function(s){
+  return S.concat(D.EVENT_SPECIES.filter(function(e){ return D.eventOn(e.event); })).map(function(s){
     var w=(s.spots[spotId]||0)*(s.baits[bait]||0);
     if(smallOnly&&!s.small) w=0;
     if(minutes<s.minWait) w=0;

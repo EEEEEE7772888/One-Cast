@@ -55,6 +55,8 @@ B.devboat=function(){ var Wd=152, Hd=67, D=51, g=grid(Wd,Hd); hull(g,148,D,15,{b
     map:{R:'#FFC94A',h:'#1B2234',H:'#0E1322',B:'#05070D',S:'#3CF0FF',s:'#1E8FB0',C:'#EDF2F8',c:'#9AA8BC',w:'#3CC8F0',W:'#B8F6FF',G:'#FFC94A',
       D:'#F4F8FA',p:'#9AA6B8',L:'#FF4D5E',f:'#0E1322',F:'#3CF0FF',o:'#C8CED8',Y:'#FFC94A',k:'#2B2F3A'}}; };
 var cache={};
-A.boat=function(id){ if(cache[id]) return cache[id]; var f=B[id]||B.paddle, b=f(); var hh=b.g.length-b.deck; b.water=b.deck+Math.max(1,Math.round(hh*0.45)); b.rows=b.g.map(function(r){ return r.join(''); }); b.w=b.rows[0].length; b.h=b.rows.length; cache[id]=b; return b; };
-A.boatCanvas=function(id,scale){ var b=A.boat(id), c=A.spriteCanvas(b.rows,b.map); if(scale){ var o=document.createElement('canvas'); o.width=c.width*scale; o.height=c.height*scale; o.className='px'; var x=o.getContext('2d'); x.imageSmoothingEnabled=false; x.drawImage(c,0,0,o.width,o.height); return o; } return c; };
+/* Boat paint: a paint item recolours the hull (H), its top band (h) and the stripe (S). The Dev Flagship keeps its own look. */
+A.boat=function(id,paint){ var key=id+'|'+(paint||''); if(cache[key]) return cache[key]; var f=B[id]||B.paddle, b=f();
+  var it=paint&&root.OC&&root.OC.ITEM_BY_ID[paint]; if(it&&it.paint&&!b.devboat){ b.map=Object.assign({},b.map); ['H','h','S'].forEach(function(k){ if(it.paint[k]&&b.map[k]) b.map[k]=it.paint[k]; }); } var hh=b.g.length-b.deck; b.water=b.deck+Math.max(1,Math.round(hh*0.45)); b.rows=b.g.map(function(r){ return r.join(''); }); b.w=b.rows[0].length; b.h=b.rows.length; cache[key]=b; return b; };
+A.boatCanvas=function(id,scale,paint){ var b=A.boat(id,paint), c=A.spriteCanvas(b.rows,b.map); if(scale){ var o=document.createElement('canvas'); o.width=c.width*scale; o.height=c.height*scale; o.className='px'; var x=o.getContext('2d'); x.imageSmoothingEnabled=false; x.drawImage(c,0,0,o.width,o.height); return o; } return c; };
 })(typeof window!=='undefined'?window:this);

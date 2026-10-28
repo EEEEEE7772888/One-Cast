@@ -1,7 +1,7 @@
 // The big lure update in a real browser: buy lures one at a time, a jerkbait played well (twitch-twitch-pause + fight), a forced snag, and the rod and reel shop.
 const {chromium}=require('playwright');const {execFileSync}=require('child_process');
 const DB=process.env.OC_DB||'econ_fresh', sql=q=>execFileSync('su',['postgres','-c','psql -X -At -d '+DB],{input:q,encoding:'utf8'}).trim();
-const B='http://localhost:8810',Q='/?server='+B+'&key=test', SH='/tmp/claude-0/econ-';
+const B='http://localhost:'+(process.env.PORT||8810),Q='/?server='+B+'&key=test', SH='/tmp/claude-0/econ-';
 (async()=>{ const br=await chromium.launch(), p=await br.newPage({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true}); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.route('https://fonts.googleapis.com/**',r=>r.fulfill({status:200,contentType:'text/css',body:''}));
   await p.goto(B+Q); await p.waitForTimeout(900); await p.fill('#nameIn','LureTester'); await p.keyboard.press('Enter'); await p.waitForTimeout(1500);

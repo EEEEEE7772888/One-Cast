@@ -5,8 +5,16 @@
 <meta name="robots" content="noindex">
 <title>One Cast Admin</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
-<link rel="stylesheet" href="css/game.css?v=947bb046">
+<link rel="stylesheet" href="css/game.css?v=c69aaafc">
 <style>
+.bars{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:3px;align-items:end;height:150px;padding:6px;background:#0A1530;border:2px solid #23406E}
+.bars .bar{display:grid;grid-template-rows:auto minmax(0,1fr) auto;height:100%;text-align:center;font:12px/1.1 monospace;color:#93B2D2}
+.bars .bar i{display:flex;flex-direction:column-reverse;align-self:end;background:#3A78D8;min-height:1px}
+.bars .bar i b{display:block;background:#5CF08A}
+.bars .bar .n{color:#EAF5FF}
+.bars .bar .d{font-size:10px;margin-top:3px}
+.v small,.fact small{font-size:.6em;color:#93B2D2}
+
 body{overflow:auto;padding:16px}
 .wrap{max-width:760px;margin:0 auto;display:grid;gap:14px}
 .box{display:grid;gap:10px;padding:14px;background:var(--panel);border:4px solid var(--edge)}
@@ -26,6 +34,7 @@ body{overflow:auto;padding:16px}
   <div class="box" id="keyBox"><span class="k">ADMIN KEY</span><p class="note">The key is at the top of your setup.sql file. It stays in this browser only.</p><input class="field small" id="key" type="password" placeholder="oc-admin-..."><button class="go" id="go">OPEN</button><p class="err" id="err"></p></div>
   <div class="box" id="over" hidden>
     <span class="k">OVERVIEW</span><div class="stat" id="stats"></div>
+    <span class="k">PLAYER NUMBERS</span><div id="numbers"></div>
     <span class="k">POST A NOTICE TO THE WORLD NEWS</span><div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px"><input class="field small" id="notice" maxlength="160" placeholder="Season 2 starts Friday!"><button class="pbtn gold" id="postNotice">POST</button></div>
     <span class="k">FIND A PLAYER</span><div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px"><input class="field small" id="q" placeholder="name, #tag or id"><button class="pbtn" id="find">FIND</button></div><div id="found" style="display:grid;gap:6px"></div>
     <span class="k">OPEN REPORTS</span><div id="reports" style="display:grid;gap:6px"></div>
@@ -33,7 +42,7 @@ body{overflow:auto;padding:16px}
     <span class="k">RECENTLY SEEN</span><div id="recent" style="display:grid;gap:6px"></div>
   </div>
 </div>
-<script src="js/data.js?v=85a475ea"></script>
+<script src="js/data.js?v=751406c1"></script>
 <script src="js/net.js?v=387e866f"></script>
 <script>
 (function(){
@@ -76,12 +85,28 @@ function load(){
   rpc('admin_overview',{}).then(function(o){
     localStorage.setItem('onecast.admin',key); $('keyBox').hidden=true; $('over').hidden=false;
     $('stats').innerHTML=[['PLAYERS',o.players],['ONLINE NOW',o.online],['FISH KEPT',o.fish],['LEGENDS CAUGHT',o.legendsCaught]].map(function(s){ return '<div class="fact"><span class="k">'+s[0]+'</span><span class="v">'+s[1]+'</span></div>'; }).join('');
+    loadStats();
     var r=$('reports'); r.innerHTML=o.reports.length?'':'<p class="note">No open reports.</p>'; o.reports.forEach(function(x){ var d=document.createElement('div'); d.className='line'; d.innerHTML='<div><b>'+esc(x.target)+'</b> reported by '+esc(x.reporter)+' for <b>'+esc(x.reason)+'</b><br><small style="color:var(--muted)">'+new Date(x.at).toLocaleString()+'</small></div>'; var b=document.createElement('div'); b.className='b';
       [['HIDE','hide','true'],['BAN','ban','true'],['RENAME','rename',null]].forEach(function(a){ var btn=document.createElement('button'); btn.className='pbtn'+(a[1]==='ban'?' danger':''); btn.textContent=a[0]; btn.onclick=function(){ var v=a[2]||prompt('New name:'); if(!v) return; rpc('admin_player',{p_pid:x.targetPid,p_action:a[1],p_value:v}).then(load).catch(function(e){ alert(e.message); }); }; b.appendChild(btn); });
       var ok=document.createElement('button'); ok.className='pbtn'; ok.textContent='DISMISS'; ok.onclick=function(){ rpc('admin_report',{p_id:x.id,p_handled:true}).then(load); }; b.appendChild(ok); d.appendChild(b); r.appendChild(d); });
     var s=$('sugg'); s.innerHTML=o.suggestions.length?'':'<p class="note">No suggestions waiting.</p>'; o.suggestions.forEach(function(x){ var d=document.createElement('div'); d.className='line'; d.innerHTML='<div><b>'+esc(x.lake)+'</b> · '+esc(x.place)+'<br><small style="color:var(--muted)">from '+esc(x.by)+'</small></div>'; var b=document.createElement('div'); b.className='b'; ['approved','rejected'].forEach(function(st){ var btn=document.createElement('button'); btn.className='pbtn'+(st==='approved'?' gold':''); btn.textContent=st.toUpperCase(); btn.onclick=function(){ rpc('admin_suggestion',{p_id:x.id,p_status:st}).then(load); }; b.appendChild(btn); }); d.appendChild(b); s.appendChild(d); });
     var rc=$('recent'); rc.innerHTML=''; o.recent.slice(0,30).forEach(function(p){ rc.appendChild(playerLine(p)); });
   }).catch(function(e){ $('err').textContent=e.message; $('keyBox').hidden=false; });
+}
+/* player numbers: who plays each day, new players, who comes back */
+function loadStats(){
+  var box=$('numbers'); box.innerHTML='<p class="note">Loading...</p>';
+  rpc('admin_stats',{}).then(function(s){
+    function pct(o){ return o.of?Math.round(100*o.back/o.of)+'% <small>('+o.back+' of '+o.of+')</small>':'<small>not enough yet</small>'; }
+    var tiles=[['PLAYED TODAY',s.dau],['YESTERDAY',s.yesterday],['THIS WEEK',s.wau],['THIS MONTH',s.mau],['NEW THIS WEEK',s.newWeek],['REAL PLAYERS',s.real+' <small>of '+s.total+'</small>']];
+    var max=Math.max.apply(null,s.days.map(function(d){ return d.active; }).concat([1]));
+    var bars=s.days.map(function(d){ var dt=new Date(d.day+'T12:00:00'); return '<div class="bar" title="'+d.day+': '+d.active+' played, '+d['new']+' new"><span class="n">'+d.active+'</span><i style="height:'+Math.round(100*d.active/max)+'%"><b style="height:'+(d.active?Math.round(100*Math.min(d['new'],d.active)/d.active):0)+'%"></b></i><span class="d">'+['S','M','T','W','T','F','S'][dt.getDay()]+'<br>'+dt.getDate()+'</span></div>'; }).join('');
+    box.innerHTML='<div class="stat">'+tiles.map(function(t){ return '<div class="fact"><span class="k">'+t[0]+'</span><span class="v">'+t[1]+'</span></div>'; }).join('')+'</div>'+
+      '<p class="note" style="margin-top:12px"><b>Players each day</b> (last 2 weeks). The <span style="color:#5CF08A">green</span> part is brand-new players.</p><div class="bars">'+bars+'</div>'+
+      '<div class="stat" style="margin-top:12px"><div class="fact"><span class="k">CAME BACK ANOTHER DAY</span><span class="v">'+pct(s.returned)+'</span></div><div class="fact"><span class="k">STILL PLAYING AFTER A WEEK</span><span class="v">'+pct(s.back7)+'</span></div></div>'+
+      '<p class="note"><b>Real players</b> have caught 5+ fish, so most alt accounts are left out. <b>Came back another day</b>: of the players who joined in the last 30 days, how many played again on a later day. <b>Still playing after a week</b>: of the players who joined 1 to 4 weeks ago, how many played in the last 7 days. Daily numbers are exact from Oct 28, 2026 on; earlier days only count new players and days with kept catches.</p>'+
+      (s.top.length?'<p class="note"><b>Most days played (last 30):</b> '+s.top.map(function(t){ return esc(t.name)+'#'+t.tag+' ('+t.days+')'; }).join(', ')+'</p>':'');
+  }).catch(function(e){ box.innerHTML='<p class="note">'+esc(e.message)+'</p>'; });
 }
 $('go').onclick=function(){ key=$('key').value.trim(); load(); };
 $('find').onclick=function(){ rpc('admin_find',{p_q:$('q').value.trim()}).then(function(list){ var f=$('found'); f.innerHTML=list.length?'':'<p class="note">Nobody found.</p>'; list.forEach(function(p){ f.appendChild(playerLine(p)); }); }).catch(function(e){ alert(e.message); }); };

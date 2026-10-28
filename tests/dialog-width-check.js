@@ -1,5 +1,5 @@
 const {chromium}=require('playwright');
-const B='http://localhost:8810',Q='/?server='+B+'&key=test';
+const B='http://localhost:'+(process.env.PORT||8810),Q='/?server='+B+'&key=test';
 (async()=>{ const br=await chromium.launch(); const p=await br.newPage({viewport:{width:360,height:740},deviceScaleFactor:2,isMobile:true,hasTouch:true});
   await p.route('https://fonts.googleapis.com/**',r=>r.fulfill({status:200,contentType:'text/css',body:''}));
   await p.goto(B+Q); await p.waitForTimeout(900); await p.fill('#nameIn','Dlg'); await p.keyboard.press('Enter'); await p.waitForTimeout(1500);

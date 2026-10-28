@@ -105,7 +105,11 @@ var L={
  polarcod:{b:'#8A9AA8',d:'#56667A',bel:'#EEF0F2',fin:'#7A8A98',spot:'#3A4A5A',pat:'spots',ht:.22},
  opelu:{b:'#4A8AA8',d:'#24506E',bel:'#F0F2F0',fin:'#E0C060',spot:'#F0D070',pat:'lateral',ht:.24},
  silverfish:{b:'#C0CCD8',d:'#8A9AAC',bel:'#F8FAFC',fin:'#A8B6C4',spot:'#6A7A8C',pat:'none',ht:.18},
- snakehead:{b:'#5A5A3A',d:'#3A3A22',bel:'#C8C8A0',fin:'#4A4A30',spot:'#2A2A14',pat:'mottle',ht:.2,long:1,eel:1}
+ snakehead:{b:'#5A5A3A',d:'#3A3A22',bel:'#C8C8A0',fin:'#4A4A30',spot:'#2A2A14',pat:'mottle',ht:.2,long:1,eel:1},
+ /* Halloween */
+ ghostcarp:{b:'#D8ECF4',d:'#9AB8C8',bel:'#F4FBFF',fin:'#B8D4E4',spot:'#7FA8C0',pat:'scales',ht:.4},
+ pumpkinbass:{b:'#F07A1A',d:'#A84A0A',bel:'#FFD08A',fin:'#3A7A2A',spot:'#1A0E06',pat:'stripe',ht:.4},
+ phantomdrum:{b:'#4A2A6A',d:'#2A1440',bel:'#8A6AAA',fin:'#3A1A5A',spot:'#5CF08A',pat:'none',ht:.3}
 };
 A.LOOK=L;
 A.VARIANT_PAL={golden:{b:'#E8B830',d:'#B88A18',bel:'#FFE9A0',fin:'#D89A20',spot:'#FFF2C0'},albino:{b:'#F2EEEA',d:'#D8D0CC',bel:'#FFFFFF',fin:'#E8DCD8',spot:'#E0D6D2',eye:'#D04A5A'}};
@@ -254,7 +258,9 @@ A.HAT_ROWS={
   trapper:["....RRRR....","...RRRRRR...","..RRRRRRRR..","..CCCCCCCC.."],
   captain:["............","....RRRR....","...RRRRRR...","...CCYYCCrr."],
   crown:["............","...Y.Y.Y.Y..","...YYYYYYY..","...yJyUyJy.."],
-  champ:["............","....BBBB....","...BBYYBB...","...BBBBBBbb."]
+  champ:["............","....BBBB....","...BBYYBB...","...BBBBBBbb."],
+  witch:["......RR....",".....RRR....","....YYYYY...",".rrrRRRRRrr."],
+  pumpkin:[".....g......","...RRRRRR...","..RkRRRRkR..","..RRkkkkRR.."]
 };
 A.BODY=["...SSSSSE...","...SSSSSS...","....SSSS....","..OOOOOOO...",".OOOOOOOOO..",".OOOOOOOOOGG",".oOOOOOOO...",".oOOOOOOO...","..PPPPPPP...","..PPPPPPPPP.","..BBBB..PPP.","..bBBB..PPP.","..bBBB..KKK.","..bBBB..KKKK"];
 function setCh(s,i,c){ return s.slice(0,i)+c+s.slice(i+1); }

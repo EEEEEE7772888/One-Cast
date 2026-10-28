@@ -288,6 +288,8 @@ S.draw=function(ms){
   /* sky */
   var BANDS=7; for(y=0;y<=horizonY;y++){ var k0=y/horizonY, bi=Math.floor(k0*BANDS), frac=k0*BANDS-bi, c0=rgb(mixC(sky[0],sky[1],Math.min(1,bi/BANDS))), c1=rgb(mixC(sky[0],sky[1],Math.min(1,(bi+1)/BANDS)));
     R(0,y,W,1,c0); if(frac>0.55){ ctx.fillStyle=c1; for(x=(y&1);x<W;x+=2) ctx.fillRect(x,y,1,1); } }
+  var spooky=root.OC&&root.OC.eventOn&&root.OC.eventOn('halloween');
+  if(spooky){ var tint=lt<0.5?'rgba(90,30,140,'+(0.22*(1-lt*2)).toFixed(3)+')':'rgba(255,120,30,0.06)'; ctx.fillStyle=tint; ctx.fillRect(0,0,W,horizonY+1); }
   var aur=Math.max(0,(0.35-lt)/0.35), dayIdx=Math.floor(Date.now()/86400000);
   if(aur>0&&!storm&&(th.aurora||Math.abs(sp.lat)>52)&&hash(dayIdx+0.5)<0.75){
     for(x=0;x<W;x+=2){ var ab=horizonY*0.1+Math.sin(x*0.045+t*0.25)*5+Math.sin(x*0.011+t*0.07)*8, al=10+Math.sin(x*0.07+t*0.4)*5+Math.sin(x*0.023)*4, aa=(0.11+0.08*Math.sin(x*0.09+t*0.6))*aur;
@@ -325,6 +327,7 @@ S.draw=function(ms){
   if(m==='troll'||m==='deep'||m==='boat'||m==='shore'){ for(x=0;x<W;x++){ var wv=Math.round(Math.sin(x*0.3+t*2.2+(m==='troll'?scroll:0))*1); if(wv>0||((x+Math.floor(t*6))%7===0)) P(x,wt+wv,'rgba(220,240,255,'+(0.35*Math.max(0.3,lt)).toFixed(2)+')'); } }
   if(th.stream) drawStream(t,wt,lt,dkL);
   if(th.trees==='autumn') drawLeaves(t,wt,dk,h);
+  if(spooky) drawSpooky(t,wt,dk,lt,m);
   if(lt>0.2&&m!=='troll'){ ctx.fillStyle='rgba(220,240,255,'+(0.07*lt).toFixed(3)+')'; var lx=m==='ice'?holeX():m==='shore'?bobberX(0):Math.round(W/2)+10; for(i=0;i<3;i++){ var sw=3+i*2, off=(i-1)*6; ctx.beginPath(); ctx.moveTo(lx-sw+off*0.2,wt); ctx.lineTo(lx+sw+off*0.2,wt); ctx.lineTo(lx+sw*3+off*3,fy); ctx.lineTo(lx-sw*3+off*3,fy); ctx.closePath(); ctx.fill(); } }
   if(m!=='troll'&&m!=='deep'){
     var sed=shade(th.ice?'#2A3A3E':th.stream?'#6A6048':'#4A4030',0.15+dkL), sedHi=shade(th.ice?'#4A5A52':th.stream?'#9A8A68':'#6A5A40',0.15+dkL), rock=shade('#56606A',0.1+dkL);
@@ -467,8 +470,20 @@ S.draw=function(ms){
   if(rain){ for(i=0;i<90;i++){ var rx2=Math.floor((hash(i*2.9)*W+t*6)%W), ry2=Math.floor((hash(i*4.7)*wt+t*(60+hash(i)*30))%wt); R(rx2,ry2,1,3,'rgba(200,220,255,0.45)'); } }
   if(flash&&ms-flash<900){ ctx.fillStyle='rgba(255,220,120,'+(0.35*(1-(ms-flash)/900)).toFixed(3)+')'; ctx.fillRect(0,0,W,H); }
 };
+/* Halloween: jack-o'-lanterns along the far shore (they glow at night), bats, a drifting ghost and fog on the water */
+var PUMPKIN=["..g..","OOOOO","OYOYO","OOYOO"], BAT=[["k...k","kk.kk",".kkk."],[".....","kkkkk",".k.k."]], GHOST=[".www.","wkwkw","wwwww","wwwww","w.w.w"];
+function drawSpooky(t,wt,dk,lt,m){
+  var night=lt<0.45, i;
+  if(m!=='troll'&&m!=='deep'){ for(i=0;i<6;i++){ var px=Math.round(W*(0.06+0.16*i+0.05*hash(i*3.3))), py=horizonY-4;
+      A.drawSprite(ctx,PUMPKIN,{g:shade('#3A7A2A',dk),O:shade('#E8701A',dk*0.8),Y:night?'#FFE26A':shade('#7A3A0A',dk)},px,py);
+      if(night&&Math.floor(t*3+i)%7){ ctx.fillStyle='rgba(255,180,60,0.14)'; ctx.fillRect(px-2,py-2,9,8); } } }
+  var bats=lt<0.75?6:2; for(i=0;i<bats;i++){ var bx=Math.floor((hash(i*7.1)*W*1.5+t*(10+hash(i)*8))%(W*1.5))-W*0.25, by=6+Math.round(hash(i*2.9)*horizonY*0.55+Math.sin(t*3+i)*3);
+    A.drawSprite(ctx,BAT[Math.floor(t*8+i)%2],{k:night?'#120818':'#2A1A30'},bx,by); }
+  var gx=Math.floor((t*4+hash(9)*W)%(W+40))-20, gy=Math.round(horizonY*0.35+Math.sin(t*0.9)*4); ctx.globalAlpha=night?0.75:0.45; A.drawSprite(ctx,GHOST,{w:'#F0F4FF',k:'#1A1A2A'},gx,gy); ctx.globalAlpha=1;
+  if(night||lt<0.7){ for(i=0;i<5;i++){ var fy2=wt+1+i*2, a=(0.10-i*0.015)*(night?1:0.5); ctx.fillStyle='rgba(225,215,245,'+Math.max(0,a).toFixed(3)+')'; for(var x=0;x<W;x+=3){ if(Math.sin(x*0.05+t*0.4+i)>-0.2) ctx.fillRect(x,fy2,3,1); } } }
+}
 function drawBoat(aX,bob,wt,t,moving){
-  var id=S.hooks.boat?S.hooks.boat():'paddle', bb=A.boat(id), x0=aX-bb.stand, top=horizonY-2-bb.deck+bob;
+  var id=S.hooks.boat?S.hooks.boat():'paddle', bb=A.boat(id,S.hooks.paint&&S.hooks.paint()), x0=aX-bb.stand, top=horizonY-2-bb.deck+bob;
   A.drawSprite(ctx,bb.rows,bb.map,x0,top);
   /* the part below the waterline sits in the water */
   ctx.fillStyle='rgba(20,70,120,0.55)'; for(var y=Math.max(wt,top);y<top+bb.h;y++){ var row=bb.rows[y-top]; for(var x=0;x<row.length;x++) if(row[x]!=='.') ctx.fillRect(x0+x,y,1,1); }

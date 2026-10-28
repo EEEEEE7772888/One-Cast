@@ -676,3 +676,36 @@ a{color:var(--frost)}
 .derby-prizes div{padding:8px;background:#0E1E3C;border:2px solid var(--edge);text-align:center;font:18px/1.2 var(--term)}
 .derby-prizes b{display:block;font:9px/1.4 var(--pixel);color:var(--gold)}
 .derby-prizes small{display:block;color:var(--muted);font-size:15px}
+/* event items (Halloween) */
+.item{position:relative}
+.item .ev-tag{position:absolute;top:3px;left:3px;font:6px/1 var(--pixel);color:#1A0E06;background:#FF9A3A;padding:2px 3px}
+.item.event{border-color:#C8601A}
+/* boat paint */
+.paint-box{display:grid;gap:8px;padding:10px;background:var(--panel-lo);border:3px solid var(--edge)}
+.paint-pv{display:grid;place-items:center;min-height:90px;padding:8px;background:linear-gradient(180deg,#9FD3F2 0 60%,#2F6FA8 60%)}
+.paint-sw{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px}
+.paint-sw .sw{cursor:pointer;display:grid;gap:3px;justify-items:center;padding:6px 4px;background:#0E1E3C;border:2px solid var(--edge);color:var(--ice);text-align:center}
+.paint-sw .sw.on{border-color:var(--gold)}
+.paint-sw .sw.event{border-color:#C8601A}
+.paint-sw .chip-c{width:44px;height:20px;border:2px solid #050B1C}
+.paint-sw .sn{font:15px/1.05 var(--term)}
+.paint-sw .sn i{display:block;font:6px/1.4 var(--pixel);font-style:normal;color:#FF9A3A}
+.paint-sw .sp{font:7px/1 var(--pixel);color:var(--gold)}
+/* Halloween theme */
+body.halloween .logo b{color:#FF8A1A}
+body.halloween .d-title{color:#FF9A3A}
+body.halloween .dialog{border-color:#4A2A6A}
+.ev-intro{font:19px/1.2 var(--term);color:var(--ice);margin:0}
+.ev-intro b,.ev-box b,.ev-f b{color:#FF9A3A;font-weight:400}
+.ev-fish{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:center;padding:8px 10px;background:#1A1030;border:3px solid #4A2A6A}
+.ev-fish.got{border-color:#3F8A47}
+.ev-pic{display:grid;place-items:center;min-width:80px}
+.ev-n{font:10px/1.4 var(--pixel);color:#FF9A3A}
+.ev-d{font:17px/1.15 var(--term);color:var(--ice);margin:3px 0}
+.ev-f{font:16px/1.2 var(--term);color:var(--muted)}
+.ev-box{padding:10px 12px;background:#1A1030;border:3px solid #4A2A6A;font:18px/1.25 var(--term);color:var(--ice);display:grid;gap:8px;justify-items:start}
+/* fish tank */
+.tank{display:grid;gap:6px;padding:6px;background:#2A1E14;border:4px solid #6A4A2A;box-shadow:inset 0 0 0 2px #3A2A1A}
+.tank-cv{width:100%;height:auto;aspect-ratio:2/1;image-rendering:pixelated;cursor:pointer;display:block}
+.tank-label{font:17px/1.2 var(--term);color:#E8D8B0;text-align:center;min-height:20px}
+.tank-label b{color:var(--gold);font-weight:400}

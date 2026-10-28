@@ -28,6 +28,7 @@ begin
     p.spot := 'basslake';
   end if;
   update players set last_seen = now(), spot = p.spot where pid = p_pid;
+  insert into activity (day, pid) values ((now() at time zone 'America/New_York')::date, p_pid) on conflict do nothing;
   return p;
 end $$;
 
@@ -61,6 +62,11 @@ begin
   insert into news (kind, pid, name, tag, text, data) values (p_kind, p_pid, p.name, p.tag, p_text, coalesce(p_data, '{}'::jsonb));
 end $$;
 
+-- Is an event (like Halloween) on right now?
+create or replace function public.oc_event_on(p_event text) returns boolean language sql stable as $$
+  select p_event is null or coalesce((select now() >= (v -> p_event ->> 'start')::timestamptz and now() < (v -> p_event ->> 'end')::timestamptz from config where k = 'events'), false);
+$$;
+
 -- How soon the first bite comes, in minutes.
 drop function if exists public.oc_bite_minutes(text, text, boolean);
 create or replace function public.oc_bite_minutes(p_spot text, p_bait text, p_mult numeric, p_small boolean) returns numeric language plpgsql as $$
@@ -68,7 +74,7 @@ declare b public.baits; first_wait int; r numeric;
 begin
   select * into b from baits where id = p_bait;
   select min(s.min_wait) into first_wait from spot_species ss join species s on s.id = ss.species join species_baits sb on sb.species = s.id and sb.bait = p_bait
-    where ss.spot = p_spot and ss.w > 0 and sb.w > 0 and (not p_small or s.small);
+    where ss.spot = p_spot and ss.w > 0 and sb.w > 0 and (not p_small or s.small) and (s.event is null or oc_event_on(s.event));
   if first_wait is null then return null; end if;
   r := random();
   return greatest(b.min_bite, first_wait) - ln(1 - r) * b.bite_mean * p_mult;
@@ -87,7 +93,7 @@ begin
     select s.*, ss.w * sb.w * coalesce((s.act ->> p_period)::numeric, 1) *
       (case when p_minutes < s.min_wait then 0 when s.max_wait > 0 and p_minutes > s.max_wait then exp(-(p_minutes - s.max_wait) / s.max_wait) else 1 end) as w
     from spot_species ss join species s on s.id = ss.species join species_baits sb on sb.species = s.id and sb.bait = p_bait
-    where ss.spot = p_spot and ss.w > 0 and sb.w > 0 and (not p_small or s.small)
+    where ss.spot = p_spot and ss.w > 0 and sb.w > 0 and (not p_small or s.small) and (s.event is null or oc_event_on(s.event))
     order by s.id
   loop total := total + rec.w; end loop;
   if total <= 0 then species := null; return; end if;
@@ -96,7 +102,7 @@ begin
     select s.*, ss.w * sb.w * coalesce((s.act ->> p_period)::numeric, 1) *
       (case when p_minutes < s.min_wait then 0 when s.max_wait > 0 and p_minutes > s.max_wait then exp(-(p_minutes - s.max_wait) / s.max_wait) else 1 end) as w
     from spot_species ss join species s on s.id = ss.species join species_baits sb on sb.species = s.id and sb.bait = p_bait
-    where ss.spot = p_spot and ss.w > 0 and sb.w > 0 and (not p_small or s.small)
+    where ss.spot = p_spot and ss.w > 0 and sb.w > 0 and (not p_small or s.small) and (s.event is null or oc_event_on(s.event))
     order by s.id
   loop
     if rec.w <= 0 then continue; end if;
@@ -586,7 +592,7 @@ begin
   if d.key is null then
     rot := coalesce(cfg -> 'rotation', '["largemouth"]'::jsonb); n := jsonb_array_length(rot);
     insert into derbies (key, species, starts_at, ends_at)
-      values (dkey, rot ->> (((((sat - date '2026-01-03') / 7) % n) + n) % n), (sat::timestamp) at time zone tz, ((sat + 2)::timestamp) at time zone tz)
+      values (dkey, coalesce(cfg -> 'special' -> dkey ->> 'sp', rot ->> (((((sat - date '2026-01-03') / 7) % n) + n) % n)), (sat::timestamp) at time zone tz, ((sat + 2)::timestamp) at time zone tz)
       on conflict (key) do nothing;
     select * into d from derbies where key = dkey;
   end if;
@@ -745,6 +751,7 @@ begin
     update players set coins = coins - price, gear = gr where pid = p_pid;
   elsif p_kind = 'item' then
     select * into it from items where id = p_id; if it.id is null or it.prize then perform oc_fail('no such item'); end if;
+    if it.event is not null and not oc_event_on(it.event) then perform oc_fail('that is only sold during the event'); end if;
     if p_id = any(p.items) then perform oc_fail('you already own that'); end if;
     price := it.price;
     if p.coins < price then perform oc_fail('not enough coins'); end if;
@@ -880,10 +887,10 @@ end $$;
 
 -- ============ fish index rewards ============
 create or replace function public.oc_index_species(p_kind text) returns setof text language sql stable as $$
-  select id from species where p_kind = 'all'
+  select id from species where p_kind = 'all' and event is null
   union
-  select distinct ss.species from spot_species ss join spots s on s.id = ss.spot
-   where p_kind <> 'all' and ss.w > 0 and (case when p_kind = 'fresh' then s.water = 'fresh' else s.water <> 'fresh' end) $$;
+  select distinct ss.species from spot_species ss join spots s on s.id = ss.spot join species x on x.id = ss.species
+   where p_kind <> 'all' and ss.w > 0 and x.event is null and (case when p_kind = 'fresh' then s.water = 'fresh' else s.water <> 'fresh' end) $$;
 
 create or replace function public.claim_index(p_pid uuid, p_secret text, p_kind text) returns jsonb language plpgsql security definer set search_path = public as $$
 declare p public.players; prize bigint; item text; missing int; label text;
@@ -1201,6 +1208,33 @@ end $$;
 create or replace function public.oc_admin(p_key text) returns void language plpgsql as $$
 begin if p_key is null or not exists (select 1 from admin where k = p_key) then perform oc_fail('not the admin key'); end if; end $$;
 
+-- Player numbers: who plays each day, new players, and who comes back. "Real" players have caught at least 5 fish (most alt accounts never do).
+create or replace function public.admin_stats(p_key text) returns jsonb language plpgsql security definer set search_path = public as $$
+declare today date := (now() at time zone 'America/New_York')::date;
+begin
+  perform oc_admin(p_key);
+  return jsonb_build_object(
+    'today', today,
+    'total', (select count(*) from players where not banned),
+    'real', (select count(*) from players where not banned and coalesce((stats ->> 'catches')::int, 0) >= 5),
+    'dau', (select count(*) from activity where day = today),
+    'yesterday', (select count(*) from activity where day = today - 1),
+    'wau', (select count(distinct pid) from activity where day > today - 7),
+    'mau', (select count(distinct pid) from activity where day > today - 30),
+    'newWeek', (select count(*) from players where (created_at at time zone 'America/New_York')::date > today - 7),
+    -- of the players who joined 7 to 30 days ago, how many played again in the last 7 days
+    'back7', (select jsonb_build_object('of', count(*), 'back', count(*) filter (where exists (select 1 from activity a where a.pid = p.pid and a.day > today - 7)))
+              from players p where (p.created_at at time zone 'America/New_York')::date between today - 30 and today - 7 and not p.banned),
+    -- of the players who joined 1 to 30 days ago, how many came back on a later day at all
+    'returned', (select jsonb_build_object('of', count(*), 'back', count(*) filter (where exists (select 1 from activity a where a.pid = p.pid and a.day > (p.created_at at time zone 'America/New_York')::date)))
+              from players p where (p.created_at at time zone 'America/New_York')::date between today - 30 and today - 1 and not p.banned),
+    'days', (select jsonb_agg(jsonb_build_object('day', d, 'active', (select count(*) from activity a where a.day = d),
+               'new', (select count(*) from players p where (p.created_at at time zone 'America/New_York')::date = d)) order by d)
+             from generate_series(today - 13, today, interval '1 day') g(dd), lateral (select g.dd::date as d) x),
+    'top', (select coalesce(jsonb_agg(x), '[]'::jsonb) from (select p.name, p.tag, count(*) as days from activity a join players p on p.pid = a.pid where a.day > today - 30 and not p.hidden group by p.pid, p.name, p.tag order by count(*) desc, max(a.day) desc limit 10) x),
+    'now', now());
+end $$;
+
 create or replace function public.admin_overview(p_key text) returns jsonb language plpgsql security definer set search_path = public as $$
 begin
   perform oc_admin(p_key);
@@ -1315,3 +1349,11 @@ do $$ declare r record; begin
 end $$;
 
 select oc_ensure_season();
+
+-- Halloween 2026: one World News post when the event goes live (only once, and only while it is on).
+do $$ begin
+  if oc_event_on('halloween') and not exists (select 1 from config where k = 'news_halloween2026') then
+    perform oc_news('notice', null, 'Happy Halloween! Spooky fish are biting in Home waters until Sunday night: ghost carp, jack-o''-lantern bass and the phantom drum. Costumes and boat paint are in the shops, and this weekend is the Ghost Carp Derby!', '{}'::jsonb);
+    insert into config (k, v) values ('news_halloween2026', 'true'::jsonb);
+  end if;
+end $$;

@@ -283,6 +283,29 @@ create table if not exists public.derby_entries (
 );
 create index if not exists derby_entries_board on public.derby_entries (derby, lb desc, caught_at);
 
+-- Player numbers for the admin page: one row per player per day they played (US Eastern days).
+create table if not exists public.activity (
+  day date not null,
+  pid uuid not null references public.players(pid) on delete cascade,
+  primary key (day, pid)
+);
+create index if not exists activity_pid on public.activity (pid);
+-- Fill in the past from what we already know: the day each player joined, the days they caught fish they kept, and the day they were last seen.
+do $$ begin
+  if not exists (select 1 from public.config where k = 'activity_backfill') then
+    insert into public.activity (day, pid)
+      select (created_at at time zone 'America/New_York')::date, pid from public.players
+      union select (last_seen at time zone 'America/New_York')::date, pid from public.players
+      union select (caught_at at time zone 'America/New_York')::date, pid from public.fish where pid is not null
+      on conflict do nothing;
+    insert into public.config (k, v) values ('activity_backfill', 'true'::jsonb);
+  end if;
+end $$;
+
+-- Events (Halloween and so on): limited-time fish and shop items.
+alter table public.species add column if not exists event text;
+alter table public.items add column if not exists event text;
+
 -- Lock everything down. The website only gets the functions.
 do $$ declare t text; begin
   for t in select tablename from pg_tables where schemaname='public' loop

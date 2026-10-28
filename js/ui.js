@@ -5,7 +5,7 @@ var D=window.OC, A=window.ART, N=window.NET, M=window.WMAP, SC=window.SCENE, G=w
 function $(id){ return document.getElementById(id); }
 function el(tag,cls,html){ var e=document.createElement(tag); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e; }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
-var OVERLAYS=['derbyOv','rodOv','dockOv','menuOv','tackleOv','baitOv','gearOv','shopOv','bucketOv','fishOv','cardOv','journalOv','legendOv','achOv','boardOv','friendsOv','tradeOv','profileOv','newsOv','mapOv','guideOv','saveOv','helpOv','awayOv','reportOv','suggestOv'];
+var OVERLAYS=['eventOv','derbyOv','rodOv','dockOv','menuOv','tackleOv','baitOv','gearOv','shopOv','bucketOv','fishOv','cardOv','journalOv','legendOv','achOv','boardOv','friendsOv','tradeOv','profileOv','newsOv','mapOv','guideOv','saveOv','helpOv','awayOv','reportOv','suggestOv'];
 var RENDER={rodOv:renderRods,guideOv:renderGuide,dockOv:renderDock,menuOv:renderMenu,tackleOv:renderTackle,baitOv:renderBaitShop,gearOv:renderGear,shopOv:renderShop,bucketOv:renderBucket,journalOv:renderJournal,legendOv:renderLegends,achOv:renderAch,boardOv:renderBoard,friendsOv:renderFriends,newsOv:renderNews,mapOv:renderMap,saveOv:renderSave};
 UI.open=function(id){ OVERLAYS.forEach(function(o){ if(o!==id&&o!=='cardOv') $(o).hidden=true; }); $(id).hidden=false; if(RENDER[id]) RENDER[id](); var f=$(id).querySelector('.x,button,select,input'); if(f&&id!=='mapOv') try{ f.focus({preventScroll:true}); }catch(e){} if(id==='mapOv') G.coachEvent&&G.coachEvent('map'); };
 UI.closeAll=function(){ OVERLAYS.forEach(function(o){ $(o).hidden=true; }); $('resetAsk').hidden=true; $('reset').hidden=false; if(G.tradeId){ stopTradePoll(); } if(G.s){ G.renderAll(); G.checkAch(); } };
@@ -31,7 +31,7 @@ function renderMenu(){
   renderDaily();
   var list=$('menuList'); list.innerHTML='';
   var unread=newsUnread();
-  var items=[
+  var items=(UI.eventOn&&UI.eventOn()?[['legend','HALLOWEEN EVENT',UI.eventBlurb(),'eventOv']]:[]).concat([
     ['pail','YOUR FISH',G.s.fish.length+' fish, worth '+D.money(bucketValue()),'bucketOv'],
     ['map','WORLD MAP',G.spot().name+' · '+G.s.regions.length+' of 14 regions','mapOv'],
     ['legend','LEGENDS',legendBlurb(),'legendOv'],
@@ -40,7 +40,7 @@ function renderMenu(){
     ['spool','GEAR SHOP',gearBlurb(),'gearOv'],
     ['tackle','RODS AND REELS',rodBlurb(),'rodOv'],
     ['hat','CLOTHES','Dress your angler','shopOv'],
-    ['book','FISH JOURNAL',Object.keys(G.s.journal).filter(function(k){ return k.indexOf('legend:')!==0; }).length+' of '+D.SPECIES.length+' species','journalOv'],
+    ['book','FISH JOURNAL',Object.keys(G.s.journal).filter(function(k){ return k.indexOf('legend:')!==0&&D.SP_BY_ID[k]&&!D.SP_BY_ID[k].event; }).length+' of '+D.SPECIES.length+' species','journalOv'],
     ['book','GUIDEBOOKS',(G.s.gear.books||[]).length+' of 2 · best times, baits and legend secrets','guideOv'],
     ['trophy','WEEKEND DERBY',UI.derbyBlurb?UI.derbyBlurb():'Biggest fish of the weekend wins','derbyOv'],
     ['trophy','LEADERBOARD','World, region and species boards','boardOv'],
@@ -49,7 +49,7 @@ function renderMenu(){
     ['star','ACHIEVEMENTS',(G.s.prefs.ach||[]).length+' of '+G.ACH.length,'achOv'],
     ['disk','SAVE YOUR GAME',(G.s.hasPw?'Password on':'Set a password')+' · save code','saveOv'],
     ['help','HOW TO PLAY','The rules in one minute','helpOv']
-  ];
+  ]);
   items.forEach(function(it){ var b=el('button','mbtn'); b.type='button'; b.appendChild(icon(it[0])); var t=el('span',null,'<span class="t">'+it[1]+'</span><span class="s">'+esc(it[2])+'</span>'); b.appendChild(t); b.appendChild(el('span','arrow','>')); b.onclick=function(){ UI.open(it[3]); }; list.appendChild(b); });
   $('menuFoot').innerHTML='You are <b>'+esc(G.s.name)+'#'+G.s.tag+'</b>'+(G.s.founder?' <span class="tag gold">FOUNDER</span>':'')+(G.s.champ?' <span class="tag gold">CHAMPION x'+G.s.champ+'</span>':'')+'. Season '+seasonName(G.s.season.key)+' ends in '+D.fmtDuration((Date.parse(G.s.season.endsAt)-N.now())/60000)+'. <button class="pbtn" id="suggestBtn" type="button" style="font-size:7px;padding:6px">SUGGEST A LAKE</button>';
   $('suggestBtn').onclick=function(){ UI.open('suggestOv'); };
@@ -186,10 +186,34 @@ function renderRods(){
 /* ---------- the dock: boats ---------- */
 function perkText(b){ var p=b.perk||{}, out=[]; if(p.all) out.push('bites '+Math.round((1-p.all)*100)+'% sooner everywhere'); ['fresh','salt','troll','deep','polar'].forEach(function(k){ if(p[k]) out.push(Math.round((1-p[k])*100)+'% sooner on '+{fresh:'freshwater',salt:'salt water',troll:'trolling',deep:'deep drops',polar:'polar water'}[k]); }); return out.join(', '); }
 function waterText(b){ return b.lvl===0?'Shore and ice spots':b.lvl===1?'+ freshwater boat spots':b.lvl===2?'+ salt flats, swamps and reefs':b.lvl<5?'+ everything a skiff can do':b.lvl===5?'+ ocean trolling for tuna and marlin':'everywhere'; }
+/* paint your boat: swatches, a preview of the boat you have out, buy and use */
+var paintPreview=null;
+function paintBox(cur){
+  var box=el('div','paint-box'), mine=(G.s.outfit||{}).paint||'', pick=paintPreview!=null?paintPreview:mine;
+  box.appendChild(el('div','gear-group','PAINT YOUR BOAT'));
+  var pv=el('div','paint-pv'); var cv=A.boatCanvas(cur,D.GEAR_BY_ID[cur]&&D.GEAR_BY_ID[cur].lvl>=5?2:3,pick||null); cv.style.maxWidth='100%'; cv.style.height='auto'; pv.appendChild(cv); box.appendChild(pv);
+  if(cur==='devboat') box.appendChild(el('p','note','The Dev Flagship keeps its own one-of-one paint. Take out another boat to see paint on it.'));
+  var sw=el('div','paint-sw');
+  [{id:'',name:'Factory paint',price:0,paint:null}].concat(D.ITEMS.filter(function(i){ return i.slot==='paint'&&(!i.event||D.eventOn(i.event)||G.s.items.indexOf(i.id)>=0); })).forEach(function(it){
+    var owned=!it.id||G.s.items.indexOf(it.id)>=0, b=el('button','sw'+(pick===it.id?' on':'')+(it.event?' event':'')); b.type='button'; b.title=it.name;
+    var chip=el('span','chip-c'); var c=it.paint||{H:'#8A97A8',h:'#C8D2DE',S:'#F4F4F4'}; chip.style.background='linear-gradient(180deg,'+c.h+' 0 35%,'+c.H+' 35% 75%,'+(c.S||c.H)+' 75%)'; b.appendChild(chip);
+    b.appendChild(el('span','sn',esc(it.name)+(it.event?' <i>'+esc(D.EVENTS[it.event].name.toUpperCase())+'</i>':'')));
+    b.appendChild(el('span','sp',mine===it.id?'USING':owned?'OWNED':D.money(it.price)));
+    b.onclick=function(){ paintPreview=it.id; renderDock(); }; sw.appendChild(b); });
+  box.appendChild(sw);
+  var it=D.ITEM_BY_ID[pick], owned=!pick||G.s.items.indexOf(pick)>=0, act=el('div','reset-row');
+  if(pick!==mine){
+    var go=el('button','pbtn gold',owned?'USE THIS PAINT':'BUY AND PAINT · '+D.money(it.price)); go.type='button'; go.disabled=!owned&&G.s.coins<it.price;
+    go.onclick=function(){ (owned?Promise.resolve():buy('item',it.id,it.name)).then(function(r){ if(!owned&&!r) return; return N.me('set_outfit',{p_outfit:{paint:pick}}).then(function(of){ G.s.outfit=of; paintPreview=null; G.toast(pick?'Painted your boats '+it.name.toLowerCase()+'!':'Back to factory paint.',2400,'good'); renderDock(); }); }).catch(G.fail); };
+    act.appendChild(go); var cancel=el('button','pbtn','CANCEL'); cancel.type='button'; cancel.onclick=function(){ paintPreview=null; renderDock(); }; act.appendChild(cancel);
+  } else act.appendChild(el('span','note',pick?'Every boat you own wears '+esc(it.name)+'.':'Pick a color to try it on. Paint goes on every boat you own.'));
+  box.appendChild(act); return box;
+}
 function renderDock(){
   var box=$('dockRows'); box.innerHTML=''; var own=G.s.gear.boats||['paddle'], cur=G.s.gear.boat||'paddle';
+  box.appendChild(paintBox(cur));
   D.GEAR.filter(function(b){ return b.kind==='boat'&&(!b.secret||own.indexOf(b.id)>=0); }).sort(function(a,b){ return (b.secret?1:0)-(a.secret?1:0); }).forEach(function(b){ var has=own.indexOf(b.id)>=0, prevOwned=b.lvl===0||D.BOATS.some(function(x){ return x.lvl===b.lvl-1&&own.indexOf(x.id)>=0; });
-    var row=el('div','dock-row'+(b.id===cur?' out':'')+(has?'':' locked')); var pic=el('div','dock-pic'); var cv=A.boatCanvas(b.id,b.lvl>=5?2:3); cv.style.maxWidth='100%'; cv.style.height='auto'; if(!has){ cv.style.filter='brightness(0.35) saturate(0.2)'; } pic.appendChild(cv); row.appendChild(pic);
+    var row=el('div','dock-row'+(b.id===cur?' out':'')+(has?'':' locked')); var pic=el('div','dock-pic'); var cv=A.boatCanvas(b.id,b.lvl>=5?2:3,has?(G.s.outfit||{}).paint:null); cv.style.maxWidth='100%'; cv.style.height='auto'; if(!has){ cv.style.filter='brightness(0.35) saturate(0.2)'; } pic.appendChild(cv); row.appendChild(pic);
     var t=el('div','dock-info','<div class="nm">'+esc(b.name.toUpperCase())+(b.secret?' <span class="tag gold">1 OF 1</span>':'')+(b.id===cur?' <span class="tag green">TAKEN OUT</span>':'')+'</div><div class="sub">'+esc(b.desc)+'</div><div class="sub"><b>Water:</b> '+waterText(b)+(perkText(b)?' · <b>Bonus:</b> '+perkText(b):'')+'</div>'); row.appendChild(t);
     var act=el('div','dock-act');
     if(has){ if(b.id!==cur){ var go=el('button','pbtn gold','TAKE OUT'); go.type='button'; go.onclick=function(){ N.me('set_boat',{p_boat:b.id}).then(function(r){ G.s.gear=r.gear; G.toast('Took out the '+b.name+'.',2200,'good'); renderDock(); G.renderAll(); }).catch(G.fail); }; act.appendChild(go); } }
@@ -204,8 +228,9 @@ function previewOutfit(){ var of=Object.assign({},G.s.outfit); if(shopPreview) o
 function renderShop(){
   var tabs=$('shopTabs'); tabs.innerHTML=''; D.SLOTS.forEach(function(s){ var b=el('button',null,s.name); b.type='button'; b.setAttribute('aria-pressed',String(s.id===shopTab)); b.onclick=function(){ shopTab=s.id; shopPreview=null; renderShop(); }; tabs.appendChild(b); });
   var grid=$('shopItems'); grid.innerHTML='';
-  D.ITEMS.filter(function(i){ return i.slot===shopTab&&(!i.prize||G.s.items.indexOf(i.id)>=0); }).forEach(function(it){ var own=G.s.items.indexOf(it.id)>=0, worn=G.s.outfit[it.slot]===it.id, b=el('button','item'); b.type='button'; b.setAttribute('aria-pressed',String(shopPreview?shopPreview===it.id:worn));
+  D.ITEMS.filter(function(i){ return i.slot===shopTab&&(!i.prize||G.s.items.indexOf(i.id)>=0)&&(!i.event||D.eventOn(i.event)||G.s.items.indexOf(i.id)>=0); }).sort(function(a,b){ return (b.event&&D.eventOn(b.event)?1:0)-(a.event&&D.eventOn(a.event)?1:0); }).forEach(function(it){ var own=G.s.items.indexOf(it.id)>=0, worn=G.s.outfit[it.slot]===it.id, b=el('button','item'+(it.event?' event':'')); b.type='button'; b.setAttribute('aria-pressed',String(shopPreview?shopPreview===it.id:worn));
     var of=Object.assign({},G.s.outfit); of[it.slot]=it.id; var c=A.fisherCanvas(of), cc=document.createElement('canvas'); cc.width=c.width; cc.height=c.height; cc.className='px'; cc.getContext('2d').drawImage(c,0,0); b.appendChild(cc);
+    if(it.event) b.appendChild(el('span','ev-tag',esc(D.EVENTS[it.event].name.toUpperCase())));
     b.appendChild(el('span','in',esc(it.name))); b.appendChild(el('span','ip'+(worn?' worn':own?' own':''),worn?'WEARING':own?'OWNED':D.money(it.price))); b.onclick=function(){ shopPreview=it.id; renderShop(); }; grid.appendChild(b); });
   var pv=$('dressPreview'), src=A.fisherCanvas(previewOutfit()); pv.width=src.width; pv.height=src.height; pv.getContext('2d').drawImage(src,0,0);
   var it=shopPreview?D.ITEM_BY_ID[shopPreview]:null, own=it&&G.s.items.indexOf(it.id)>=0, worn=it&&G.s.outfit[it.slot]===it.id;
@@ -385,6 +410,7 @@ UI.profile=function(pid){
     if(p.legends.length){ body.appendChild(el('div','gear-group','LEGENDS OWNED')); p.legends.forEach(function(l){ body.appendChild(legendCard(l,l.owner===G.s.pid)); }); }
     if(p.pastLegends.length) body.appendChild(el('p','note','Once owned: '+p.pastLegends.map(function(l){ return esc(l.name); }).join(', ')+'.'));
     if(p.badges.length) body.appendChild(el('p','note','Badges: '+p.badges.map(function(b){ var a=G.ACH.filter(function(x){ return x.id===b; })[0]; return a?esc(a.name):''; }).filter(Boolean).join(' · ')));
+    body.appendChild(el('div','gear-group',pid===G.s.pid?'YOUR FISH TANK':'FISH TANK')); body.appendChild(UI.fishTank(p.best,pid===G.s.pid));
     body.appendChild(el('div','gear-group','TROPHY WALL'));
     var grid=el('div','grid'); p.best.slice(0,9).forEach(function(f){ var card=fishCard(f,null); card.onclick=function(){ reactTo(f,p); }; grid.appendChild(card); }); if(!p.best.length) grid.appendChild(el('div','empty','No fish kept yet.')); body.appendChild(grid);
     if(pid!==G.s.pid){ var row=el('div','reset-row'); var isFriend=G.s.friends.some(function(f){ return f.pid===pid&&f.status==='accepted'; }), pending=G.s.friends.some(function(f){ return f.pid===pid; });

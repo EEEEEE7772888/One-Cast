@@ -481,7 +481,7 @@ console.log('weekend derby');
   const mk=(n)=>{ const P={pid:uuid(),secret:'g'.repeat(10)+uuid().replace(/-/g,'').slice(0,20)}; rpc('login',[P.pid,P.secret,n]); return P; };
   let d=rpc('get_derby',[null]);
   const sat=new Date(d.startsAt);
-  ok(d.key&&D.DERBY.rotation.includes(d.sp)&&[48,49,47].includes((new Date(d.endsAt)-sat)/3600e3),'there is always a derby this or next weekend, Saturday and Sunday (48 hours, 49 when the clocks fall back) ('+d.key+', '+d.sp+')');
+  ok(d.key&&(D.DERBY.rotation.includes(d.sp)||(D.DERBY.special[d.key]||{}).sp===d.sp)&&[48,49,47].includes((new Date(d.endsAt)-sat)/3600e3),'there is always a derby this or next weekend, Saturday and Sunday (48 hours, 49 when the clocks fall back) ('+d.key+', '+d.sp+')');
   ok(new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short',hour:'numeric',hour12:false}).format(sat).replace(/\s/g,'')==='Sat,00'||/Sat.*24|Sat.*00/.test(new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short',hour:'2-digit',hour12:false}).format(sat)),'it starts Saturday at midnight Eastern');
   // make it live now, featuring largemouth
   sql(`update derbies set species='largemouth', starts_at=now()-interval '1 hour', ends_at=now()+interval '1 hour' where key='${d.key}'`);
@@ -506,6 +506,39 @@ console.log('weekend derby');
   ok(/DerbyB#\d+ won the Largemouth bass Derby with a 8 lb fish! 4 anglers entered\./.test(sql("select text from news where kind='derby' order by id desc limit 1")),'the winner is in the world news');
   ok(JSON.parse(sql(`select results from derbies where key='${d.key}'`))[0].name==='DerbyB','the results are kept for the derby page');
   sql(`insert into derbies (key,species,starts_at,ends_at,awarded,results) select 'd2000-01-01',species,starts_at,ends_at,true,results from derbies where key='${d.key}'; delete from derbies where key='${d.key}'`); const after=rpc('get_derby',[null]); ok(after.last&&after.last.results[0].name==='DerbyB'&&after.key!=='d2000-01-01','last weekend\'s winners show on the derby page'); sql(`delete from derbies where key='d2000-01-01'`);
+}
+
+console.log('player numbers');
+{
+  const K='oc-admin-testkey';
+  ok(rpc('admin_stats',['wrong']).error==='not the admin key','only the admin sees player numbers');
+  const P={pid:uuid(),secret:'k'.repeat(10)+uuid().replace(/-/g,'').slice(0,20)}; rpc('login',[P.pid,P.secret,'Counted']);
+  rpc('get_state',[P.pid,P.secret]);
+  ok(+sql(`select count(*) from activity where pid='${P.pid}'`)===1,'playing marks today once, however many calls');
+  sql(`update players set created_at=now()-interval '10 days' where pid='${P.pid}'; insert into activity (day,pid) values (((now() - interval '10 days') at time zone 'America/New_York')::date,'${P.pid}') on conflict do nothing`);
+  const st=rpc('admin_stats',[K]);
+  ok(st.dau>=1&&st.wau>=st.dau&&st.mau>=st.wau&&st.days.length===14,'today, this week, this month, and 14 days of bars');
+  ok(st.back7.of>=1&&st.back7.back>=1,'someone who joined 10 days ago and played today counts as still playing after a week');
+  ok(st.total>=st.real,'real players are counted');
+}
+
+console.log('halloween event');
+{
+  const on=()=>sql(`select oc_event_on('halloween')`)==='t';
+  const setEv=(a,b)=>sql(`update config set v = jsonb_set(v,'{halloween}', jsonb_build_object('name','Halloween','start','${a}','end','${b}')) where k='events'`);
+  const P={pid:uuid(),secret:'m'.repeat(10)+uuid().replace(/-/g,'').slice(0,20)}; rpc('login',[P.pid,P.secret,'Spooky']); sql(`update players set coins=50000 where pid='${P.pid}'`);
+  setEv('2020-01-01T00:00:00Z','2020-01-02T00:00:00Z'); ok(!on(),'event off outside its dates');
+  const spooky=()=>sql(`select count(*) from (select (oc_roll('basslake','worm',600,'night',false)).species from generate_series(1,600)) x where species in ('ghostcarp','pumpkinbass','phantomdrum')`);
+  ok(spooky()==='0','no spooky fish when Halloween is over');
+  ok(rpc('buy',[P.pid,P.secret,'item','hat_witch']).error==='that is only sold during the event','Halloween clothes are not sold after Halloween');
+  setEv('2020-01-01T00:00:00Z','2099-01-01T00:00:00Z'); ok(on(),'event on during its dates');
+  const n=+spooky(); ok(n>20,'ghost carp bite at night in Home waters during Halloween ('+n+'/600)');
+  ok(rpc('buy',[P.pid,P.secret,'item','hat_witch']).items.includes('hat_witch'),'Halloween clothes are sold during Halloween');
+  ok(rpc('buy',[P.pid,P.secret,'item','paint_haunted']).items.includes('paint_haunted')&&rpc('set_outfit',[P.pid,P.secret,{paint:'paint_haunted'}]).paint==='paint_haunted','buy and use a boat paint');
+  ok(rpc('set_outfit',[P.pid,P.secret,{paint:'paint_gold'}]).error==='you do not own that','cannot use a paint you have not bought');
+  ok(+sql(`select count(*) from oc_index_species('all') x where x in ('ghostcarp','pumpkinbass','phantomdrum')`)===0&&+sql(`select count(*) from oc_index_species('fresh') x where x='ghostcarp'`)===0,'spooky fish are not part of the index');
+  setEv('2020-01-01T00:00:00Z','2020-01-02T00:00:00Z'); ok(rpc('get_state',[P.pid,P.secret]).items.includes('hat_witch'),'you keep Halloween clothes after Halloween');
+  sql(`update config set v = jsonb_set(v,'{halloween}', '${JSON.stringify(D.EVENTS.halloween)}'::jsonb) where k='events'`);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
