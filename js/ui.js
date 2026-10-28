@@ -110,7 +110,7 @@ function renderGuide(){
   var box=$('guideBody'); box.innerHTML=''; var bk=BOOK[guideKind], g=D.GEAR_BY_ID[bk.id], own=(G.s.gear.books||[]).indexOf(bk.id)>=0, fish=D.indexSection(guideKind);
   if(!own){ // the cover and what is inside
     var cover=el('div','g-cover'); cover.style.setProperty('--book',bk.color); cover.appendChild(el('div','g-book','<span>'+bk.title.replace(' ','<br>')+'</span>'));
-    var info=el('div','g-info','<p>'+esc(g.desc)+'</p><ul><li><b>'+fish.length+' fish</b>: the best time of day, the best baits and the best spots for each</li><li>How long to soak, and which fish only bite after a long wait</li><li><b>The Legends chapter</b>: the exact bait, time of day, soak time and line strength for every '+(guideKind==='fresh'?'freshwater':'saltwater')+' legend</li></ul>');
+    var info=el('div','g-info','<p>'+esc(g.desc)+'</p><ul><li><b>'+fish.length+' fish</b>: the best time of day, the best baits and the best spots for each</li><li>How long to soak, and which fish only bite after a long wait</li><li><b>The Legends chapter</b>: hints about the bait, the time of day, the wait and the line you need for every '+(guideKind==='fresh'?'freshwater':'saltwater')+' legend</li></ul>');
     var bb=el('button','pbtn buy'+(G.s.coins>=g.price?' gold':''),(G.s.coins>=g.price?'BUY ':'')+D.money(g.price)); bb.type='button'; bb.disabled=G.s.coins<g.price; bb.onclick=function(){ buy('gear',g.id,g.name).then(function(r){ if(r) renderGuide(); }); }; info.appendChild(bb);
     cover.appendChild(info); box.appendChild(cover); return; }
   var search=document.createElement('input'); search.className='field g-search'; search.type='search'; search.placeholder='Find a fish or legend...'; search.value=guideQ; box.appendChild(search);
@@ -119,10 +119,11 @@ function renderGuide(){
     list.appendChild(el('div','gear-group','THE LEGENDS CHAPTER'));
     if(!data) list.appendChild(el('p','note','Opening the book...'));
     else (data.legends||[]).slice().sort(function(a,b){ var ra=(D.REGION_BY_ID[(D.SPOT_BY_ID[a.spot]||{}).region]||{tier:99}).tier, rb=(D.REGION_BY_ID[(D.SPOT_BY_ID[b.spot]||{}).region]||{tier:99}).tier; return ra-rb||a.name.localeCompare(b.name); }).filter(function(l){ return !q||(l.name+' '+(D.SP_BY_ID[l.sp]||{}).name+' '+(D.SPOT_BY_ID[l.spot]||{}).name).toLowerCase().indexOf(q)>=0; }).forEach(function(l){
-      var sp=D.SP_BY_ID[l.sp], spot=D.SPOT_BY_ID[l.spot]||{name:l.spot,region:'home'}, okLine=G.lineTest()>=l.minLine, row=el('div','g-legend'+(l.owner?' taken':''));
+      if(!l.baitHint){ l.baitHint=(D.BAIT_BY_ID[l.bait]||{name:'?'}).name; l.timeHint=D.PERIOD_NAME[l.period]||'?'; l.soakHint=l.minWait?fmtWait(l.minWait):'none'; l.lineHint=(l.minLine||0)+' lb test'; l.lineOk=G.lineTest()>=l.minLine; } // until the server update runs
+      var sp=D.SP_BY_ID[l.sp], spot=D.SPOT_BY_ID[l.spot]||{name:l.spot,region:'home'}, okLine=!!l.lineOk, row=el('div','g-legend'+(l.owner?' taken':''));
       var pic=el('div','pic'); pic.appendChild(A.fishImg(l.sp,40,false,2,null,l.colors,l.name)); row.appendChild(pic);
       row.appendChild(el('div','g-txt','<div class="g-n">'+esc(l.name)+' <span class="tier '+l.tier+'">'+l.tier.toUpperCase()+'</span></div><div class="g-s">A '+Math.round(l.lb)+' lb '+esc((sp||{name:'fish'}).name.toLowerCase())+' at '+esc(spot.name)+(spot.region!=='home'?', '+esc(D.REGION_BY_ID[spot.region].name):'')+'</div>'+
-        '<div class="g-facts"><span><b>BAIT</b>'+esc((D.BAIT_BY_ID[l.bait]||{name:l.bait}).name)+'</span><span><b>TIME</b>'+esc(D.PERIOD_NAME[l.period]||l.period)+'</span><span><b>SOAK</b>'+(l.minWait>0?'at least '+fmtWait(l.minWait):'none, work the lure')+'</span><span class="'+(okLine?'ok':'no')+'"><b>LINE</b>'+l.minLine+' lb test'+(okLine?' (yours is strong enough)':' (you need a stronger line)')+'</span></div>'+
+        '<div class="g-facts g-hints"><span><b>BAIT</b>'+esc(l.baitHint)+'</span><span><b>TIME</b>'+esc(l.timeHint)+'</span><span><b>SOAK</b>'+esc(l.soakHint)+'</span><span class="'+(okLine?'ok':'no')+'"><b>LINE</b>'+esc(l.lineHint)+(okLine?' (yours will hold)':' (yours is too weak)')+'</span></div>'+
         (l.owner?'<div class="g-own">CAUGHT BY '+esc(l.ownerName||'someone')+'</div>':'<div class="g-own free">STILL OUT THERE</div>')));
       list.appendChild(row); });
     list.appendChild(el('div','gear-group','EVERY '+(guideKind==='fresh'?'FRESHWATER':'SALTWATER')+' FISH'));

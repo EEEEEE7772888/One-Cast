@@ -730,13 +730,21 @@ end $$;
 
 -- ============ guidebooks: the legends chapter (the secret bait, time, soak and line) ============
 create or replace function public.get_guide(p_pid uuid, p_secret text, p_kind text) returns jsonb language plpgsql security definer set search_path = public as $$
-declare p public.players;
+declare p public.players; my_line int;
 begin
   p := oc_auth(p_pid, p_secret);
   if p_kind not in ('fresh', 'salt') then perform oc_fail('no such guidebook'); end if;
   if not coalesce(p.gear -> 'books', '[]'::jsonb) ? ('book_' || p_kind) then perform oc_fail('buy the guidebook first'); end if;
-  return jsonb_build_object('legends', (select coalesce(jsonb_agg(jsonb_build_object('id', l.id, 'spot', l.spot, 'name', l.name, 'sp', l.species, 'tier', l.tier, 'lb', l.lb,
-      'bait', l.bait, 'period', l.period, 'minWait', l.min_wait, 'minLine', l.min_line, 'clue', l.clue, 'colors', l.colors, 'owner', l.owner_pid,
+  my_line := oc_line_test((p.gear ->> 'line')::int);
+  -- hints, not answers: the exact bait, time, soak and line never leave the server
+  return jsonb_build_object('legends', (select coalesce(jsonb_agg(jsonb_build_object('id', l.id, 'spot', l.spot, 'name', l.name, 'sp', l.species, 'tier', l.tier, 'lb', l.lb, 'clue', l.clue, 'colors', l.colors,
+      'baitHint', case l.bait when 'worm' then 'something that wriggles' when 'minnow' then 'a small live fish' when 'sucker' then 'a big live fish' when 'cut' then 'something that smells strong'
+                    when 'shrimp' then 'something with legs from the shallows' when 'squid' then 'something with tentacles' when 'mullet' then 'a live fish from the salt' when 'lure' then 'something shiny pulled behind a boat'
+                    when 'deepbait' then 'the heaviest rig there is' when 'crank' then 'something that wobbles' when 'jig' then 'something that hops' when 'fly' then 'something that floats' else 'something special' end,
+      'timeHint', case l.period when 'dawn' then 'when the light is low' when 'dusk' then 'when the light is low' when 'day' then 'while the sun is up' else 'in the dark' end,
+      'soakHint', case when oc_is_lure(l.bait) then 'no wait at all, if you work it right' when l.min_wait < 60 then 'a short wait' when l.min_wait <= 240 then 'a long wait' else 'a very long wait' end,
+      'lineHint', case when l.min_line <= 30 then 'a decent line' when l.min_line <= 60 then 'a strong line' when l.min_line <= 150 then 'a very strong line' else 'the strongest line you can get' end,
+      'lineOk', my_line >= l.min_line, 'owner', l.owner_pid,
       'ownerName', (select o.name || '#' || o.tag from players o where o.pid = l.owner_pid and not o.hidden)) order by s.region, l.name), '[]'::jsonb)
     from legends l join spots s on s.id = l.spot where l.active and (case when p_kind = 'fresh' then s.water = 'fresh' else s.water <> 'fresh' end)), 'now', now());
 end $$;

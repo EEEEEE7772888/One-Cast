@@ -396,11 +396,12 @@ console.log('dev boat and crew rides');
     ok(rpc('buy',[R.pid,R.secret,'gear','book_fresh']).gear.books.includes('book_fresh'),'buy the freshwater guidebook');
     ok(rpc('buy',[R.pid,R.secret,'gear','book_fresh']).error==='you already own that','only once');
     const g=rpc('get_guide',[R.pid,R.secret,'fresh']); const bl=g.legends.find(l=>l.spot==='basslake');
-    ok(g.legends.length>5&&bl&&bl.bait==='minnow'&&bl.period==='dawn'&&bl.minLine===30,'the guidebook reveals each freshwater legend\'s bait, time and line');
+    ok(g.legends.length>5&&bl&&bl.baitHint==='a small live fish'&&bl.timeHint==='when the light is low'&&bl.lineHint==='a decent line','the guidebook gives hints for each legend');
+    ok(g.legends.every(l=>l.bait===undefined&&l.period===undefined&&l.minWait===undefined&&l.minLine===undefined),'the exact answers never leave the server');
     ok(g.legends.every(l=>sql(`select water from spots where id='${l.spot}'`)==='fresh'),'freshwater book only covers fresh water');
     ok(rpc('get_guide',[R.pid,R.secret,'salt']).error==='buy the guidebook first','the saltwater book is separate');
     ok(rpc('buy',[R.pid,R.secret,'gear','book_salt']).coins===20000-1700-7500,'saltwater guidebook costs $7,500');
-    ok(rpc('get_guide',[R.pid,R.secret,'salt']).legends.some(l=>l.spot==='hatteras'&&l.bait==='cut'),'saltwater book covers Old Hatteras'); }
+    ok(rpc('get_guide',[R.pid,R.secret,'salt']).legends.some(l=>l.spot==='hatteras'&&l.baitHint==='something that smells strong'),'saltwater book covers Old Hatteras'); }
   // other boats still hold 3
   const T=mk('SmallBoat'), q=[mk('Q1'),mk('Q2'),mk('Q3'),mk('Q4')]; q.forEach(x=>fr(T,x));
   q.slice(0,3).forEach(x=>{ rpc('crew_invite',[T.pid,T.secret,x.pid]); rpc('crew_respond',[x.pid,x.secret,T.pid,true]); });
