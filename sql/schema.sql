@@ -244,6 +244,24 @@ update public.players set gear = gear
   || jsonb_build_object('boat', case when gear -> 'methods' ? 'offshore' then 'sportfisher' when gear -> 'methods' ? 'boat' then 'skiff' else 'paddle' end)
   where not (gear ? 'boats');
 
+-- Hard lures (crankbaits, jigs, jerkbaits) are bought one at a time and wear out; they can snag and be lost.
+alter table public.baits add column if not exists uses int not null default 0;
+alter table public.baits add column if not exists snag numeric not null default 0;
+alter table public.lines add column if not exists snag_at timestamptz; -- the lure hangs up on the bottom at this moment
+alter table public.players alter column gear set default '{"line":0,"reel":0,"rod":0,"lines":1,"finder":0,"comfort":false,"methods":[],"boats":["paddle"],"boat":"paddle","lures":{}}';
+-- One time: players who bought crankbaits or jigs back when they lasted forever get 15 of each, and the old reels move to the matching new ones.
+do $$ begin
+  if not exists (select 1 from public.config where k = 'econ2') then
+    update public.players set gear = gear
+      || jsonb_build_object('lures', coalesce(gear -> 'lures', '{}'::jsonb)
+           || (case when 'crank' = any(baits) then '{"crank":{"n":14,"left":25}}' else '{}' end)::jsonb
+           || (case when 'jig' = any(baits) then '{"jig":{"n":14,"left":30}}' else '{}' end)::jsonb,
+         'reel', case coalesce((gear ->> 'reel')::int, 0) when 1 then 2 when 2 then 3 when 3 then 5 else coalesce((gear ->> 'reel')::int, 0) end,
+         'rod', coalesce((gear ->> 'rod')::int, 0));
+    insert into public.config (k, v) values ('econ2', 'true'::jsonb);
+  end if;
+end $$;
+
 -- Lock everything down. The website only gets the functions.
 do $$ declare t text; begin
   for t in select tablename from pg_tables where schemaname='public' loop

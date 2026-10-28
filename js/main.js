@@ -51,6 +51,12 @@ G.apply=function(s){
   if(!first) SC.measure();
   G.renderAll();
 };
+/* hard lures: how many are in the tackle box (the one tied on counts if it has casts left) */
+G.lureCount=function(id){ var l=((G.s.gear||{}).lures||{})[id]; if(!l) return 0; return (l.n||0)+((l.left||0)>0?1:0); };
+G.lureCasts=function(id){ var b=D.BAIT_BY_ID[id], l=((G.s.gear||{}).lures||{})[id]; if(!l||!b||!b.uses) return 0; return (l.n||0)*b.uses+(l.left||0); };
+G.isHardLure=function(id){ var b=D.BAIT_BY_ID[id]; return !!(b&&b.uses); };
+function keepBaitOwned(){ if(G.s.baits.indexOf(G.bait)<0){ G.bait=firstGoodBait(); } }
+G.keepBaitOwned=keepBaitOwned;
 function firstGoodBait(){ var best=null; D.BAITS.forEach(function(b){ if(G.s.baits.indexOf(b.id)>=0&&G.baitWorksHere(b.id)) best=b.id; }); return best||'worm'; }
 G.refresh=function(force){
   if(!N.id||G.busy&&!force) return Promise.resolve();
@@ -134,7 +140,10 @@ function loop(ms){ requestAnimationFrame(loop); tick(); SC.draw(ms); }
 /* ---------- casting and reeling ---------- */
 G.cast=function(){
   if(G.busy||G.line()) return; G.busy=true; $('goBtn').disabled=true;
-  N.me('cast_line',{p_idx:G.sel,p_bait:G.bait}).then(function(r){ G.s.lines.push(r.line); SC.cast(); G.renderAll(); G.coachEvent('cast'); if(D.isLure(r.line.bait)) LURE.start(r.line); })
+  N.me('cast_line',{p_idx:G.sel,p_bait:G.bait}).then(function(r){ G.s.lines.push(r.line); if(r.gear) G.s.gear=r.gear; if(r.baits) G.s.baits=r.baits;
+    var b=D.BAIT_BY_ID[r.line.bait], lu=b&&b.uses&&((G.s.gear.lures||{})[b.id]);
+    if(lu&&!lu.left) G.toast(lu.n?'This '+b.name.toLowerCase().replace(/s$/,'')+' is worn out after this cast. You have '+lu.n+' more.':'That was the last cast on your last '+b.name.toLowerCase().replace(/s$/,'')+'. Buy more at the bait shop.',3600,'info');
+    keepBaitOwned(); SC.cast(); G.renderAll(); G.coachEvent('cast'); if(D.isLure(r.line.bait)) LURE.start(r.line); })
     .catch(function(e){ G.fail(e); if(!e.offline) G.refresh(true); }).then(function(){ G.busy=false; G.renderPanel(); });
 };
 G.reel=function(){
@@ -142,6 +151,7 @@ G.reel=function(){
   var idx=G.sel;
   N.me('reel_line',{p_idx:idx}).then(function(r){
     G.s.lines=G.s.lines.filter(function(x){ return x.idx!==idx; });
+    if(r.result==='snagged'){ G.refresh(true); G.toast('Your '+D.BAIT_BY_ID[l.bait].name.toLowerCase().replace(/s$/,'')+' was snagged on the bottom and broke off.',3200,'info'); G.renderAll(); return; }
     if(r.result==='early'||r.result==='nothing'||r.result==='missed'){ G.toast(r.result==='missed'?'Too slow on the hook-set. It got away!':r.result==='early'?(D.isLure(l.bait)?'Your lure is back. Cast again!':'Nothing yet. Your bait is back in the box.'):'Whatever it was, it got off the hook.',2600,'info'); G.renderAll(); return; }
     if(r.result==='snap'){ G.last={snap:true,sp:r.sp,lb:r.lb}; SC.startCatch({sp:r.sp,lb:r.lb,snap:true,idx:idx,bait:l.bait,max:D.SP_BY_ID[r.sp].max}); G.renderAll();
       setTimeout(function(){ G.toast('SNAP! A '+D.fmtWeight(r.lb)+' '+D.SP_BY_ID[r.sp].name.toLowerCase()+' broke your '+r.test+' lb line. Stronger line is in the gear shop.',4200); },1200); return; }

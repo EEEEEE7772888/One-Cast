@@ -633,3 +633,10 @@ a{color:var(--frost)}
 .g-facts .no{color:#FF8A8D}.g-facts .ok{color:#5CF08A}
 .g-own{font:7px/1.6 var(--pixel);color:var(--muted);margin-top:4px}.g-own.free{color:var(--gold)}
 @media (max-width:600px){.g-cover{grid-template-columns:minmax(0,1fr)}.g-book{max-width:150px;justify-self:center}.g-legend,.g-fish{grid-template-columns:64px minmax(0,1fr)}}
+/* hard lures: buy one or five, and how many are left */
+.lure-buy{display:flex;flex-direction:column;gap:6px}
+.lure-buy .pbtn.buy{min-width:0;font-size:9px;padding:9px 10px;min-height:34px}
+.lure-left{display:block;margin:4px 0 6px;color:#FFC94A}
+.bait{position:relative}
+.bait .cnt{position:absolute;top:3px;right:4px;font:8px/1 var(--pixel);color:#FFC94A}
+.row-bars .lure-left{font:17px/1.15 var(--term);margin:2px 0 4px}

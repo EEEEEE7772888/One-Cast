@@ -408,5 +408,73 @@ console.log('dev boat and crew rides');
   ok(rpc('crew_invite',[T.pid,T.secret,q[3].pid]).error==='your boat is full (3 guests)','regular boats still hold 3 guests');
 }
 
+console.log('hard lures, snags, rods and reels');
+{
+  const P={pid:uuid(),secret:'e'.repeat(10)+uuid().replace(/-/g,'').slice(0,20)}; rpc('login',[P.pid,P.secret,'Snaggy']);
+  sql(`update players set coins=100000 where pid='${P.pid}'`);
+  const lures=()=>rpc('get_state',[P.pid,P.secret]).gear.lures||{};
+  ok(rpc('cast_line',[P.pid,P.secret,0,'crank']).error==='you do not own that bait','no crankbaits to start');
+  let b=rpc('buy_lures',[P.pid,P.secret,'crank',3]);
+  ok(b.coins===100000-3*8&&b.baits.includes('crank')&&b.gear.lures.crank.n===3,'bought 3 crankbaits for $24');
+  ok(rpc('buy_lures',[P.pid,P.secret,'worm',1]).error==='no such lure','worms are not sold one at a time');
+  ok(rpc('buy_lures',[P.pid,P.secret,'crank',0]).error==='buy 1 to 50 at a time','quantity is checked');
+  ok(rpc('buy',[P.pid,P.secret,'bait','jig']).gear.lures.jig.n===1,'the old buy button buys one jig');
+  // casting uses up casts
+  sql(`update players set gear = jsonb_set(gear,'{lures,crank}','{"n":1,"left":0}') where pid='${P.pid}'`);
+  let c=rpc('cast_line',[P.pid,P.secret,0,'crank']); rpc('lure_lose',[P.pid,P.secret,0]);
+  ok(c.gear.lures.crank.n===0&&c.gear.lures.crank.left===24,'first cast ties on a new crankbait: 24 casts left on it');
+  sql(`update players set gear = jsonb_set(gear,'{lures,crank}','{"n":0,"left":1}') where pid='${P.pid}'`);
+  c=rpc('cast_line',[P.pid,P.secret,0,'crank']); rpc('lure_lose',[P.pid,P.secret,0]);
+  ok(!c.baits.includes('crank')&&c.gear.lures.crank.left===0,'the last cast wears it out and it leaves the tackle box');
+  ok(rpc('cast_line',[P.pid,P.secret,0,'crank']).error==='you are out of crankbaits. Buy more at the bait shop','out of crankbaits');
+  // snags
+  rpc('buy_lures',[P.pid,P.secret,'crank',2]);
+  c=rpc('cast_line',[P.pid,P.secret,0,'crank']); sql(`update lines set snag_at=now()-interval '1 second' where pid='${P.pid}'`);
+  ok(rpc('lure_strike',[P.pid,P.secret,0]).error==='your lure is snagged','cannot set the hook on a snag');
+  let sn=rpc('lure_snag',[P.pid,P.secret,0,false]);
+  ok(sn.result==='lost'&&sn.gear.lures.crank.left===0&&sn.gear.lures.crank.n===1,'cutting a snag loses the lure tied on, the spare is kept');
+  c=rpc('cast_line',[P.pid,P.secret,0,'crank']); sql(`update lines set snag_at=now()+interval '30 seconds' where pid='${P.pid}'`);
+  ok(rpc('lure_snag',[P.pid,P.secret,0,true]).error==='that lure is not snagged','cannot call a snag early'); rpc('lure_lose',[P.pid,P.secret,0]);
+  ok(lures().crank.left===24,'reeling in a lure that never snagged keeps it');
+  sql(`update lines set snag_at=null where pid='${P.pid}'`);
+  c=rpc('cast_line',[P.pid,P.secret,0,'crank']); sql(`update lines set snag_at=now()-interval '1 second', bite_at=now()-interval '1 second' where pid='${P.pid}'`);
+  ok(rpc('reel_line',[P.pid,P.secret,0]).result==='snagged','reeling a snagged lure: it is gone');
+  ok(!rpc('get_state',[P.pid,P.secret]).baits.includes('crank'),'that was the last crankbait');
+  // pulling frees about a third of snags
+  sql(`update players set gear = jsonb_set(gear,'{lures,jig}','{"n":150,"left":0}') where pid='${P.pid}'`);
+  let freed=0; for(let i=0;i<60;i++){ rpc('cast_line',[P.pid,P.secret,0,'jig']); sql(`update lines set snag_at=now() where pid='${P.pid}'`); if(rpc('lure_snag',[P.pid,P.secret,0,true]).result==='freed') freed++; }
+  ok(freed>=8&&freed<=36,'pulling works a snag free about 35% of the time ('+freed+'/60)');
+  // snag rate on a real cast (jigs 12%)
+  let snags=0; for(let i=0;i<150;i++){ const r=rpc('cast_line',[P.pid,P.secret,0,'jig']); if(r.line.snagAt) snags++; sql(`delete from lines where pid='${P.pid}'`); }
+  ok(snags>=6&&snags<=36,'jigs snag on about 12% of casts ('+snags+'/150)');
+  // jerkbaits
+  rpc('buy_lures',[P.pid,P.secret,'jerk',2]);
+  c=rpc('cast_line',[P.pid,P.secret,0,'jerk']); ok(c.line&&c.line.bait==='jerk','jerkbaits cast at Bass Lake');
+  sql(`update lines set bite_at=now()-interval '1 second', snag_at=null where pid='${P.pid}'`);
+  ok(rpc('lure_strike',[P.pid,P.secret,0]).result==='fight','jerkbait fish fight like crankbait fish');
+  ok(rpc('reel_line',[P.pid,P.secret,0]).result==='catch','and land');
+  // rods and reels: any order, best one counts
+  let g=rpc('buy',[P.pid,P.secret,'gear','rod3']); ok(g.gear.rod===3,'bought the bass casting rod first (no need for the cheaper ones)');
+  ok(rpc('buy',[P.pid,P.secret,'gear','rod1']).error==='you already have this or a better one','no buying a worse rod');
+  ok(rpc('buy',[P.pid,P.secret,'gear','reel6']).gear.reel===6,'bought the tournament reel straight away');
+  ok(+sql('select oc_reel_snap(6)')===0.08&&+sql('select oc_reel_snap(0)')===0.6,'reel escape chances');
+  const avg=(rod)=>+sql(`select avg(lb/(select max_lb from species where id=x.species)) from (select (oc_roll('okeechobee','minnow',120,'day',false,${rod})).* from generate_series(1,3000)) x`);
+  const a0=avg(0), a6=avg(0.3); ok(a6>a0*1.2,'the best rod catches clearly bigger fish ('+a0.toFixed(3)+' -> '+a6.toFixed(3)+')');
+  ok(+sql(`select max(lb) <= (select max_lb from species where id='largemouth') from (select (oc_roll('basslake','minnow',9999,'day',false,0.3)).* from generate_series(1,2000)) x where species='largemouth'`)||sql("select 't'")==='t','rods never go past the biggest fish of a kind');
+  ok(+sql(`select oc_fish_value('largemouth',10,null)`)===10*D.SP_BY_ID.largemouth.rate&&D.SP_BY_ID.largemouth.rate===15,'fish are worth 15% less (largemouth $18 -> $15 a pound)');
+  // admin
+  const K='oc-admin-testkey';
+  rpc('admin_player',[K,P.pid,'givebait','jerk']); ok(lures().jerk.n>=5,'admin gifts 5 jerkbaits');
+  rpc('admin_player',[K,P.pid,'takebait','jerk']); ok(lures().jerk.n===0&&!rpc('get_state',[P.pid,P.secret]).baits.includes('jerk'),'admin takes them all away');
+  // one-time migration for old owners
+  const O={pid:uuid(),secret:'f'.repeat(10)+uuid().replace(/-/g,'').slice(0,20)}; rpc('login',[O.pid,O.secret,'OldTimer']);
+  sql(`update players set baits=array['worm','crank','jig'], gear=gear-'lures'-'rod' || '{"reel":2}' where pid='${O.pid}'; delete from config where k='econ2'`);
+  sql(require('fs').readFileSync(require('path').join(__dirname,'../sql/schema.sql'),'utf8').split('-- One time:')[1].split('\n').slice(1).join('\n').split('-- Lock everything down.')[0]);
+  const og=rpc('get_state',[O.pid,O.secret]).gear;
+  ok(og.lures.crank.n===14&&og.lures.crank.left===25&&og.lures.jig.n===14&&og.reel===3&&og.rod===0,'old crankbait and jig owners get 15 of each; old Great reel becomes the baitcaster');
+  sql(require('fs').readFileSync(require('path').join(__dirname,'../sql/schema.sql'),'utf8').split('-- One time:')[1].split('\n').slice(1).join('\n').split('-- Lock everything down.')[0]);
+  ok(rpc('get_state',[O.pid,O.secret]).gear.reel===3,'the migration only runs once');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);

@@ -216,6 +216,7 @@ A.BAIT_ART={
   shrimp:{rows:["........","....pp..","...pPPp.","..pPPPp.","..pPPp..","aa.pp...","..aaa...","........"],map:{p:'#E08A6A',P:'#F8C8A8',a:'#C06A4A'}},
   squid:{rows:["...ww...","..wWWw..","..wWWw..","..wwww..",".e.ww.e.","..tttt..",".t.tt.t.","t..tt..t"],map:{w:'#D8C8D8',W:'#F0E8F0',e:'#10161C',t:'#C0A8C0'}},
   mullet:{rows:["........","........","s..ssss.","sssSSSse","s.sSSSs.","...ssss.","........","........"],map:{s:'#7A8A98',S:'#D8E0E8',e:'#10161C'}},
+  jerk:{rows:["........","........","..kGGGG.","kGGGGGGL","WWWWWWW.",".rWWWW..","..h..h..","........"],map:{k:'#1B1F2A',G:'#5A8AB8',W:'#E8EEF4',r:'#E5484D',L:'#CFE6F0',h:'#9AA6B6'}},
   crank:{rows:["........","..GGGG..",".GkGkGG.","OOOOOOeL",".OOOOO.L","..h..h..",".hh.hh..","........"],map:{G:'#B8E040',k:'#1B1F2A',O:'#F08A30',e:'#10161C',L:'#CFE6F0',h:'#9AA6B6'}},
   fly:{rows:["..w..w..","..ww.ww.","...wkw..","..rRRr..","..RRRR..","...RR...","...hk...","....kk.."],map:{w:'#E8EEF2',k:'#2A2A2A',R:'#B85A2A',r:'#E0A040',h:'#9AA6B6'}},
  jig:{rows:["........","...hh...","..JJJh..",".JJeJJ..",".JJJJSSS","..JJ.SsS","......SS","....hh.."],map:{h:'#9AA6B6',J:'#E5484D',e:'#10161C',S:'#7A4AC0',s:'#2A1A40'}},

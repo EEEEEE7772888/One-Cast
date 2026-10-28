@@ -87,13 +87,15 @@ D.SPOTS=[
  {id:'rosssea',region:'southern',name:'Ross Sea, Antarctica',method:'deep',tz:'Antarctica/McMurdo',lat:-75.0,lon:175.0,scene:'antarctic',desc:'The end of the world. Toothfish from the black water.'}
 ];
 
-/* ---------- Baits. Bought once, used forever. tau = minutes until the size cap is nearly reached,
+/* ---------- Baits. Bought once, used forever, except hard lures (uses>0): those are bought one at a time,
+   last `uses` casts each, and can snag (chance `snag` per cast) and be lost. tau = minutes until the size cap is nearly reached,
    capMax = fraction of a species' top weight this bait can reach, biteMean = average wait in minutes. ---------- */
 D.BAITS=[
  {id:'worm',name:'Worms',price:0,tau:10,capMax:0.35,minBite:0.15,biteMean:1,rate:'HIGH',water:'fresh',desc:'Lots of bites, tiny fish',timing:'Bites come fast, about once a minute. Only small fish though.'},
  {id:'minnow',name:'Minnows',price:60,tau:150,capMax:1,minBite:8,biteMean:15,rate:'OK',water:'fresh',desc:'Bass, walleye, trout',timing:'A bite every 20 minutes or so. Later bites bring bigger fish.'},
- {id:'crank',name:'Crankbaits',price:350,tau:90,capMax:0.65,minBite:2,biteMean:8,rate:'HIGH',water:'fresh',desc:'Bass, pike and other hunters. Takes skill',timing:'You fish it yourself: hold to reel at the right speed and tap when a fish strikes. Fast action while you play, nothing while you are away.'},
- {id:'jig',name:'Jigs',price:900,tau:80,capMax:1,minBite:8,biteMean:30,rate:'OK',water:'fresh',desc:'Walleye, smallmouth, lake trout. Takes skill',timing:'You fish it yourself: tap to hop it off the bottom, fish hit it on the way down. Bigger fish than minnows. Great through the ice.'},
+ {id:'crank',name:'Crankbaits',price:8,uses:25,snag:0.08,tau:90,capMax:0.65,minBite:2,biteMean:8,rate:'HIGH',water:'fresh',desc:'Bass, pike and other hunters. Takes skill',timing:'You fish it yourself: hold to reel at the right speed and tap when a fish strikes. Fast action while you play, nothing while you are away.'},
+ {id:'jig',name:'Jigs',price:5,uses:30,snag:0.12,tau:80,capMax:1,minBite:8,biteMean:30,rate:'OK',water:'fresh',desc:'Walleye, smallmouth, lake trout. Takes skill',timing:'You fish it yourself: tap to hop it off the bottom, fish hit it on the way down. Bigger fish than minnows. Great through the ice.'},
+ {id:'jerk',name:'Jerkbaits',price:10,uses:20,snag:0.07,tau:50,capMax:1,minBite:6,biteMean:25,rate:'OK',water:'fresh',desc:'Big bass, pike, walleye and trout. Better fish than jigs. Takes skill',timing:'You fish it yourself: twitch it twice, then pause. Fish smash it on the pause. Bigger fish than jigs, and they fight.'},
  {id:'fly',name:'Dry flies',price:150,tau:60,capMax:0.9,minBite:1,biteMean:20,rate:'OK',water:'fresh',desc:'Trout on mountain streams. Relaxing, takes a light touch',timing:'You fish it yourself: let the fly drift down the current, MEND when the line starts to drag, and SET gently when a trout sips it.'},
  {id:'cut',name:'Cut bait',price:400,tau:360,capMax:1,minBite:5,biteMean:120,rate:'LOW',water:'fresh',desc:'Catfish and bottom feeders',timing:'A bite every 2 hours or so. Later bites bring bigger fish.'},
  {id:'sucker',name:'Suckers',price:1500,tau:720,capMax:1,minBite:10,biteMean:360,rate:'VERY LOW',water:'fresh',desc:'Rare bites, giant fish',timing:'A bite every 6 hours or so. Giants only bite late.'},
@@ -104,7 +106,7 @@ D.BAITS=[
  {id:'deepbait',name:'Deep-drop rig',price:200000,tau:900,capMax:1,minBite:20,biteMean:480,rate:'VERY LOW',water:'deep',desc:'Bottom monsters',timing:'A bite every 8 hours. The things that live in the dark are enormous.'}
 ];
 /* Which baits each method can use. */
-D.METHOD_BAITS={ice:['worm','minnow','jig','cut','sucker'],shore:['worm','minnow','crank','jig','fly','cut','sucker','shrimp','mullet'],boat:['worm','minnow','crank','jig','fly','cut','sucker','shrimp','squid','mullet'],troll:['worm','minnow','cut','shrimp','squid','lure'],deep:['worm','minnow','cut','sucker','shrimp','squid','deepbait']};
+D.METHOD_BAITS={ice:['worm','minnow','jig','cut','sucker'],shore:['worm','minnow','crank','jig','jerk','fly','cut','sucker','shrimp','mullet'],boat:['worm','minnow','crank','jig','jerk','fly','cut','sucker','shrimp','squid','mullet'],troll:['worm','minnow','cut','shrimp','squid','lure'],deep:['worm','minnow','cut','sucker','shrimp','squid','deepbait']};
 D.METHOD_NAME={ice:'Ice hole',shore:'Shore',boat:'Small boat',troll:'Ocean trolling',deep:'Deep drop'};
 /* Gear needed to fish each method. */
 D.METHOD_GEAR={ice:null,shore:null,boat:null,troll:null,deep:'deeprig'};
@@ -134,33 +136,35 @@ D.periodOf=function(h){ if(h==null) return null; h=((h%24)+24)%24; return h>=5&&
 
 /* ---------- Species. min/max in pounds, k turns pounds into inches, rate is dollars per pound.
    spots: how common the fish is at each spot. baits: how much it likes each bait. minWait: minutes before it can bite. ---------- */
+/* Fish are worth 15% less than they used to be (the rod and reel shop made gear cheaper to earn). */
+D.VALUE_MULT=0.85;
 var S=[];
-function sp(o){ S.push(o); return o; }
+function sp(o){ if(o.rate>0) o.rate=Math.max(1,Math.round(o.rate*D.VALUE_MULT)); S.push(o); return o; }
 /* freshwater, North America */
 sp({id:'bluegill',name:'Bluegill',min:0.1,max:2.5,k:11,rate:27,act:'panfish',look:'bluegill',minWait:0,maxWait:120,baits:{worm:4,minnow:0.15,fly:1.5},spots:{basslake:5,farmpond:6,harlemmeer:3,lakefork:2,guntersville:2,clearlake:2,okeechobee:2,bigbear:1,neuse:3,newriver:2}});
 sp({id:'pumpkinseed',name:'Pumpkinseed',min:0.1,max:1.5,k:10.5,rate:30,act:'panfish',look:'pumpkinseed',minWait:0,maxWait:120,baits:{worm:3},spots:{basslake:3,farmpond:3,walden:3,harlemmeer:2}});
 sp({id:'perch',name:'Yellow perch',min:0.2,max:3,k:12,rate:24,act:'panfish',look:'perch',minWait:0,maxWait:240,baits:{worm:4,minnow:0.4,cut:0.3,jig:0.8},spots:{basslake:3,walden:1,lakeofthewoods:3,millelacs:3,minnetonka:3,devilslake:8,simcoe:6,winnebago:2,superior:1}});
 sp({id:'crappie',name:'Black crappie',min:0.3,max:4.5,k:12.5,rate:21,act:'lowlight',look:'crappie',minWait:1,maxWait:480,baits:{worm:2.5,minnow:1,jig:1.5},spots:{basslake:3,farmpond:2,lakefork:3,guntersville:2,bigbear:3,okeechobee:4,clearlake:3,minnetonka:2,neuse:2}});
-sp({id:'largemouth',name:'Largemouth bass',min:0.5,max:22,k:11.6,rate:18,act:'bass',look:'largemouth',minWait:15,maxWait:900,baits:{minnow:4,cut:0.5,sucker:0.5,crank:5,jig:3},spots:{basslake:4,farmpond:2,harlemmeer:3,lakefork:8,guntersville:7,lanier:2,clearlake:7,basslakeca:2,okeechobee:6,everglades:2,biwa:5,minnetonka:3,neuse:4}});
-sp({id:'smallmouth',name:'Smallmouth bass',min:0.5,max:11,k:12,rate:21,act:'day',look:'smallmouth',minWait:20,maxWait:1200,baits:{minnow:3,cut:0.5,sucker:0.3,crank:4,jig:5,fly:1},spots:{basslake:1,walden:4,lanier:1,simcoe:2,superior:2,michigan:5,millelacs:3,newriver:8}});
-sp({id:'spotted',name:'Spotted bass',min:0.5,max:10,k:11.8,rate:21,act:'day',look:'spotted',minWait:15,maxWait:900,baits:{minnow:4,cut:0.3,crank:5,jig:3},spots:{lanier:6,guntersville:2}});
-sp({id:'striper',name:'Striped bass',min:2,max:70,k:13.5,rate:8,act:'lowlight',look:'striper',minWait:40,maxWait:0,baits:{minnow:3,cut:2,sucker:3,crank:2,jig:3},spots:{lanier:4,harlemmeer:0.5,columbia:1,neuse:5,hatteras:1.5}});
+sp({id:'largemouth',name:'Largemouth bass',min:0.5,max:22,k:11.6,rate:18,act:'bass',look:'largemouth',minWait:15,maxWait:900,baits:{jerk:5,minnow:4,cut:0.5,sucker:0.5,crank:5,jig:3},spots:{basslake:4,farmpond:2,harlemmeer:3,lakefork:8,guntersville:7,lanier:2,clearlake:7,basslakeca:2,okeechobee:6,everglades:2,biwa:5,minnetonka:3,neuse:4}});
+sp({id:'smallmouth',name:'Smallmouth bass',min:0.5,max:11,k:12,rate:21,act:'day',look:'smallmouth',minWait:20,maxWait:1200,baits:{jerk:5,minnow:3,cut:0.5,sucker:0.3,crank:4,jig:5,fly:1},spots:{basslake:1,walden:4,lanier:1,simcoe:2,superior:2,michigan:5,millelacs:3,newriver:8}});
+sp({id:'spotted',name:'Spotted bass',min:0.5,max:10,k:11.8,rate:21,act:'day',look:'spotted',minWait:15,maxWait:900,baits:{jerk:4,minnow:4,cut:0.3,crank:5,jig:3},spots:{lanier:6,guntersville:2}});
+sp({id:'striper',name:'Striped bass',min:2,max:70,k:13.5,rate:8,act:'lowlight',look:'striper',minWait:40,maxWait:0,baits:{jerk:3,minnow:3,cut:2,sucker:3,crank:2,jig:3},spots:{lanier:4,harlemmeer:0.5,columbia:1,neuse:5,hatteras:1.5}});
 sp({id:'carp',name:'Common carp',min:2,max:60,k:13,rate:6,act:'day',look:'carp',minWait:20,maxWait:0,baits:{worm:2,cut:3},spots:{harlemmeer:6,farmpond:2,clearlake:2,ebro:3,biwa:2,thaipark:1,neuse:1.5,newriver:0.4}});
 sp({id:'channel',name:'Channel catfish',min:1,max:50,k:14.4,rate:9,act:'night',look:'channel',minWait:30,maxWait:0,baits:{minnow:0.5,cut:6,sucker:1},spots:{basslake:2,farmpond:4,lakefork:2,clearlake:4,mississippi:3,okeechobee:2,neuse:4,newriver:2}});
 sp({id:'bluecat',name:'Blue catfish',min:5,max:140,k:14,rate:24,act:'night',look:'bluecat',minWait:120,maxWait:0,baits:{cut:5,sucker:4},spots:{mississippi:5,lakefork:1,neuse:3}});
 sp({id:'flathead',name:'Flathead catfish',min:5,max:120,k:14.5,rate:24,act:'night',look:'flathead',minWait:180,maxWait:0,baits:{cut:2,sucker:5},spots:{mississippi:5,guntersville:1,neuse:2}});
-sp({id:'walleye',name:'Walleye',min:1,max:22,k:14,rate:28,act:'lowlight',look:'walleye',minWait:30,maxWait:1500,baits:{minnow:5,cut:1,sucker:0.5,crank:2,jig:6},spots:{lakeofthewoods:8,millelacs:6,devilslake:4,minnetonka:3,winnebago:4,simcoe:1,newriver:1.5}});
-sp({id:'pike',name:'Northern pike',min:2,max:50,k:15.8,rate:17,act:'day',look:'pike',minWait:60,maxWait:0,baits:{minnow:4,cut:0.5,sucker:3,crank:5},spots:{lakeofthewoods:4,millelacs:3,devilslake:3,minnetonka:3,simcoe:2,superior:1,winnebago:1}});
-sp({id:'muskie',name:'Muskellunge',min:8,max:65,k:16.2,rate:28,act:'bass',look:'muskie',minWait:240,maxWait:0,baits:{sucker:6,crank:1.5},spots:{millelacs:4,minnetonka:5,lakeofthewoods:2,simcoe:0.5,newriver:2}});
+sp({id:'walleye',name:'Walleye',min:1,max:22,k:14,rate:28,act:'lowlight',look:'walleye',minWait:30,maxWait:1500,baits:{jerk:5,minnow:5,cut:1,sucker:0.5,crank:2,jig:6},spots:{lakeofthewoods:8,millelacs:6,devilslake:4,minnetonka:3,winnebago:4,simcoe:1,newriver:1.5}});
+sp({id:'pike',name:'Northern pike',min:2,max:50,k:15.8,rate:17,act:'day',look:'pike',minWait:60,maxWait:0,baits:{jerk:6,minnow:4,cut:0.5,sucker:3,crank:5},spots:{lakeofthewoods:4,millelacs:3,devilslake:3,minnetonka:3,simcoe:2,superior:1,winnebago:1}});
+sp({id:'muskie',name:'Muskellunge',min:8,max:65,k:16.2,rate:28,act:'bass',look:'muskie',minWait:240,maxWait:0,baits:{jerk:3,sucker:6,crank:1.5},spots:{millelacs:4,minnetonka:5,lakeofthewoods:2,simcoe:0.5,newriver:2}});
 sp({id:'cisco',name:'Cisco',min:0.3,max:6,k:12,rate:17,act:'trout',look:'cisco',minWait:1,maxWait:300,baits:{worm:3,minnow:1,jig:0.3},spots:{lakeofthewoods:3,millelacs:2,simcoe:2,superior:3}});
 sp({id:'whitefish',name:'Lake whitefish',min:1,max:14,k:12.5,rate:20,act:'trout',look:'whitefish',minWait:20,maxWait:0,baits:{worm:1.5,minnow:3,jig:0.5},spots:{simcoe:5,superior:3,winnebago:2,greenland:1}});
-sp({id:'laketrout',name:'Lake trout',min:2,max:70,k:14.4,rate:24,act:'trout',look:'laketrout',minWait:120,maxWait:0,baits:{minnow:2,cut:3,sucker:2,jig:4},spots:{superior:7,simcoe:3,michigan:2,greenland:0.5}});
+sp({id:'laketrout',name:'Lake trout',min:2,max:70,k:14.4,rate:24,act:'trout',look:'laketrout',minWait:120,maxWait:0,baits:{jerk:2,minnow:2,cut:3,sucker:2,jig:4},spots:{superior:7,simcoe:3,michigan:2,greenland:0.5}});
 sp({id:'burbot',name:'Burbot',min:1,max:22,k:16,rate:18,act:'night',look:'burbot',minWait:60,maxWait:0,baits:{minnow:2,cut:5,sucker:3,jig:3},spots:{superior:4,lakeofthewoods:2,devilslake:1}});
 sp({id:'chinook',name:'Chinook salmon',min:5,max:95,k:13.5,rate:52,act:'trout',look:'chinook',minWait:120,maxWait:0,baits:{minnow:3,cut:4,sucker:1},spots:{michigan:6,columbia:5,kenai:8}});
-sp({id:'coho',name:'Coho salmon',min:3,max:30,k:13.6,rate:47,act:'trout',look:'coho',minWait:40,maxWait:0,baits:{minnow:4,cut:2,crank:2},spots:{michigan:4,columbia:3,kenai:5}});
-sp({id:'steelhead',name:'Steelhead',min:3,max:40,k:13.8,rate:57,act:'trout',look:'steelhead',minWait:60,maxWait:0,baits:{minnow:4,cut:2,crank:1},spots:{columbia:6,kenai:2,michigan:1}});
-sp({id:'rainbow',name:'Rainbow trout',min:0.5,max:25,k:13,rate:18,act:'trout',look:'rainbow',minWait:15,maxWait:0,baits:{minnow:4,cut:0.3,crank:2,fly:6,worm:1.5},spots:{walden:5,basslakeca:5,bigbear:7,newriver:0.4,davidson:6}});
-sp({id:'brown',name:'Brown trout',min:1,max:40,k:13.4,rate:24,act:'lowlight',look:'brown',minWait:30,maxWait:0,baits:{minnow:4,cut:0.5,crank:2,fly:3,worm:0.5},spots:{walden:2,lochness:6,bigbear:1,davidson:3}});
+sp({id:'coho',name:'Coho salmon',min:3,max:30,k:13.6,rate:47,act:'trout',look:'coho',minWait:40,maxWait:0,baits:{jerk:2,minnow:4,cut:2,crank:2},spots:{michigan:4,columbia:3,kenai:5}});
+sp({id:'steelhead',name:'Steelhead',min:3,max:40,k:13.8,rate:57,act:'trout',look:'steelhead',minWait:60,maxWait:0,baits:{jerk:2,minnow:4,cut:2,crank:1},spots:{columbia:6,kenai:2,michigan:1}});
+sp({id:'rainbow',name:'Rainbow trout',min:0.5,max:25,k:13,rate:18,act:'trout',look:'rainbow',minWait:15,maxWait:0,baits:{jerk:2,minnow:4,cut:0.3,crank:2,fly:6,worm:1.5},spots:{walden:5,basslakeca:5,bigbear:7,newriver:0.4,davidson:6}});
+sp({id:'brown',name:'Brown trout',min:1,max:40,k:13.4,rate:24,act:'lowlight',look:'brown',minWait:30,maxWait:0,baits:{jerk:3,minnow:4,cut:0.5,crank:2,fly:3,worm:0.5},spots:{walden:2,lochness:6,bigbear:1,davidson:3}});
 sp({id:'brook',name:'Brook trout',min:0.2,max:14.5,k:13,rate:34,act:'trout',look:'brook',minWait:5,maxWait:0,baits:{fly:7,worm:3,minnow:2,crank:1},spots:{davidson:5,walden:0.5}});
 sp({id:'chub',name:'Creek chub',min:0.05,max:1.2,k:12,rate:20,act:'day',look:'chub',minWait:0,maxWait:120,baits:{worm:5,fly:1.5,minnow:0.5},spots:{davidson:4,newriver:1}});
 sp({id:'kokanee',name:'Kokanee salmon',min:0.5,max:6,k:12.7,rate:15,act:'day',look:'kokanee',minWait:2,maxWait:360,baits:{worm:3,minnow:1},spots:{basslakeca:4}});
@@ -169,16 +173,16 @@ sp({id:'whitesturgeon',name:'White sturgeon',min:30,max:1100,k:16,rate:36,act:'n
 sp({id:'gar',name:'Alligator gar',min:20,max:300,k:17,rate:30,act:'day',look:'gar',minWait:300,maxWait:0,baits:{cut:4,sucker:3},spots:{mississippi:4}});
 /* surf fishing, Cape Hatteras (free salt water in Home waters) */
 sp({id:'reddrum',name:'Red drum',min:2,max:94,k:13.4,rate:14,act:'lowlight',look:'reddrum',minWait:30,maxWait:0,baits:{worm:0.4,minnow:1,cut:5,shrimp:3,mullet:4},spots:{hatteras:4}});
-sp({id:'bluefish',name:'Bluefish',min:1,max:31,k:14,rate:15,act:'day',look:'bluefish',minWait:10,maxWait:0,baits:{worm:0.5,minnow:3,cut:5,crank:2,shrimp:1,mullet:2},spots:{hatteras:5}});
+sp({id:'bluefish',name:'Bluefish',min:1,max:31,k:14,rate:15,act:'day',look:'bluefish',minWait:10,maxWait:0,baits:{jerk:2,worm:0.5,minnow:3,cut:5,crank:2,shrimp:1,mullet:2},spots:{hatteras:5}});
 sp({id:'spot',name:'Spot',min:0.1,max:1.3,k:11.5,rate:30,act:'panfish',look:'spot',minWait:0,maxWait:120,baits:{worm:6,shrimp:3,cut:0.5},spots:{hatteras:6}});
 sp({id:'croaker',name:'Atlantic croaker',min:0.2,max:5,k:12,rate:22,act:'any',look:'croaker',minWait:0,maxWait:240,baits:{worm:5,shrimp:3,cut:1},spots:{hatteras:5}});
 sp({id:'pompano',name:'Florida pompano',min:0.5,max:8,k:11,rate:45,act:'day',look:'pompano',minWait:10,maxWait:0,baits:{worm:3,shrimp:4},spots:{hatteras:3}});
 sp({id:'flounder',name:'Southern flounder',min:1,max:20,k:13,rate:22,act:'lowlight',look:'flounder',minWait:20,maxWait:0,baits:{minnow:4,shrimp:2,cut:1,jig:1},spots:{hatteras:3}});
-sp({id:'spanish',name:'Spanish mackerel',min:1,max:13,k:15,rate:25,act:'day',look:'spanish',minWait:10,maxWait:0,baits:{minnow:2,crank:3,shrimp:1,cut:1},spots:{hatteras:3}});
+sp({id:'spanish',name:'Spanish mackerel',min:1,max:13,k:15,rate:25,act:'day',look:'spanish',minWait:10,maxWait:0,baits:{jerk:2,minnow:2,crank:3,shrimp:1,cut:1},spots:{hatteras:3}});
 sp({id:'drum',name:'Freshwater drum',min:2,max:50,k:13,rate:17,act:'any',look:'drum',minWait:20,maxWait:0,baits:{cut:4,minnow:1,jig:2},spots:{mississippi:5,winnebago:2}});
 sp({id:'bowfin',name:'Bowfin',min:2,max:20,k:14.5,rate:8,act:'day',look:'bowfin',minWait:30,maxWait:0,baits:{minnow:2,cut:4,crank:1},spots:{everglades:3,okeechobee:3,mississippi:1,neuse:1.5}});
 sp({id:'floridagar',name:'Florida gar',min:2,max:20,k:17,rate:9,act:'day',look:'floridagar',minWait:30,maxWait:0,baits:{minnow:3,cut:3,crank:1},spots:{everglades:4,okeechobee:3}});
-sp({id:'peacock',name:'Peacock bass',min:1,max:28,k:12,rate:45,act:'day',look:'peacock',minWait:20,maxWait:900,baits:{minnow:5,cut:0.5,crank:6},spots:{okeechobee:5,everglades:3,rionegro:8,floodedforest:4}});
+sp({id:'peacock',name:'Peacock bass',min:1,max:28,k:12,rate:45,act:'day',look:'peacock',minWait:20,maxWait:900,baits:{jerk:5,minnow:5,cut:0.5,crank:6},spots:{okeechobee:5,everglades:3,rionegro:8,floodedforest:4}});
 /* salt and brackish */
 sp({id:'snook',name:'Snook',min:3,max:55,k:14.5,rate:40,act:'lowlight',look:'snook',minWait:40,maxWait:0,baits:{shrimp:4,mullet:5,minnow:1},spots:{everglades:6,okeechobee:1,keysflats:2}});
 sp({id:'tarpon',name:'Tarpon',min:20,max:280,k:14.5,rate:0,protected:true,act:'lowlight',look:'tarpon',minWait:240,maxWait:0,baits:{mullet:5,shrimp:0.5},spots:{everglades:3,keysflats:5}});
@@ -199,27 +203,27 @@ sp({id:'gt',name:'Giant trevally',min:10,max:180,k:12.5,rate:74,act:'day',look:'
 sp({id:'arapaima',name:'Arapaima',min:20,max:480,k:15.5,rate:260,act:'night',look:'arapaima',minWait:360,maxWait:0,baits:{cut:3,sucker:5},spots:{floodedforest:5,rionegro:2}});
 sp({id:'piranha',name:'Red-bellied piranha',min:0.5,max:8,k:11,rate:130,act:'day',look:'piranha',minWait:2,maxWait:300,baits:{cut:6,worm:2,minnow:2},spots:{floodedforest:6,rionegro:5}});
 sp({id:'redtail',name:'Redtail catfish',min:10,max:130,k:13.8,rate:185,act:'night',look:'redtail',minWait:180,maxWait:0,baits:{cut:5,sucker:4},spots:{rionegro:5,floodedforest:3,thaipark:3}});
-sp({id:'payara',name:'Payara',min:2,max:40,k:14.5,rate:240,act:'lowlight',look:'payara',minWait:30,maxWait:0,baits:{minnow:4,cut:3,crank:3},spots:{rionegro:5,floodedforest:2}});
+sp({id:'payara',name:'Payara',min:2,max:40,k:14.5,rate:240,act:'lowlight',look:'payara',minWait:30,maxWait:0,baits:{jerk:2,minnow:4,cut:3,crank:3},spots:{rionegro:5,floodedforest:2}});
 /* Africa */
 sp({id:'nileperch',name:'Nile perch',min:10,max:500,k:13.2,rate:105,act:'lowlight',look:'nileperch',minWait:240,maxWait:0,baits:{cut:3,sucker:5},spots:{victoria:7}});
-sp({id:'tigerfish',name:'Tigerfish',min:5,max:70,k:14,rate:135,act:'day',look:'tigerfish',minWait:40,maxWait:0,baits:{cut:5,minnow:1,crank:4},spots:{zambezi:8,victoria:1}});
+sp({id:'tigerfish',name:'Tigerfish',min:5,max:70,k:14,rate:135,act:'day',look:'tigerfish',minWait:40,maxWait:0,baits:{jerk:2,cut:5,minnow:1,crank:4},spots:{zambezi:8,victoria:1}});
 sp({id:'vundu',name:'Vundu catfish',min:10,max:120,k:14.5,rate:94,act:'night',look:'vundu',minWait:240,maxWait:0,baits:{cut:4,sucker:5},spots:{zambezi:4}});
 /* Europe and Asia */
 sp({id:'wels',name:'Wels catfish',min:20,max:300,k:15,rate:65,act:'night',look:'wels',minWait:360,maxWait:0,baits:{cut:3,sucker:5},spots:{ebro:7}});
-sp({id:'atlanticsalmon',name:'Atlantic salmon',min:5,max:80,k:13.6,rate:79,act:'trout',look:'atlanticsalmon',minWait:120,maxWait:0,baits:{minnow:4,cut:1,crank:2},spots:{lochness:4}});
+sp({id:'atlanticsalmon',name:'Atlantic salmon',min:5,max:80,k:13.6,rate:79,act:'trout',look:'atlanticsalmon',minWait:120,maxWait:0,baits:{jerk:2,minnow:4,cut:1,crank:2},spots:{lochness:4}});
 sp({id:'eel',name:'European eel',min:2,max:25,k:20,rate:43,act:'night',look:'eel',minWait:60,maxWait:0,baits:{cut:4},spots:{lochness:3,ebro:1}});
-sp({id:'taimen',name:'Taimen',min:10,max:230,k:15,rate:86,act:'trout',look:'taimen',minWait:300,maxWait:0,baits:{minnow:2,cut:3,sucker:5,crank:1},spots:{mongolia:7}});
-sp({id:'lenok',name:'Lenok',min:1,max:15,k:13.5,rate:65,act:'trout',look:'lenok',minWait:15,maxWait:600,baits:{worm:3,minnow:4,crank:2,fly:4},spots:{mongolia:6}});
+sp({id:'taimen',name:'Taimen',min:10,max:230,k:15,rate:86,act:'trout',look:'taimen',minWait:300,maxWait:0,baits:{jerk:2,minnow:2,cut:3,sucker:5,crank:1},spots:{mongolia:7}});
+sp({id:'lenok',name:'Lenok',min:1,max:15,k:13.5,rate:65,act:'trout',look:'lenok',minWait:15,maxWait:600,baits:{jerk:2,worm:3,minnow:4,crank:2,fly:4},spots:{mongolia:6}});
 sp({id:'siamesecarp',name:'Siamese giant carp',min:20,max:300,k:12.8,rate:58,act:'day',look:'siamesecarp',minWait:240,maxWait:0,baits:{cut:4},spots:{thaipark:6}});
 sp({id:'mekong',name:'Mekong giant catfish',min:50,max:650,k:13.5,rate:0,protected:true,act:'night',look:'mekong',minWait:480,maxWait:0,baits:{cut:2,sucker:4},spots:{thaipark:3}});
-sp({id:'biwatrout',name:'Biwa trout',min:1,max:20,k:13.5,rate:72,act:'trout',look:'biwatrout',minWait:30,maxWait:0,baits:{minnow:5,crank:2,fly:2},spots:{biwa:5}});
+sp({id:'biwatrout',name:'Biwa trout',min:1,max:20,k:13.5,rate:72,act:'trout',look:'biwatrout',minWait:30,maxWait:0,baits:{jerk:2,minnow:5,crank:2,fly:2},spots:{biwa:5}});
 /* Australia */
-sp({id:'murraycod',name:'Murray cod',min:10,max:250,k:13.5,rate:135,act:'night',look:'murraycod',minWait:300,maxWait:0,baits:{cut:3,sucker:5,minnow:1,crank:1},spots:{murray:7}});
-sp({id:'goldenperch',name:'Golden perch',min:1,max:25,k:12.5,rate:110,act:'lowlight',look:'goldenperch',minWait:20,maxWait:600,baits:{minnow:4,crank:2},spots:{murray:6}});
+sp({id:'murraycod',name:'Murray cod',min:10,max:250,k:13.5,rate:135,act:'night',look:'murraycod',minWait:300,maxWait:0,baits:{jerk:1,cut:3,sucker:5,minnow:1,crank:1},spots:{murray:7}});
+sp({id:'goldenperch',name:'Golden perch',min:1,max:25,k:12.5,rate:110,act:'lowlight',look:'goldenperch',minWait:20,maxWait:600,baits:{jerk:2,minnow:4,crank:2},spots:{murray:6}});
 sp({id:'barramundi',name:'Barramundi',min:5,max:100,k:13.5,rate:135,act:'lowlight',look:'barramundi',minWait:60,maxWait:0,baits:{shrimp:3,mullet:5,minnow:2},spots:{gbr:6}});
 sp({id:'coraltrout',name:'Coral trout',min:3,max:55,k:12.8,rate:160,act:'day',look:'coraltrout',minWait:30,maxWait:0,baits:{squid:6,shrimp:3,mullet:1},spots:{gbr:7}});
 /* Arctic */
-sp({id:'char',name:'Arctic char',min:1,max:32,k:14,rate:240,act:'trout',look:'char',minWait:30,maxWait:0,baits:{minnow:5,cut:2,crank:2,jig:2,fly:2},spots:{greenland:7}});
+sp({id:'char',name:'Arctic char',min:1,max:32,k:14,rate:240,act:'trout',look:'char',minWait:30,maxWait:0,baits:{jerk:2,minnow:5,cut:2,crank:2,jig:2,fly:2},spots:{greenland:7}});
 sp({id:'cod',name:'Atlantic cod',min:5,max:210,k:13.4,rate:190,act:'deep',look:'cod',minWait:60,maxWait:0,baits:{cut:3,squid:6,deepbait:2},spots:{greenland:4,arcticdeep:5}});
 sp({id:'greenlandhalibut',name:'Greenland halibut',min:5,max:100,k:13.5,rate:255,act:'deep',look:'ghalibut',minWait:120,maxWait:0,baits:{squid:4,deepbait:5,cut:1},spots:{greenland:2,arcticdeep:6}});
 sp({id:'greenlandshark',name:'Greenland shark',min:300,max:2200,k:15,rate:0,protected:true,act:'deep',look:'greenlandshark',minWait:600,maxWait:0,baits:{deepbait:5},spots:{arcticdeep:3}});
@@ -227,7 +231,7 @@ sp({id:'greenlandshark',name:'Greenland shark',min:300,max:2200,k:15,rate:0,prot
 sp({id:'tilapia',name:'Nile tilapia',min:0.5,max:10,k:11.5,rate:48,act:'day',look:'tilapia',minWait:1,maxWait:300,baits:{worm:5,cut:1},spots:{victoria:6,zambezi:2,thaipark:2}});
 sp({id:'sharptooth',name:'Sharptooth catfish',min:2,max:60,k:14.5,rate:67,act:'night',look:'sharptooth',minWait:60,maxWait:0,baits:{cut:5,sucker:2},spots:{zambezi:4,victoria:3}});
 sp({id:'grayling',name:'Arctic grayling',min:0.3,max:6,k:13,rate:58,act:'day',look:'grayling',minWait:1,maxWait:300,baits:{worm:5,minnow:1,jig:2,fly:6},spots:{mongolia:6,greenland:2}});
-sp({id:'dolly',name:'Dolly Varden',min:1,max:20,k:13.6,rate:65,act:'trout',look:'dolly',minWait:10,maxWait:600,baits:{minnow:4,crank:1,jig:2,fly:2},spots:{kenai:5,gulfofalaska:0}});
+sp({id:'dolly',name:'Dolly Varden',min:1,max:20,k:13.6,rate:65,act:'trout',look:'dolly',minWait:10,maxWait:600,baits:{jerk:2,minnow:4,crank:1,jig:2,fly:2},spots:{kenai:5,gulfofalaska:0}});
 sp({id:'rockfish',name:'Yelloweye rockfish',min:2,max:40,k:12.8,rate:105,act:'deep',look:'rockfish',minWait:20,maxWait:0,baits:{squid:6,deepbait:2},spots:{gulfofalaska:5}});
 sp({id:'amberjack',name:'Greater amberjack',min:10,max:160,k:13.6,rate:42,act:'day',look:'amberjack',minWait:60,maxWait:0,baits:{squid:3,mullet:5,shrimp:0.5},spots:{gulfreefs:5}});
 sp({id:'gag',name:'Gag grouper',min:3,max:80,k:13,rate:54,act:'any',look:'gag',minWait:40,maxWait:0,baits:{squid:5,shrimp:2,mullet:2},spots:{gulfreefs:5}});
@@ -247,16 +251,27 @@ D.SPECIES=S;
 
 /* ---------- Gear. Each buys once. ---------- */
 D.LINE_TESTS=[15,30,60,150,400,1000];
-D.REEL_SNAP=[0.6,0.45,0.3,0.15];
+D.REEL_SNAP=[0.6,0.5,0.4,0.3,0.22,0.15,0.08];
+/* Rods make fish bigger: the size cap goes up and big fish come more often. */
+D.ROD_BONUS=[0,0.05,0.09,0.13,0.18,0.24,0.30];
 D.GEAR=[
  {id:'line1',name:'30 lb line',price:300,kind:'line',lvl:1,desc:'Holds fish up to 30 lb without snapping.'},
  {id:'line2',name:'60 lb line',price:1200,kind:'line',lvl:2,desc:'Holds fish up to 60 lb.'},
  {id:'line3',name:'150 lb line',price:4000,kind:'line',lvl:3,desc:'Holds fish up to 150 lb.'},
  {id:'line4',name:'400 lb line',price:25000,kind:'line',lvl:4,desc:'Big-game line. Holds fish up to 400 lb.'},
  {id:'line5',name:'1,000 lb line',price:120000,kind:'line',lvl:5,desc:'Deep-sea cable. Holds anything up to 1,000 lb.'},
- {id:'reel1',name:'Good reel',price:800,kind:'reel',lvl:1,desc:'A fish too heavy for your line gets away 45% of the time instead of 60%.'},
- {id:'reel2',name:'Great reel',price:6000,kind:'reel',lvl:2,desc:'Overweight fish get away only 30% of the time.'},
- {id:'reel3',name:'Tournament reel',price:40000,kind:'reel',lvl:3,desc:'Overweight fish get away only 15% of the time.'},
+ {id:'reel1',name:'Spincast reel',price:30,kind:'reel',lvl:1,desc:'The push-button kind. Fish too heavy for your line get away 50% of the time instead of 60%.'},
+ {id:'reel2',name:'Spinning reel',price:70,kind:'reel',lvl:2,desc:'Overweight fish get away 40% of the time. Lure fights are a little easier.'},
+ {id:'reel3',name:'Baitcasting reel',price:150,kind:'reel',lvl:3,desc:'Overweight fish get away 30% of the time. Lure fights are easier.'},
+ {id:'reel4',name:'Saltwater spinning reel',price:300,kind:'reel',lvl:4,desc:'Sealed against salt. Overweight fish get away 22% of the time.'},
+ {id:'reel5',name:'Big-game reel',price:700,kind:'reel',lvl:5,desc:'A two-speed lever-drag reel. Overweight fish get away 15% of the time.'},
+ {id:'reel6',name:'Tournament reel',price:1500,kind:'reel',lvl:6,desc:'The best drag money can buy. Overweight fish get away only 8% of the time, and lure fights are much easier.'},
+ {id:'rod1',name:'Ultralight rod',price:40,kind:'rod',lvl:1,desc:'Light and lively. Fish are 5% bigger.'},
+ {id:'rod2',name:'Medium spinning rod',price:75,kind:'rod',lvl:2,desc:'An all-rounder. Fish are 9% bigger.'},
+ {id:'rod3',name:'Bass casting rod',price:150,kind:'rod',lvl:3,desc:'Stiff backbone for hook-sets. Fish are 13% bigger.'},
+ {id:'rod4',name:'Surf rod',price:250,kind:'rod',lvl:4,desc:'Twelve feet long, casts a mile. Fish are 18% bigger.'},
+ {id:'rod5',name:'Graphite pro rod',price:500,kind:'rod',lvl:5,desc:'Feels every bump. Fish are 24% bigger.'},
+ {id:'rod6',name:'Custom tournament rod',price:1200,kind:'rod',lvl:6,desc:'Hand-wrapped by a rod builder. Fish are 30% bigger.'},
  {id:'hole2',name:'Second line',price:400,kind:'lines',lvl:2,desc:'Fish two lines at once.'},
  {id:'hole3',name:'Third line',price:1250,kind:'lines',lvl:3,desc:'Fish three lines at once.'},
  {id:'hole4',name:'Fourth line',price:4250,kind:'lines',lvl:4,desc:'Fish four lines at once, the most allowed.'},
@@ -423,7 +438,7 @@ D.baitStats=function(id){ D._bs=D._bs||{}; if(D._bs[id]) return D._bs[id]; var b
   var v=tw?tv/tw:0, tier=D.FISH_TIERS[0]; D.FISH_TIERS.forEach(function(x){ if(v>=x.min) tier=x; });
   var m=b.biteMean, speed=m<=2?5:m<=15?4:m<=60?3:m<=150?2:1;
   var methods=Object.keys(D.METHOD_BAITS).filter(function(k){ return D.METHOD_BAITS[k].indexOf(id)>=0; });
-  return (D._bs[id]={speed:speed,wait:m,tier:tier,value:Math.round(v),methods:methods,active:id==='crank'||id==='jig'||id==='fly'}); };
+  return (D._bs[id]={speed:speed,wait:m,tier:tier,value:Math.round(v),methods:methods,active:id==='crank'||id==='jig'||id==='jerk'||id==='fly'}); };
 D.indexSection=function(kind){ D._isec=D._isec||{}; if(D._isec[kind]) return D._isec[kind];
   return (D._isec[kind]=D.SPECIES.filter(function(sp){ if(kind==='all') return true; return Object.keys(sp.spots).some(function(k){ var s=D.SPOT_BY_ID[k]; return sp.spots[k]>0&&s&&(kind==='fresh'?s.water==='fresh':s.water!=='fresh'); }); })); };
 D.spotTier=function(spotId){ var v=D.spotValue(spotId), t=D.FISH_TIERS[0]; D.FISH_TIERS.forEach(function(x){ if(v>=x.min) t=x; }); return t; };

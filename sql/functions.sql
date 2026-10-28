@@ -41,8 +41,11 @@ end $$;
 create or replace function public.oc_line_test(lvl int) returns int language sql immutable as $$
   select (array[15,30,60,150,400,1000])[greatest(1, least(6, lvl + 1))];
 $$;
+create or replace function public.oc_rod_bonus(lvl int) returns numeric language sql immutable as $$
+  select (array[0,0.05,0.09,0.13,0.18,0.24,0.30])[greatest(1, least(7, coalesce(lvl, 0) + 1))];
+$$;
 create or replace function public.oc_reel_snap(lvl int) returns numeric language sql immutable as $$
-  select (array[0.6,0.45,0.3,0.15])[greatest(1, least(4, lvl + 1))];
+  select (array[0.6,0.5,0.4,0.3,0.22,0.15,0.08])[greatest(1, least(7, lvl + 1))];
 $$;
 create or replace function public.oc_season_key(ts timestamptz) returns text language sql stable as $$
   select 's' || to_char(ts at time zone 'UTC', 'YYYY-MM');
@@ -73,7 +76,9 @@ end $$;
 
 -- Which fish bit, and how big. The same formula the game shows in its journal.
 drop function if exists public.oc_roll(text, text, numeric, text);
-create or replace function public.oc_roll(p_spot text, p_bait text, p_minutes numeric, p_period text, p_small boolean,
+drop function if exists public.oc_roll(text, text, numeric, text, boolean);
+-- p_rod: the rod's size bonus (0.05 = 5% bigger): it raises the size cap and makes big fish more common.
+create or replace function public.oc_roll(p_spot text, p_bait text, p_minutes numeric, p_period text, p_small boolean, p_rod numeric default 0,
   out species text, out lb numeric, out inches numeric, out variant text, out bonus boolean) language plpgsql as $$
 declare b public.baits; total numeric := 0; pick numeric; rec record; chosen record; a numeric; cap numeric; u numeric; v numeric; f numeric; vr numeric; prime boolean;
 begin
@@ -98,10 +103,10 @@ begin
     chosen := rec; pick := pick - rec.w; if pick <= 0 then exit; end if;
   end loop;
   a := 1 - exp(-p_minutes / b.tau);
-  cap := (0.12 + 0.88 * a) * b.cap_max;
+  cap := least(1, (0.12 + 0.88 * a) * b.cap_max * (1 + coalesce(p_rod, 0)));
   prime := p_period in ('dawn','dusk');
   u := random(); bonus := random() < (0.03 + 0.12 * a) * (case when prime then 2 else 1 end); v := random();
-  f := case when bonus then cap * (0.75 + 0.25 * v) else cap * power(u, 1.25) end;
+  f := case when bonus then cap * (0.75 + 0.25 * v) else cap * power(u, 1.25 * (1 - coalesce(p_rod, 0))) end;
   species := chosen.id;
   lb := round((chosen.min_lb + (chosen.max_lb - chosen.min_lb) * f) * 16) / 16;
   inches := round(chosen.k * cbrt(lb) * 4) / 4;
@@ -233,7 +238,7 @@ create or replace function public.oc_legend_json(l public.legends) returns jsonb
 $$;
 
 create or replace function public.oc_line_json(ln public.lines, finder int) returns jsonb language sql stable as $$
-  select jsonb_build_object('idx', ln.idx, 'spot', ln.spot, 'bait', ln.bait, 'castAt', ln.cast_at, 'biteAt', ln.bite_at,
+  select jsonb_build_object('idx', ln.idx, 'spot', ln.spot, 'bait', ln.bait, 'castAt', ln.cast_at, 'biteAt', ln.bite_at, 'snagAt', ln.snag_at,
     'peekSp', case when finder >= 1 then ln.species end, 'peekLb', case when finder >= 2 then ln.lb end,
     'legendNear', case when finder >= 3 then exists (select 1 from legends l where l.spot = ln.spot and l.active and l.owner_pid is null and l.bait = ln.bait
         and l.period = oc_period(ln.bite_at, (select tz from spots where id = ln.spot)) and extract(epoch from (ln.bite_at - ln.cast_at)) / 60 >= l.min_wait and ln.legend_roll < 1.0 / oc_legend_odds(l)) else false end);
@@ -349,7 +354,64 @@ begin
   if crewed then mult := mult * 0.9; end if;
 end $$;
 
-create or replace function public.oc_is_lure(p_bait text) returns boolean language sql immutable as $$ select p_bait in ('crank', 'jig', 'fly') $$;
+create or replace function public.oc_is_lure(p_bait text) returns boolean language sql immutable as $$ select p_bait in ('crank', 'jig', 'jerk', 'fly') $$;
+
+-- Hard lures in the tackle box: gear.lures.<bait> = {n: spare lures, left: casts left on the one tied on}.
+create or replace function public.oc_lure_count(g jsonb, p_bait text) returns int language sql immutable as $$
+  select coalesce((g -> 'lures' -> p_bait ->> 'n')::int, 0) + (case when coalesce((g -> 'lures' -> p_bait ->> 'left')::int, 0) > 0 then 1 else 0 end);
+$$;
+-- Adds (or with a negative number, takes) lures; keeps the bait list in step so "owned" means "has one left".
+create or replace function public.oc_lure_add(p_pid uuid, p_bait text, p_n int) returns void language plpgsql as $$
+declare g jsonb; lu jsonb; n int; lft int;
+begin
+  select gear into g from players where pid = p_pid for update;
+  lu := coalesce(g -> 'lures' -> p_bait, '{"n":0,"left":0}'::jsonb);
+  n := greatest(0, coalesce((lu ->> 'n')::int, 0) + p_n); lft := coalesce((lu ->> 'left')::int, 0);
+  if p_n < 0 and n = 0 and coalesce((lu ->> 'n')::int, 0) + p_n < 0 then lft := 0; end if;
+  g := jsonb_set(g || jsonb_build_object('lures', coalesce(g -> 'lures', '{}'::jsonb)), array['lures', p_bait], jsonb_build_object('n', n, 'left', lft));
+  update players set gear = g, baits = case when n + lft > 0 then (case when p_bait = any(baits) then baits else array_append(baits, p_bait) end) else array_remove(baits, p_bait) end where pid = p_pid;
+end $$;
+-- A snag: the lure tied on is gone.
+create or replace function public.oc_lure_snapped(p_pid uuid, p_bait text) returns void language plpgsql as $$
+declare g jsonb; n int;
+begin
+  select gear into g from players where pid = p_pid for update;
+  n := coalesce((g -> 'lures' -> p_bait ->> 'n')::int, 0);
+  g := jsonb_set(g || jsonb_build_object('lures', coalesce(g -> 'lures', '{}'::jsonb)), array['lures', p_bait], jsonb_build_object('n', n, 'left', 0));
+  update players set gear = g, baits = case when n > 0 then baits else array_remove(baits, p_bait) end,
+    stats = jsonb_set(stats, '{snagged}', to_jsonb(coalesce((stats ->> 'snagged')::int, 0) + 1)) where pid = p_pid;
+end $$;
+
+-- Buy hard lures, one or more at a time.
+create or replace function public.buy_lures(p_pid uuid, p_secret text, p_bait text, p_qty int) returns jsonb language plpgsql security definer set search_path = public as $$
+declare p public.players; b public.baits; price bigint;
+begin
+  p := oc_auth(p_pid, p_secret);
+  select * into b from baits where id = p_bait; if b.id is null or b.uses <= 0 then perform oc_fail('no such lure'); end if;
+  if p_qty is null or p_qty < 1 or p_qty > 50 then perform oc_fail('buy 1 to 50 at a time'); end if;
+  if oc_lure_count(p.gear, p_bait) + p_qty > 200 then perform oc_fail('your tackle box is full (200 of each lure)'); end if;
+  price := b.price * p_qty;
+  if p.coins < price then perform oc_fail('not enough coins'); end if;
+  update players set coins = coins - price where pid = p_pid;
+  perform oc_lure_add(p_pid, p_bait, p_qty);
+  select * into p from players where pid = p_pid;
+  return jsonb_build_object('coins', p.coins, 'baits', to_jsonb(p.baits), 'gear', p.gear, 'items', to_jsonb(p.items), 'regions', to_jsonb(p.regions), 'now', now());
+end $$;
+
+-- The lure is hung up. Pull: a 35% chance to work it free (the lure is saved). Otherwise, or if you cut it, it is gone.
+create or replace function public.lure_snag(p_pid uuid, p_secret text, p_idx int, p_pull boolean) returns jsonb language plpgsql security definer set search_path = public as $$
+declare p public.players; ln public.lines; freed boolean;
+begin
+  p := oc_auth(p_pid, p_secret);
+  select * into ln from lines where pid = p_pid and idx = p_idx for update;
+  if ln.pid is null then perform oc_fail('no line there'); end if;
+  if ln.snag_at is null or now() < ln.snag_at - interval '2 seconds' then perform oc_fail('that lure is not snagged'); end if;
+  delete from lines where pid = p_pid and idx = p_idx;
+  freed := coalesce(p_pull, false) and random() < 0.35;
+  if not freed then perform oc_lure_snapped(p_pid, ln.bait); end if;
+  select * into p from players where pid = p_pid;
+  return jsonb_build_object('result', case when freed then 'freed' else 'lost' end, 'bait', ln.bait, 'baits', to_jsonb(p.baits), 'gear', p.gear, 'now', now());
+end $$;
 
 -- Crankbait hook-set: starts the fight. Returns how hard the fish fights (0-1): bigger and more valuable fish are harder.
 create or replace function public.lure_strike(p_pid uuid, p_secret text, p_idx int) returns jsonb language plpgsql security definer set search_path = public as $$
@@ -358,7 +420,8 @@ begin
   p := oc_auth(p_pid, p_secret);
   select * into ln from lines where pid = p_pid and idx = p_idx for update;
   if ln.pid is null then perform oc_fail('no line there'); end if;
-  if ln.bait <> 'crank' then perform oc_fail('only crankbaits fight'); end if;
+  if ln.bait not in ('crank', 'jerk') then perform oc_fail('only crankbaits and jerkbaits fight'); end if;
+  if ln.snag_at is not null and now() >= ln.snag_at then perform oc_fail('your lure is snagged'); end if;
   if now() < ln.bite_at then perform oc_fail('nothing has hit it yet'); end if;
   if ln.fight_until is null and now() > ln.bite_at + interval '4 seconds' then
     delete from lines where pid = p_pid and idx = p_idx; return jsonb_build_object('result', 'missed', 'now', now()); end if;
@@ -367,27 +430,33 @@ begin
   val := greatest(1, ln.lb * s.rate);
   d := greatest(0.1, least(1, 0.15 + 0.55 * power(frac, 0.7) + 0.30 * least(1, log(val) / 4)));
   if ln.variant is not null and ln.variant <> '' then d := least(1, d + 0.1); end if;
+  d := greatest(0.1, d - 0.025 * coalesce((p.gear ->> 'reel')::int, 0)); -- a better reel makes the fight easier
   update lines set fight_until = coalesce(fight_until, now() + interval '90 seconds') where pid = p_pid and idx = p_idx;
   return jsonb_build_object('result', 'fight', 'difficulty', round(d, 2), 'now', now());
 end $$;
 
 -- A lure fish that got away (turned away, slow hook-set, or lost in the fight): the line comes back empty.
 create or replace function public.lure_lose(p_pid uuid, p_secret text, p_idx int) returns jsonb language plpgsql security definer set search_path = public as $$
-declare p public.players;
+declare p public.players; ln public.lines;
 begin
   p := oc_auth(p_pid, p_secret);
-  delete from lines where pid = p_pid and idx = p_idx and oc_is_lure(bait);
-  return jsonb_build_object('result', 'lost', 'now', now());
+  delete from lines where pid = p_pid and idx = p_idx and oc_is_lure(bait) returning * into ln;
+  if ln.snag_at is not null and now() >= ln.snag_at then perform oc_lure_snapped(p_pid, ln.bait); end if;
+  select * into p from players where pid = p_pid;
+  return jsonb_build_object('result', 'lost', 'baits', to_jsonb(p.baits), 'gear', p.gear, 'now', now());
 end $$;
 
 create or replace function public.cast_line(p_pid uuid, p_secret text, p_idx int, p_bait text) returns jsonb language plpgsql security definer set search_path = public as $$
-declare p public.players; sp public.spots; mins numeric; r record; per text; ln public.lines; ac record; bite timestamptz;
+declare p public.players; sp public.spots; mins numeric; r record; per text; ln public.lines; ac record; bite timestamptz; bt public.baits; lu jsonb; ln_n int; ln_left int; snag timestamptz;
 begin
   p := oc_auth(p_pid, p_secret);
   select * into sp from spots where id = p.spot;
+  select * into bt from baits where id = p_bait;
   if p_idx < 0 or p_idx >= (p.gear ->> 'lines')::int then perform oc_fail('you do not have that line'); end if;
   if exists (select 1 from lines where pid = p_pid and idx = p_idx) then perform oc_fail('that line is already in the water'); end if;
-  if not (p_bait = any(p.baits)) then perform oc_fail('you do not own that bait'); end if;
+  if coalesce(bt.uses, 0) > 0 then
+    if oc_lure_count(p.gear, p_bait) <= 0 then perform oc_fail(case when p.gear -> 'lures' ? p_bait then 'you are out of ' || lower(bt.name) || '. Buy more at the bait shop' else 'you do not own that bait' end); end if;
+  elsif not (p_bait = any(p.baits)) then perform oc_fail('you do not own that bait'); end if;
   if not exists (select 1 from method_baits where method = sp.method and bait = p_bait) then perform oc_fail('that bait does not work here'); end if;
   select * into ac from oc_access(p, sp);
   if not (sp.region = any(p.regions)) and ac.host is null then perform oc_fail('you need your own ticket to fish here'); end if;
@@ -398,14 +467,26 @@ begin
   if mins is null then perform oc_fail('nothing here bites on that'); end if;
   -- Lures and jigs are fished actively: the strike comes within seconds while the player works the lure.
   -- The fish is rolled as if the lure had fished for `mins` (same size rules), so cast_at is set that far back.
-  bite := case when oc_is_lure(p_bait) then now() + ((case when p_bait = 'crank' then 6 + random() * 16 when p_bait = 'fly' then 9 + random() * 16 else 8 + random() * 20 end) * interval '1 second')
+  bite := case when oc_is_lure(p_bait) then now() + ((case when p_bait = 'crank' then 6 + random() * 16 when p_bait = 'fly' then 9 + random() * 16 when p_bait = 'jerk' then 6 + random() * 14 else 8 + random() * 20 end) * interval '1 second')
                else now() + (mins * interval '1 minute') end;
   per := oc_period(bite, sp.tz);
-  select * into r from oc_roll(p.spot, p_bait, mins, per, ac.small);
-  insert into lines (pid, idx, spot, bait, cast_at, bite_at, species, lb, inches, variant, snap, legend_roll)
-    values (p_pid, p_idx, p.spot, p_bait, case when oc_is_lure(p_bait) then bite - (mins * interval '1 minute') else now() end, bite, r.species, r.lb, r.inches, r.variant, random() < oc_reel_snap((p.gear ->> 'reel')::int), random())
+  select * into r from oc_roll(p.spot, p_bait, mins, per, ac.small, oc_rod_bonus((p.gear ->> 'rod')::int));
+  -- hard lures: this cast uses up one cast of the lure tied on (tie on a new one when it is worn out), and it might snag
+  if coalesce(bt.uses, 0) > 0 then
+    lu := coalesce(p.gear -> 'lures' -> p_bait, '{"n":0,"left":0}'::jsonb); ln_n := coalesce((lu ->> 'n')::int, 0); ln_left := coalesce((lu ->> 'left')::int, 0);
+    if ln_left <= 0 then ln_n := ln_n - 1; ln_left := bt.uses; end if;
+    ln_left := ln_left - 1;
+    update players set gear = jsonb_set(gear || jsonb_build_object('lures', coalesce(gear -> 'lures', '{}'::jsonb)), array['lures', p_bait], jsonb_build_object('n', ln_n, 'left', ln_left)),
+      baits = case when ln_n + ln_left > 0 then baits else array_remove(baits, p_bait) end where pid = p_pid;
+    if random() < bt.snag and bite > now() + interval '6 seconds' then
+      snag := now() + (3 + random() * (extract(epoch from (bite - now())) - 4)) * interval '1 second';
+    end if;
+  end if;
+  insert into lines (pid, idx, spot, bait, cast_at, bite_at, species, lb, inches, variant, snap, legend_roll, snag_at)
+    values (p_pid, p_idx, p.spot, p_bait, case when oc_is_lure(p_bait) then bite - (mins * interval '1 minute') else now() end, bite, r.species, r.lb, r.inches, r.variant, random() < oc_reel_snap((p.gear ->> 'reel')::int), random(), snag)
     returning * into ln;
-  return jsonb_build_object('line', oc_line_json(ln, (p.gear ->> 'finder')::int), 'small', ac.small, 'now', now());
+  select * into p from players where pid = p_pid;
+  return jsonb_build_object('line', oc_line_json(ln, (p.gear ->> 'finder')::int), 'small', ac.small, 'baits', to_jsonb(p.baits), 'gear', p.gear, 'now', now());
 end $$;
 
 create or replace function public.reel_line(p_pid uuid, p_secret text, p_idx int) returns jsonb language plpgsql security definer set search_path = public as $$
@@ -415,6 +496,8 @@ begin
   select * into ln from lines where pid = p_pid and idx = p_idx for update;
   if ln.pid is null then perform oc_fail('no line there'); end if;
   delete from lines where pid = p_pid and idx = p_idx;
+  if ln.snag_at is not null and now() >= ln.snag_at then
+    perform oc_lure_snapped(p_pid, ln.bait); return jsonb_build_object('result', 'snagged', 'bait', ln.bait, 'now', now()); end if;
   if now() < ln.bite_at then return jsonb_build_object('result', 'early', 'now', now()); end if;
   -- a lure strike has to be answered within a few seconds, or the fish spits the hook
   if oc_is_lure(ln.bait) and now() > ln.bite_at + interval '4 seconds' and not (ln.fight_until is not null and now() <= ln.fight_until) then return jsonb_build_object('result', 'missed', 'now', now()); end if;
@@ -539,6 +622,7 @@ begin
   gr := p.gear;
   if p_kind = 'bait' then
     select * into b from baits where id = p_id; if b.id is null then perform oc_fail('no such bait'); end if;
+    if b.uses > 0 then return buy_lures(p_pid, p_secret, p_id, 1); end if;
     if p_id = any(p.baits) then perform oc_fail('you already own that'); end if;
     price := b.price;
     if p.coins < price then perform oc_fail('not enough coins'); end if;
@@ -547,7 +631,11 @@ begin
     select * into g from gear where id = p_id; if g.id is null then perform oc_fail('no such gear'); end if;
     if g.kind = 'boat' and g.lvl >= 8 then perform oc_fail('that boat is not for sale'); end if;
     price := g.price;
-    if g.kind in ('line','reel','lines','finder') then
+    if g.kind in ('rod','reel') then
+      -- rods and reels: buy whichever you like; you fish with the best one you own
+      if coalesce((gr ->> g.kind)::int, 0) >= g.lvl then perform oc_fail('you already have this or a better one'); end if;
+      gr := jsonb_set(gr, array[g.kind], to_jsonb(g.lvl));
+    elsif g.kind in ('line','lines','finder') then
       if (gr ->> g.kind)::int >= g.lvl then perform oc_fail('you already own that'); end if;
       if (gr ->> g.kind)::int <> g.lvl - 1 then perform oc_fail('buy the cheaper one first'); end if;
       gr := jsonb_set(gr, array[g.kind], to_jsonb(g.lvl));
@@ -1059,11 +1147,12 @@ begin
     when 'coins' then update players set coins = coins + p_value::bigint where pid = p_pid;
     when 'givebait' then
       if not exists (select 1 from baits where id = p_value) then perform oc_fail('no such bait'); end if;
+      if (select uses from baits where id = p_value) > 0 then perform oc_lure_add(p_pid, p_value, 5); end if;
       update players set baits = array_append(baits, p_value) where pid = p_pid and not (p_value = any(baits));
     when 'takebait' then
       if not exists (select 1 from baits where id = p_value) then perform oc_fail('no such bait'); end if;
       if p_value = 'worm' then perform oc_fail('worms are free for everyone and cannot be taken'); end if;
-      update players set baits = array_remove(baits, p_value) where pid = p_pid;
+      update players set baits = array_remove(baits, p_value), gear = case when gear -> 'lures' ? p_value then jsonb_set(gear, array['lures', p_value], '{"n":0,"left":0}'::jsonb) else gear end where pid = p_pid;
     when 'giveboat' then
       if not exists (select 1 from gear where id = p_value and kind = 'boat') then perform oc_fail('no such boat'); end if;
       update players set gear = jsonb_set(jsonb_set(gear, '{boats}', (select to_jsonb(array(select distinct x from jsonb_array_elements_text(coalesce(gear -> 'boats', '["paddle"]'::jsonb) || to_jsonb(p_value)) x)))), '{boat}', to_jsonb(p_value)) where pid = p_pid;

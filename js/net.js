@@ -5,7 +5,8 @@ var N={};
 /* The project address and publishable key. The publishable key is meant to live in a web page; the server functions check everything else. */
 N.SERVER={url:'https://jazbtozmvlwmplzmtdwh.supabase.co',key:'sb_publishable_X9WO2pob30RIyUqfrEMAxA_a--ig4F_'};
 try{ if(root.OC_SERVER_OVERRIDE) N.SERVER=root.OC_SERVER_OVERRIDE; var q=new URLSearchParams(location.search); if(q.get('server')) N.SERVER={url:q.get('server'),key:q.get('key')||'test'}; }catch(e){}
-var ID_KEY='onecast.id', CACHE_KEY='onecast.cache';
+/* a test copy (onecast.github.io/beta/) keeps its own save, so testing never touches your real one */
+var STORE=(root.OC_SERVER_OVERRIDE&&root.OC_SERVER_OVERRIDE.store)||'', ID_KEY='onecast.'+(STORE?STORE+'.':'')+'id', CACHE_KEY='onecast.'+(STORE?STORE+'.':'')+'cache';
 N.offset=0; N.online=true; N.listeners=[];
 N.now=function(){ return Date.now()+N.offset; };
 function randHex(n){ var a=new Uint8Array(n/2); try{ crypto.getRandomValues(a); }catch(e){ for(var i=0;i<a.length;i++) a[i]=Math.floor(Math.random()*256); } return Array.from(a,function(b){ return ('0'+b.toString(16)).slice(-2); }).join(''); }

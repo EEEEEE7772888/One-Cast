@@ -6,7 +6,7 @@ function $(id){ return document.getElementById(id); }
 function el(tag,cls,html){ var e=document.createElement(tag); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e; }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 var OVERLAYS=['dockOv','menuOv','tackleOv','baitOv','gearOv','shopOv','bucketOv','fishOv','cardOv','journalOv','legendOv','achOv','boardOv','friendsOv','tradeOv','profileOv','newsOv','mapOv','guideOv','saveOv','helpOv','awayOv','reportOv','suggestOv'];
-var RENDER={guideOv:renderGuide,dockOv:renderDock,menuOv:renderMenu,tackleOv:renderTackle,baitOv:renderBaitShop,gearOv:renderGear,shopOv:renderShop,bucketOv:renderBucket,journalOv:renderJournal,legendOv:renderLegends,achOv:renderAch,boardOv:renderBoard,friendsOv:renderFriends,newsOv:renderNews,mapOv:renderMap,saveOv:renderSave};
+var RENDER={rodOv:renderRods,guideOv:renderGuide,dockOv:renderDock,menuOv:renderMenu,tackleOv:renderTackle,baitOv:renderBaitShop,gearOv:renderGear,shopOv:renderShop,bucketOv:renderBucket,journalOv:renderJournal,legendOv:renderLegends,achOv:renderAch,boardOv:renderBoard,friendsOv:renderFriends,newsOv:renderNews,mapOv:renderMap,saveOv:renderSave};
 UI.open=function(id){ OVERLAYS.forEach(function(o){ if(o!==id&&o!=='cardOv') $(o).hidden=true; }); $(id).hidden=false; if(RENDER[id]) RENDER[id](); var f=$(id).querySelector('.x,button,select,input'); if(f&&id!=='mapOv') try{ f.focus({preventScroll:true}); }catch(e){} if(id==='mapOv') G.coachEvent&&G.coachEvent('map'); };
 UI.closeAll=function(){ OVERLAYS.forEach(function(o){ $(o).hidden=true; }); $('resetAsk').hidden=true; $('reset').hidden=false; if(G.tradeId){ stopTradePoll(); } if(G.s){ G.renderAll(); G.checkAch(); } };
 UI.anyOpen=function(){ return OVERLAYS.some(function(o){ return !$(o).hidden; }); };
@@ -37,6 +37,7 @@ function renderMenu(){
     ['tackle','BAIT SHOP',G.s.baits.length+' of '+D.BAITS.length+' baits','baitOv'],
     ['boat','THE DOCK',(D.GEAR_BY_ID[G.s.gear.boat||'paddle']||{}).name+' · '+(G.s.gear.boats||['paddle']).filter(function(id){ return D.BOATS.some(function(b){ return b.id===id; }); }).length+' of '+D.BOATS.length+' boats','dockOv'],
     ['spool','GEAR SHOP',gearBlurb(),'gearOv'],
+    ['tackle','RODS AND REELS',rodBlurb(),'rodOv'],
     ['hat','CLOTHES','Dress your angler','shopOv'],
     ['book','FISH JOURNAL',Object.keys(G.s.journal).filter(function(k){ return k.indexOf('legend:')!==0; }).length+' of '+D.SPECIES.length+' species','journalOv'],
     ['book','GUIDEBOOKS',(G.s.gear.books||[]).length+' of 2 · best times, baits and legend secrets','guideOv'],
@@ -56,6 +57,7 @@ function pendingTxt(){ var n=G.s.friends.filter(function(f){ return f.status==='
 function seasonName(k){ var M=['January','February','March','April','May','June','July','August','September','October','November','December']; return M[+k.slice(6,8)-1]+' '+k.slice(1,5); }
 function legendBlurb(){ var l=G.s.legendsHere&&G.s.legendsHere[0]; return l?'Here: '+l.name+' (still out there)':'The legend here has been caught'; }
 function gearBlurb(){ return G.lineTest()+' lb line · '+(G.s.gear.lines||1)+' line'+((G.s.gear.lines||1)>1?'s':'')+(G.s.gear.finder?' · finder':''); }
+function rodBlurb(){ var r=D.GEAR.filter(function(g){ return g.kind==='rod'&&g.lvl===(G.s.gear.rod||0); })[0], l=D.GEAR.filter(function(g){ return g.kind==='reel'&&g.lvl===(G.s.gear.reel||0); })[0]; return (r?r.name:'Old cane pole')+' · '+(l?l.name:'Starter reel'); }
 function bucketValue(){ var t=0; G.s.fish.forEach(function(f){ if(!f.legend&&!f.released) t+=f.value||0; }); return t; }
 UI.renderMenuBadge=function(){ var n=newsUnread()+G.s.friends.filter(function(f){ return f.status==='pending'&&!f.mine; }).length+G.s.trades.length; $('menuBadge').hidden=!n; $('menuBadge').textContent=n>9?'9+':n; };
 function newsUnread(){ var seen=G.s.prefs.newsSeen||0; return Math.max(0,(G.s.newsId||0)-seen>60?60:(G.s.newsId||0)-seen); }
@@ -70,10 +72,10 @@ function renderTackle(){
   var box=$('baitPick'); box.innerHTML=''; var sp=G.spot();
   $('tackleNote').textContent=D.METHOD_NAME[sp.method]+' at '+sp.name+'. '+(sp.method==='troll'?'Trolling uses big-game lures.':sp.method==='deep'?'Deep drop uses squid or a deep-drop rig.':'Pick what to put on the hook.');
   D.BAITS.forEach(function(b){ if(D.METHOD_BAITS[sp.method].indexOf(b.id)<0) return; var own=G.s.baits.indexOf(b.id)>=0, works=G.baitWorksHere(b.id);
-    var btn=el('button','bait'+(own?'':' locked')+(works?'':' dead')); btn.type='button'; btn.setAttribute('aria-pressed',String(b.id===G.bait)); var art=A.BAIT_ART[b.id]; btn.appendChild(A.spriteCanvas(art.rows,art.map)); btn.appendChild(el('span',null,own?esc(b.name):D.money(b.price)));
+    var btn=el('button','bait'+(own?'':' locked')+(works?'':' dead')); btn.type='button'; btn.setAttribute('aria-pressed',String(b.id===G.bait)); var art=A.BAIT_ART[b.id]; btn.appendChild(A.spriteCanvas(art.rows,art.map)); btn.appendChild(el('span',null,own?esc(b.name):D.money(b.price)+(b.uses?' each':''))); if(own&&b.uses) btn.appendChild(el('span','cnt','x'+G.lureCount(b.id)));
     btn.onclick=function(){ if(!own){ UI.open('baitOv'); return; } if(!works){ G.toast('Nothing at '+sp.name+' takes '+b.name.toLowerCase()+'.'); return; } G.setBait(b.id); renderTackle(); }; box.appendChild(btn); });
   var b=D.BAIT_BY_ID[G.bait], fishHere=D.spotSpecies(sp.id).filter(function(s){ return s.baits[G.bait]; }).map(function(s){ return s.name; });
-  $('baitInfo').innerHTML='<b style="color:#EAF5FF">'+esc(b.name.toUpperCase())+'</b>'+baitBars(b)+esc(b.timing)+(fishHere.length?'<br>Here it catches: '+esc(fishHere.join(', '))+'.':'<br>Nothing here takes it.');
+  $('baitInfo').innerHTML='<b style="color:#EAF5FF">'+esc(b.name.toUpperCase())+'</b>'+baitBars(b)+(b.uses?'<span class="lure-left">'+lureLine(b)+'</span>':'')+esc(b.timing)+(fishHere.length?'<br>Here it catches: '+esc(fishHere.join(', '))+'.':'<br>Nothing here takes it.');
 }
 /* three little stat bars for a bait: bite rate, how good the fish are, where it works */
 function baitBars(b){ var st=D.baitStats(b.id);
@@ -86,6 +88,9 @@ function baitBars(b){ var st=D.baitStats(b.id);
     '<div class="bb"><span class="bb-l">BITE RATE</span>'+bar(st.speed,'#5CF08A')+'<small>'+wait+'</small></div>'+
     '<div class="bb"><span class="bb-l">FISH</span>'+bar(st.tier.id,st.tier.color)+'<small style="color:'+st.tier.color+'">'+st.tier.name+'</small></div>'+
     '<div class="bb"><span class="bb-l">WHERE</span><span class="bb-where">'+where+'</span><small>'+water+'</small></div></div>'; }
+/* hard lures: what is in the box */
+function lureLine(b){ var lu=(G.s.gear.lures||{})[b.id]||{}, n=G.lureCount(b.id); if(!n) return 'You have none. '+D.money(b.price)+' each, '+b.uses+' casts each.';
+  return 'You have <b>'+n+'</b>'+(lu.left?' · <b>'+lu.left+'</b> casts left on the one tied on':'')+'. Can snag and break off ('+Math.round(b.snag*100)+'% of casts).'; }
 $('toBaitShop').onclick=function(){ UI.open('baitOv'); };
 function renderBaitShop(){
   var ul=$('baitRows'); ul.innerHTML='';
@@ -93,12 +98,18 @@ function renderBaitShop(){
     li.appendChild(el('div','ic')).appendChild(A.spriteCanvas(art.rows,art.map)); li.lastChild.firstChild.style.width='32px'; li.lastChild.firstChild.style.height='32px';
     var where=b.water==='fresh'?'Freshwater':b.water==='salt'?'Saltwater':b.water==='troll'?'Ocean trolling':'Deep drop';
     li.appendChild(el('div','bait-info','<div class="nm">'+esc(b.name)+'</div><div class="sub">'+esc(b.desc)+'</div>'));
-    var act=el('div'); if(own) act.innerHTML='<span class="own">OWNED</span>'; else { var btn=el('button','pbtn buy'+(G.s.coins>=b.price?' gold':''),(G.s.coins>=b.price?'BUY ':'')+D.money(b.price)); btn.type='button'; btn.disabled=G.s.coins<b.price; btn.onclick=function(){ buy('bait',b.id,b.name); }; act.appendChild(btn); }
-    li.appendChild(act); li.appendChild(el('div','row-bars',baitBars(b))); ul.appendChild(li); });
+    var act=el('div');
+    if(b.uses){ li.className='row lure-row'+(G.lureCount(b.id)?' selected':''); li.querySelector('.sub').innerHTML='<b>'+D.money(b.price)+' each</b>, lasts '+b.uses+' casts. '+esc(b.desc);
+      act.className='lure-buy'; [1,5].forEach(function(q){ var cost=b.price*q, btn=el('button','pbtn buy'+(G.s.coins>=cost?' gold':''),'BUY '+q+(q>1?' · '+D.money(cost):'')); btn.type='button'; btn.disabled=G.s.coins<cost; btn.onclick=function(){ buyLures(b.id,q,b.name); }; act.appendChild(btn); }); }
+    else if(own) act.innerHTML='<span class="own">OWNED</span>'; else { var btn=el('button','pbtn buy'+(G.s.coins>=b.price?' gold':''),(G.s.coins>=b.price?'BUY ':'')+D.money(b.price)); btn.type='button'; btn.disabled=G.s.coins<b.price; btn.onclick=function(){ buy('bait',b.id,b.name); }; act.appendChild(btn); }
+    li.appendChild(act); li.appendChild(el('div','row-bars',(b.uses?'<span class="lure-left">'+lureLine(b)+'</span>':'')+baitBars(b))); ul.appendChild(li); });
+}
+function buyLures(id,qty,name){
+  return N.me('buy_lures',{p_bait:id,p_qty:qty}).then(function(r){ G.s.coins=r.coins; G.s.baits=r.baits; G.s.gear=r.gear; G.bump(); G.toast('Bought '+qty+' '+(qty>1?name.toLowerCase():name.toLowerCase().replace(/s$/,''))+'.',2000,'good'); G.renderAll(); renderBaitShop(); if(G.baitWorksHere(id)) G.setBait(id); return r; }).catch(G.fail);
 }
 function buy(kind,id,name){
   return N.me('buy',{p_kind:kind,p_id:id}).then(function(r){ G.s.coins=r.coins; G.s.baits=r.baits; G.s.gear=r.gear; G.s.items=r.items; G.s.regions=r.regions; G.bump(); G.toast('Bought '+name+'.',2000,'good'); G.renderAll();
-    if(kind==='bait'){ renderBaitShop(); if(G.baitWorksHere(id)) G.setBait(id); } if(kind==='gear'){ renderGear(); } if(kind==='item'){ renderShop(); } return r; }).catch(G.fail);
+    if(kind==='bait'){ renderBaitShop(); if(G.baitWorksHere(id)) G.setBait(id); } if(kind==='gear'){ renderGear(); if(!$('rodOv').hidden) renderRods(); } if(kind==='item'){ renderShop(); } return r; }).catch(G.fail);
 }
 /* ---------- guidebooks: best times, baits and spots for every fish, and the secret of every legend ---------- */
 var guideKind=null, guideCache={}, guideQ='';
@@ -143,7 +154,7 @@ function renderGuide(){
 }
 function renderGear(){
   var box=$('gearRows'); box.innerHTML='';
-  var groups=[['LINES','lines','Fish more than one line at once. All your lines are at the spot you are visiting.'],['LINE STRENGTH','line','A fish heavier than your line can snap it. Stronger line holds bigger fish.'],['REEL','reel','A better reel gives overweight fish fewer chances to get away.'],['FISH FINDER','finder','See what is on your hook before you reel.'],['DEEP DROP','method','For the deep-drop spots. Without it you only catch small fish near the surface.'],['COMFORT','comfort','Faster bites everywhere.']];
+  var groups=[['LINES','lines','Fish more than one line at once. All your lines are at the spot you are visiting.'],['LINE STRENGTH','line','A fish heavier than your line can snap it. Stronger line holds bigger fish.'],['FISH FINDER','finder','See what is on your hook before you reel.'],['DEEP DROP','method','For the deep-drop spots. Without it you only catch small fish near the surface.'],['COMFORT','comfort','Faster bites everywhere.']];
   groups.forEach(function(g){ box.appendChild(el('div','gear-group',g[0])); box.appendChild(el('p','note',g[2]));
     D.GEAR.filter(function(x){ return x.kind===g[1]; }).forEach(function(x){
       var own=x.kind==='method'?(G.s.gear.methods||[]).indexOf(x.id)>=0:x.kind==='comfort'?!!G.s.gear.comfort:(G.s.gear[x.kind]||(x.kind==='lines'?1:0))>=x.lvl;
@@ -154,6 +165,21 @@ function renderGear(){
       li.appendChild(act); box.appendChild(li); }); });
 }
 
+
+/* ---------- rods and reels: buy whichever you want; you always fish with the best of each you own ---------- */
+function renderRods(){
+  var box=$('rodRows'); box.innerHTML='';
+  var rod=G.s.gear.rod||0, reel=G.s.gear.reel||0;
+  box.appendChild(el('p','note','Fishing with: <b>'+esc(rodBlurb())+'</b>. Buy whichever you like, you don\'t need the cheaper ones first. You always fish with the best rod and the best reel you own.'));
+  [['RODS','rod','Better rods catch bigger fish: the biggest fish of every kind come more often.',rod],['REELS','reel','Better reels mean fish too heavy for your line get away less often, and crankbait and jerkbait fights get easier.',reel]].forEach(function(g){
+    box.appendChild(el('div','gear-group',g[0])); box.appendChild(el('p','note',g[2]));
+    D.GEAR.filter(function(x){ return x.kind===g[1]; }).forEach(function(x){ var cur=g[3], using=cur===x.lvl, worse=cur>x.lvl;
+      var li=el('div','row'+(using?' selected':'')+(worse?' dim':'')); li.appendChild(el('div','ic')).appendChild(icon(g[1]==='rod'?'tackle':'spool'));
+      li.appendChild(el('div',null,'<div class="nm">'+esc(x.name)+'</div><div class="sub">'+esc(x.desc)+'</div>'));
+      var act=el('div'); if(using) act.innerHTML='<span class="own">IN USE</span>'; else if(worse) act.innerHTML='<span class="own" style="color:var(--muted)">HAVE<br>BETTER</span>';
+      else { var btn=el('button','pbtn buy'+(G.s.coins>=x.price?' gold':''),(G.s.coins>=x.price?'BUY ':'')+D.money(x.price)); btn.type='button'; btn.disabled=G.s.coins<x.price; btn.onclick=function(){ buy('gear',x.id,x.name).then(function(){ renderRods(); }); }; act.appendChild(btn); }
+      li.appendChild(act); box.appendChild(li); }); });
+}
 
 /* ---------- the dock: boats ---------- */
 function perkText(b){ var p=b.perk||{}, out=[]; if(p.all) out.push('bites '+Math.round((1-p.all)*100)+'% sooner everywhere'); ['fresh','salt','troll','deep','polar'].forEach(function(k){ if(p[k]) out.push(Math.round((1-p[k])*100)+'% sooner on '+{fresh:'freshwater',salt:'salt water',troll:'trolling',deep:'deep drops',polar:'polar water'}[k]); }); return out.join(', '); }
