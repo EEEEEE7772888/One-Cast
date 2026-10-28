@@ -125,6 +125,7 @@ var fishes=[];
 function poolTarget(){ var l=selLine(); return l?Math.min(7,3+Math.floor(minutesOf(l)/120)):3; }
 function selLine(){ return S.hooks.selLine?S.hooks.selLine():null; }
 function minutesOf(l){ return Math.max(0,(root.NET.now()-Date.parse(l.castAt))/60000); }
+S._fishCheck=function(){ var wt=waterTop(); return fishes.map(function(f){ var h=A.fishCanvas(f.id,f.L,true).height; return {top:Math.round(f.y-h/2),wt:wt}; }); }; // used by tests
 function spawnFish(initial){
   var sp=spot(), l=selLine(), bait=l?l.bait:(S.hooks.bait?S.hooks.bait():'worm');
   var list=D.speciesWeights(sp.id,bait,l?minutesOf(l):0,null).filter(function(x){ return x.w>0; });
@@ -277,7 +278,11 @@ S.draw=function(ms){
   ctx.globalAlpha=lt>0.3?0.5:0.38;
   for(i=fishes.length-1;i>=0;i--){ var f=fishes[i]; f.x+=f.dir*f.v*dt*(0.7+0.3*Math.sin(t*0.9+f.ph))-(m==='troll'?dt*10:0); f.y+=Math.sin(t*0.7+f.ph)*dt*0.8;
     if(f.x<-f.L-8||f.x>W+8){ fishes.splice(i,1); continue; }
-    var spr=A.fishCanvas(f.id,f.L,true); if(m==='deep') ctx.globalAlpha=0.45*Math.max(0.15,1-(f.y-wt)/(H-wt));
+    var spr=A.fishCanvas(f.id,f.L,true);
+    /* keep the whole fish under the surface and above the bottom, every frame (big fish are tall, and the waterline can move) */
+    var half=Math.ceil(spr.height/2), lo=wt+half+2, hi=(m==='troll'?H-4:fy)-half-1;
+    if(hi<lo){ fishes.splice(i,1); continue; } if(f.y<lo) f.y=lo; if(f.y>hi) f.y=hi;
+    if(m==='deep') ctx.globalAlpha=0.45*Math.max(0.15,1-(f.y-wt)/(H-wt));
     if(f.dir>0) ctx.drawImage(spr,Math.round(f.x),Math.round(f.y-spr.height/2)); else { ctx.save(); ctx.translate(Math.round(f.x)+spr.width,0); ctx.scale(-1,1); ctx.drawImage(spr,0,Math.round(f.y-spr.height/2)); ctx.restore(); } }
   ctx.globalAlpha=1;
 
