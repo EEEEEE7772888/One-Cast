@@ -640,3 +640,8 @@ a{color:var(--frost)}
 .bait{position:relative}
 .bait .cnt{position:absolute;top:3px;right:4px;font:8px/1 var(--pixel);color:#FFC94A}
 .row-bars .lure-left{font:17px/1.15 var(--term);margin:2px 0 4px}
+/* phones: nothing in a dialog may push it wider than the screen (a huge wallet used to hide the X and scroll sideways) */
+.dialog{grid-template-columns:minmax(0,1fr);overflow-x:hidden}
+.dialog>*{min-width:0}
+.wallet{flex-wrap:wrap;row-gap:6px}
+.wallet .v{min-width:0;font-size:clamp(11px,4vw,16px);flex-wrap:wrap;word-break:break-all}
