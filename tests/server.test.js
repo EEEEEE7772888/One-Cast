@@ -346,6 +346,22 @@ console.log('dev boat and crew rides');
   rpc('admin_player',[K,G1.pid,'givebait','jig']); ok(rpc('get_state',[G1.pid,G1.secret]).baits.filter(b=>b==='jig').length===1,'gifting twice does not duplicate it');
   ok(rpc('admin_player',[K,G1.pid,'givebait','dynamite']).error==='no such bait','unknown bait refused');
   ok(rpc('admin_player',['wrong-key',G1.pid,'givebait','jig']).error==='not the admin key','only the admin can gift bait');
+  // blocking
+  { const X=mk('Blocker'), Z=mk('Pest'); fr(X,Z); const zf=rpc('get_state',[Z.pid,Z.secret]);
+    sql(`insert into fish (pid,species,lb,inches,spot,bait,caught_at) select '${X.pid}','bluegill',1,8,'basslake','worm',now()`); const xfish=+sql(`select id from fish where pid='${X.pid}' limit 1`);
+    rpc('react',[Z.pid,Z.secret,xfish,'gg']);
+    ok(+sql(`select count(*) from reactions where pid='${Z.pid}'`)===1,'sticker sent before blocking');
+    const b=rpc('block_player',[X.pid,X.secret,Z.pid,true]); ok(b.ok&&b.blocked.length===1&&b.blocked[0].pid===Z.pid,'block a player');
+    ok(+sql(`select count(*) from friends where (a='${X.pid}' or b='${X.pid}')`)===0,'blocking ends the friendship');
+    ok(+sql(`select count(*) from reactions where pid='${Z.pid}'`)===0,'their old stickers on your fish are removed');
+    ok(rpc('friend_request',[Z.pid,Z.secret,'Blocker',rpc('get_state',[X.pid,X.secret]).tag]).error==='you cannot add that player','a blocked player cannot add you');
+    ok(rpc('react',[Z.pid,Z.secret,xfish,'gg']).error==='you cannot react to that fish','a blocked player cannot send stickers');
+    ok(rpc('trade_open',[Z.pid,Z.secret,X.pid]).error==='you can only trade with friends','a blocked player cannot trade');
+    ok(rpc('crew_invite',[Z.pid,Z.secret,X.pid]).error==='you can only invite friends','a blocked player cannot invite you aboard');
+    ok(rpc('get_state',[X.pid,X.secret]).blocked.length===1,'your state lists who you blocked');
+    ok(rpc('block_player',[X.pid,X.secret,X.pid,true]).error==='you cannot block yourself','cannot block yourself');
+    ok(rpc('block_player',[X.pid,X.secret,Z.pid,false]).blocked.length===0,'unblock');
+    ok(rpc('friend_request',[Z.pid,Z.secret,'Blocker',rpc('get_state',[X.pid,X.secret]).tag]).status==='pending','after unblocking they can add you again'); }
   // other boats still hold 3
   const T=mk('SmallBoat'), q=[mk('Q1'),mk('Q2'),mk('Q3'),mk('Q4')]; q.forEach(x=>fr(T,x));
   q.slice(0,3).forEach(x=>{ rpc('crew_invite',[T.pid,T.secret,x.pid]); rpc('crew_respond',[x.pid,x.secret,T.pid,true]); });

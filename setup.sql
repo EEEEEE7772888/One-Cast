@@ -150,6 +150,16 @@ create table if not exists public.news (
 );
 create index if not exists news_id on public.news (id desc);
 
+-- players someone has blocked: they cannot friend, invite, trade with or send stickers to the blocker
+create table if not exists public.blocks (
+  blocker uuid not null references public.players(pid) on delete cascade,
+  blocked uuid not null references public.players(pid) on delete cascade,
+  at timestamptz not null default now(),
+  primary key (blocker, blocked),
+  check (blocker <> blocked)
+);
+alter table public.blocks enable row level security;
+
 create table if not exists public.reactions (
   fish_id bigint not null references public.fish(id) on delete cascade,
   pid uuid not null references public.players(pid) on delete cascade,
@@ -515,7 +525,7 @@ begin
     'created', p.created_at, 'renamedAt', p.renamed_at,
     'lines', (select coalesce(jsonb_agg(oc_line_json(l, (p.gear ->> 'finder')::int) order by l.idx), '[]'::jsonb) from lines l where l.pid = p.pid),
     'fish', (select coalesce(jsonb_agg(oc_fish_json(f) order by f.caught_at desc), '[]'::jsonb) from fish f where f.pid = p.pid),
-    'friends', fr, 'trades', tr, 'legendsHere', lg,
+    'friends', fr, 'trades', tr, 'legendsHere', lg, 'blocked', oc_block_list(p.pid),
     'season', jsonb_build_object('key', season, 'endsAt', (date_trunc('month', now() at time zone 'UTC') + interval '1 month') at time zone 'UTC'),
     'newsId', (select max(id) from news),
     'crew', oc_crew_json(p.pid),
@@ -917,7 +927,7 @@ declare p public.players; x uuid; y uuid; cur public.crews;
 begin
   p := oc_auth(p_pid, p_secret);
   x := least(p_pid, p_friend); y := greatest(p_pid, p_friend);
-  if not exists (select 1 from friends where a = x and b = y and status = 'accepted') then perform oc_fail('you can only invite friends'); end if;
+  if not exists (select 1 from friends where a = x and b = y and status = 'accepted') or oc_blocked(p_pid, p_friend) then perform oc_fail('you can only invite friends'); end if;
   if exists (select 1 from crews where guest = p_pid and status = 'aboard') then perform oc_fail('you are on someone else''s boat right now'); end if;
   if (select count(*) from crews where host = p_pid and status = 'aboard') >= oc_crew_cap(p_pid) then perform oc_fail('your boat is full (' || oc_crew_cap(p_pid) || ' guests)'); end if;
   select * into cur from crews where guest = p_friend;
@@ -959,6 +969,34 @@ begin
   return oc_crew_json(p_pid);
 end $$;
 
+-- ============ blocking ============
+create or replace function public.oc_blocked(a uuid, b uuid) returns boolean language sql stable as $$
+  select exists (select 1 from blocks where (blocker = a and blocked = b) or (blocker = b and blocked = a)) $$;
+
+create or replace function public.block_player(p_pid uuid, p_secret text, p_target uuid, p_block boolean) returns jsonb language plpgsql security definer set search_path = public as $$
+declare p public.players; x uuid; y uuid;
+begin
+  p := oc_auth(p_pid, p_secret);
+  if p_target is null or p_target = p_pid then perform oc_fail('you cannot block yourself'); end if;
+  if not exists (select 1 from players where pid = p_target) then perform oc_fail('no such player'); end if;
+  if p_block then
+    insert into blocks (blocker, blocked) values (p_pid, p_target) on conflict do nothing;
+    x := least(p_pid, p_target); y := greatest(p_pid, p_target);
+    delete from friends where a = x and b = y;                                       -- no longer friends
+    update trades set status = 'cancelled' where a = x and b = y and status = 'open'; -- open trades end
+    perform oc_crew_home(c.guest) from crews c where (c.guest = p_pid and c.host = p_target) or (c.guest = p_target and c.host = p_pid);
+    delete from crews where (guest = p_pid and host = p_target) or (guest = p_target and host = p_pid); -- off each other's boats
+    delete from reactions r using fish f where r.fish_id = f.id and f.pid = p_pid and r.pid = p_target; -- their stickers on your fish go away
+  else
+    delete from blocks where blocker = p_pid and blocked = p_target;
+  end if;
+  return jsonb_build_object('ok', true, 'blocked', oc_block_list(p_pid), 'now', now());
+end $$;
+
+create or replace function public.oc_block_list(me uuid) returns jsonb language sql stable as $$
+  select coalesce(jsonb_agg(jsonb_build_object('pid', o.pid, 'name', o.name, 'tag', o.tag) order by o.name), '[]'::jsonb)
+  from blocks b join players o on o.pid = b.blocked where b.blocker = me $$;
+
 -- ============ friends ============
 create or replace function public.friend_request(p_pid uuid, p_secret text, p_name text, p_tag text) returns jsonb language plpgsql security definer set search_path = public as $$
 declare p public.players; o public.players; x uuid; y uuid; fr public.friends;
@@ -967,6 +1005,7 @@ begin
   select * into o from players where lower(name) = lower(p_name) and tag = p_tag and not banned;
   if o.pid is null then perform oc_fail('no player with that name and tag'); end if;
   if o.pid = p_pid then perform oc_fail('that is you'); end if;
+  if oc_blocked(p_pid, o.pid) then perform oc_fail('you cannot add that player'); end if;
   if (select count(*) from friends where a = p_pid or b = p_pid) >= 50 then perform oc_fail('friend list is full'); end if;
   x := least(p_pid, o.pid); y := greatest(p_pid, o.pid);
   select * into fr from friends where a = x and b = y;
@@ -1013,6 +1052,7 @@ begin
   p := oc_auth(p_pid, p_secret);
   x := least(p_pid, p_other); y := greatest(p_pid, p_other);
   if not exists (select 1 from friends where a = x and b = y and status = 'accepted') then perform oc_fail('you can only trade with friends'); end if;
+  if oc_blocked(p_pid, p_other) then perform oc_fail('you can only trade with friends'); end if;
   select * into t from trades where a = x and b = y and status = 'open';
   if t.id is null then insert into trades (a, b) values (x, y) returning * into t; end if;
   return oc_trade_json(t, p_pid);
@@ -1110,6 +1150,7 @@ begin
   if p_sticker not in ('noway','lucky','huge','gg','jealous','wow','legend','fire') then perform oc_fail('bad sticker'); end if;
   select * into f from fish where id = p_fish;
   if f.id is null then perform oc_fail('no such fish'); end if;
+  if oc_blocked(p_pid, f.pid) then perform oc_fail('you cannot react to that fish'); end if;
   insert into reactions (fish_id, pid, sticker) values (p_fish, p_pid, p_sticker) on conflict (fish_id, pid) do update set sticker = excluded.sticker, at = now();
   return jsonb_build_object('ok', true);
 end $$;
@@ -1302,7 +1343,7 @@ end $$;
 
 -- ============ permissions ============
 do $$ declare r record; begin
-  for r in select p.proname, pg_get_function_identity_arguments(p.oid) args from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and (p.proname like 'oc\_%' or p.proname in ('login','get_state','set_prefs','set_outfit','set_name','claim_founder','cast_line','reel_line','lure_strike','lure_lose','sell_fish','buy','travel','release_legend','friend_request','friend_respond','trade_open','get_trade','trade_set','trade_ready','trade_confirm','trade_cancel','get_trade_history','react','report_player','suggest_lake','get_board','get_news','get_legends','get_profile','get_season','get_world','set_boat','crew_invite','crew_respond','crew_leave','get_crew','set_password','login_password','delete_account','admin_overview','admin_find','admin_player','admin_report','admin_suggestion','admin_news')) loop
+  for r in select p.proname, pg_get_function_identity_arguments(p.oid) args from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and (p.proname like 'oc\_%' or p.proname in ('login','get_state','set_prefs','set_outfit','set_name','claim_founder','cast_line','reel_line','lure_strike','lure_lose','sell_fish','buy','travel','release_legend','friend_request','friend_respond','trade_open','get_trade','trade_set','trade_ready','trade_confirm','trade_cancel','get_trade_history','react','report_player','block_player','suggest_lake','get_board','get_news','get_legends','get_profile','get_season','get_world','set_boat','crew_invite','crew_respond','crew_leave','get_crew','set_password','login_password','delete_account','admin_overview','admin_find','admin_player','admin_report','admin_suggestion','admin_news')) loop
     execute format('revoke all on function public.%I(%s) from public, anon, authenticated', r.proname, r.args);
     if r.proname not like 'oc\_%' then execute format('grant execute on function public.%I(%s) to anon, authenticated', r.proname, r.args); end if;
   end loop;

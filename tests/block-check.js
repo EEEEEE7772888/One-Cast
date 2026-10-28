@@ -1,0 +1,20 @@
+/* Browser check: BLOCK on a profile, the confirm, the blocked list in Friends, UNBLOCK. Needs mock-server on 8799 (OC_DB=devt). */
+const {chromium}=require('playwright');const {execFileSync}=require('child_process');const crypto=require('crypto');
+const sql=q=>execFileSync('su',['postgres','-c','psql -X -At -d devt'],{input:q,encoding:'utf8'}).trim();
+const rpc=(fn,a)=>sql(`set role anon; select ${fn}(${a});`);
+const B='http://localhost:8799',Q='/?server='+B+'&key=test',OUT='/home/claude/one-cast/tests/out/dev/';
+(async()=>{ const br=await chromium.launch(); const vp={width:390,height:844};
+  const ctx=await br.newContext({viewport:vp,isMobile:true,hasTouch:true}); const p=await ctx.newPage(); p.on('pageerror',e=>console.log('PAGE ERROR '+e.message));
+  await ctx.route('https://fonts.googleapis.com/**',r=>r.fulfill({status:200,contentType:'text/css',body:''}));
+  await p.goto(B+Q); await p.waitForTimeout(900); await p.fill('#nameIn','Blocky'); await p.keyboard.press('Enter'); await p.waitForTimeout(1800);
+  const pid=await p.evaluate(()=>G.s.pid); sql(`update players set prefs=prefs||'{"tut":99,"pwTip2":1}' where pid='${pid}'`);
+  const o=crypto.randomUUID(), os=crypto.randomBytes(15).toString('hex'); rpc('login',`'${o}','${os}','Rudeguy'`);
+  const [x,y]=[pid,o].sort(); sql(`insert into friends (a,b,status,requested_by) values ('${x}','${y}','accepted','${x}')`);
+  await p.evaluate(()=>G.refresh(true)); await p.waitForTimeout(1000); await p.evaluate(()=>UI.closeAll());
+  await p.evaluate(o=>UI.profile(o),o); await p.waitForTimeout(1200); await p.screenshot({path:OUT+'phone-block-profile.png'});
+  await p.click('#profileBody button:has-text("BLOCK")'); await p.waitForTimeout(500); await p.screenshot({path:OUT+'phone-block-confirm.png'});
+  await p.click('#cfYes'); await p.waitForTimeout(1800);
+  console.log('blocked in db: '+sql(`select count(*) from blocks where blocker='${pid}'`)+', friends left: '+sql(`select count(*) from friends where a='${pid}' or b='${pid}'`)+', profile now says: '+await p.isVisible('#profileBody button:has-text("UNBLOCK")'));
+  await p.evaluate(()=>UI.open('friendsOv')); await p.waitForTimeout(800); console.log('blocked list shows: '+await p.isVisible('#friendList >> text=BLOCKED PLAYERS')); await p.screenshot({path:OUT+'phone-block-list.png'});
+  await p.click('#friendList button:has-text("UNBLOCK")'); await p.waitForTimeout(1500); console.log('after unblock in db: '+sql(`select count(*) from blocks where blocker='${pid}'`));
+  await br.close(); })();

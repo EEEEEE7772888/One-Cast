@@ -147,6 +147,16 @@ create table if not exists public.news (
 );
 create index if not exists news_id on public.news (id desc);
 
+-- players someone has blocked: they cannot friend, invite, trade with or send stickers to the blocker
+create table if not exists public.blocks (
+  blocker uuid not null references public.players(pid) on delete cascade,
+  blocked uuid not null references public.players(pid) on delete cascade,
+  at timestamptz not null default now(),
+  primary key (blocker, blocked),
+  check (blocker <> blocked)
+);
+alter table public.blocks enable row level security;
+
 create table if not exists public.reactions (
   fish_id bigint not null references public.fish(id) on delete cascade,
   pid uuid not null references public.players(pid) on delete cascade,
