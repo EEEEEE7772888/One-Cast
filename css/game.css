@@ -645,3 +645,5 @@ a{color:var(--frost)}
 .dialog>*{min-width:0}
 .wallet{flex-wrap:wrap;row-gap:6px}
 .wallet .v{min-width:0;font-size:clamp(11px,4vw,16px);flex-wrap:wrap;word-break:break-all}
+/* phones: friend rows stack, name on top and the buttons wrap underneath (they used to squash the name to one letter) */
+@media (max-width:560px){ .friend{grid-template-columns:minmax(0,1fr)} .friend .fb{flex-wrap:wrap} .friend .fb .pbtn{flex:1 1 auto} }

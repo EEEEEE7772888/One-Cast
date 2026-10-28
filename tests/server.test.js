@@ -400,7 +400,7 @@ console.log('dev boat and crew rides');
     ok(g.legends.every(l=>l.bait===undefined&&l.period===undefined&&l.minWait===undefined&&l.minLine===undefined),'the exact answers never leave the server');
     ok(g.legends.every(l=>sql(`select water from spots where id='${l.spot}'`)==='fresh'),'freshwater book only covers fresh water');
     ok(rpc('get_guide',[R.pid,R.secret,'salt']).error==='buy the guidebook first','the saltwater book is separate');
-    ok(rpc('buy',[R.pid,R.secret,'gear','book_salt']).coins===20000-1700-7500,'saltwater guidebook costs $7,500');
+    ok(rpc('buy',[R.pid,R.secret,'gear','book_salt']).coins===20000-1450-6400,'guidebooks cost $1,450 and $6,400');
     ok(rpc('get_guide',[R.pid,R.secret,'salt']).legends.some(l=>l.spot==='hatteras'&&l.baitHint==='something that smells strong'),'saltwater book covers Old Hatteras'); }
   // other boats still hold 3
   const T=mk('SmallBoat'), q=[mk('Q1'),mk('Q2'),mk('Q3'),mk('Q4')]; q.forEach(x=>fr(T,x));
