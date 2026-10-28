@@ -591,3 +591,9 @@ a{color:var(--frost)}
 .idx-left{font-size:16px;color:var(--muted)}
 .idx-f .pbtn{font-size:8px;padding:7px 10px}
 @media (max-width:700px){.idx-rewards{grid-template-columns:minmax(0,1fr)}}
+
+/* dry fly: a warmer, cozier frame */
+.lurebox.fly{border-color:#B8743A;background:#2A2018}
+.lurebox.fly .lure-name{color:#F2C88A}
+.lurebox.fly #lureCanvas{border-color:#5A3A1E}
+.lurebox.fly .lure-dist i{background:#E0A040}

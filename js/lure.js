@@ -7,10 +7,10 @@
 var D=root.OC, G, $=function(id){ return document.getElementById(id); };
 var L={active:false};
 var st=null, raf=0;
-D.LURES=['crank','jig'];
+D.LURES=['crank','jig','fly'];
 D.isLure=function(b){ return D.LURES.indexOf(b)>=0; };
 
-var TIP={crank:'Hold to reel. Keep the speed in the green.',jig:'Tap to hop the jig. Fish hit it on the way down.'};
+var TIP={crank:'Hold to reel. Keep the speed in the green.',jig:'Tap to hop the jig. Fish hit it on the way down.',fly:'Let the fly drift. Mend when the line drags. Set gently when a trout rises.'};
 /* step-by-step help shown under the lure picture */
 var HOW={
   crank:['<b>Hold</b> the button (or Space) to reel. Keep the <b style="color:#FFC94A">yellow mark</b> inside the <b style="color:#5CF08A">green</b> part of the bar at the top.',
@@ -20,16 +20,21 @@ var HOW={
   jig:['<b>Tap</b> the button (or Space) to hop the jig up off the bottom.',
        'Then <b>wait</b> and let it sink. Fish only bite while it is <b>falling</b>, not while it goes up.',
        'Tap again every 1 to 3 seconds. Tapping too fast means it never falls; waiting too long leaves it lying on the bottom.',
-       'When the button flashes <b style="color:#FF8A8D">STRIKE! TAP!</b>, tap it right away. You have about 1 second.']
+       'When the button flashes <b style="color:#FF8A8D">STRIKE! TAP!</b>, tap it right away. You have about 1 second.'],
+  fly:['Your fly floats down the stream on its own. Just <b>let it drift</b> and enjoy the water.',
+       'The current slowly pulls on your line. When the <b style="color:#FFC94A">DRAG</b> bar fills up, tap <b>MEND</b> to flip some slack upstream.',
+       'Trout only rise to a fly that drifts naturally, so keep the drag low. Watch for a shadow under your fly...',
+       'When a trout <b style="color:#9FE0FF">sips</b> your fly, tap <b>SET</b>. No rush, you have a moment.']
 };
 L.start=function(line){
   G=root.G; L.stop(true);
-  st={line:line,idx:line.idx,bait:line.bait,bite:Date.parse(line.biteAt),dist:100,speed:0,speeds:[],holding:false,fight:null,h:0,lastTap:-99,tapCount:0,strikeAt:0,phase:'work',t:0,lastMsg:''};
+  st={line:line,idx:line.idx,bait:line.bait,bite:Date.parse(line.biteAt),dist:100,speed:0,speeds:[],holding:false,fight:null,drag:0.1,mendAt:-9,rings:[],refusedAt:0,h:0,lastTap:-99,tapCount:0,strikeAt:0,phase:'work',t:0,lastMsg:''};
   L.active=true; $('lureBox').hidden=false;
-  $('lureName').textContent=line.bait==='crank'?'CRANKBAIT':'JIG';
+  $('lureName').textContent=line.bait==='crank'?'CRANKBAIT':line.bait==='fly'?'DRY FLY':'JIG';
+  $('lureBox').classList.toggle('fly',line.bait==='fly');
   $('lureTip').textContent=TIP[line.bait];
   $('lureHow').innerHTML=HOW[line.bait].map(function(t){ return '<li>'+t+'</li>'; }).join(''); showHow(line.bait);
-  setBtn(line.bait==='crank'?'HOLD TO REEL':'HOP',false);
+  setBtn(line.bait==='crank'?'HOLD TO REEL':line.bait==='fly'?'MEND':'HOP',false);
   say('');
   var last=performance.now();
   function frame(now){ var dt=Math.min(0.05,(now-last)/1000); last=now; tick(dt); draw(); if(L.active) raf=requestAnimationFrame(frame); }
@@ -52,6 +57,7 @@ function inZone(){ // is the lure doing what fish want right now?
 function tick(dt){
   if(!st) return; st.t+=dt; var now=root.NET.now();
   if(st.phase==='work'){
+    if(st.bait==='fly'){ flyTick(dt,now); return; }
     if(st.bait==='crank'){
       st.speed=Math.max(0,Math.min(1,st.speed+(st.holding?1.1:-1.4)*dt));
       st.speeds.push([st.t,st.speed]); if(st.speeds.length>90) st.speeds.shift();
@@ -68,9 +74,26 @@ function tick(dt){
     }
     if(st.phase==='work'&&st.dist<=0){ st.phase='done'; finish('Your lure came back with nothing. Cast again!'); }
   } else if(st.phase==='strike'){
+    if(st.bait==='fly'){ if(st.t-st.strikeAt>1.4){ st.phase='done'; finish('The trout let go of the fly. They are gentle, so set a little sooner next time.'); } return; }
     if(st.t-st.strikeAt>1.2){ st.phase='done'; finish('Too slow on the hook-set! It spit the lure.'); }
   } else if(st.phase==='fight') fightTick(dt);
 }
+/* ---- dry fly: a slow, cozy drift. The current builds drag on the line; MEND resets it. Trout rise only to a natural drift. ---- */
+function flyTick(dt,now){
+  st.dist-=dt*100/34; // about 34 seconds to drift through the run
+  st.drag=Math.min(1,st.drag+dt*(0.055+0.035*Math.sin(st.t*0.7)+0.02*Math.sin(st.t*2.3)));
+  st.rings=st.rings.filter(function(r){ return st.t-r.t<2.2; });
+  if(Math.random()<dt*0.5) st.rings.push({t:st.t,x:10+Math.random()*140,small:true}); // little rises out in the stream, just for looks
+  var toBite=st.bite-now;
+  if(toBite<=0){
+    if(st.drag<0.72){ st.phase='strike'; st.strikeAt=st.t; st.rings.push({t:st.t,x:flyX(),small:false}); setBtn('SET',true); say('A trout sips your fly...'); if(root.NATIVE) root.NATIVE.buzz('bite'); return; }
+    if(!st.refusedAt){ st.refusedAt=st.t; say('A trout comes up for a look... the line is dragging. MEND!'); }
+    if(now>st.bite+2500){ st.phase='done'; finish('The trout turned away from the dragging fly. Mend a little sooner and cast again.'); return; }
+  } else if(toBite<2600) say('A shadow is moving under your fly...');
+  else say(st.drag>0.72?'The line is dragging the fly. Tap MEND.':st.drag>0.5?'The current is starting to pull...':st.t-st.mendAt<1.2?'Nice mend.':'Let it drift...');
+  if(st.dist<=0){ st.phase='done'; finish('Your fly drifted through the run without a take. Cast again, the trout are still there.'); }
+}
+function flyX(){ return Math.round(8+(144)*(1-st.dist/100)); }
 /* ---- crankbait fight (Stardew style): keep the fish inside your green box until the meter is full ---- */
 var TRACK=144;
 function startFight(d){
@@ -111,6 +134,7 @@ function press(down){
     return; }
   if(st.phase==='fight'){ st.holding=down; return; }
   if(st.phase!=='work') return;
+  if(st.bait==='fly'){ if(down){ st.drag=Math.max(0,st.drag-0.62); st.mendAt=st.t; } return; }
   if(st.bait==='crank'){ st.holding=down; return; }
   if(down){ st.h=Math.min(1,st.h+0.32); st.lastTap=st.t; st.dist-=4; }
 }
@@ -129,9 +153,36 @@ function drawFight(x,W,H){
   x.fillStyle='#93B2D2'; x.font='6px monospace'; x.fillText('CATCH',ox,my-4);
   $('lureDist').style.width=Math.round(f.meter*100)+'%';
 }
+function drawFly(x,W,H){
+  var t=st.t, sy=18; // water surface row
+  // autumn bank and sky
+  x.fillStyle='#F2C88A'; x.fillRect(0,0,W,sy); for(var i=0;i<W;i+=3){ var h=4+Math.round(3*Math.sin(i*0.21)+2*Math.sin(i*0.07)); x.fillStyle=['#C8602A','#E0A040','#B8402A','#7A9A3A'][Math.floor(i/9)%4]; x.fillRect(i,sy-h-3,3,h); }
+  x.fillStyle='#5A4A3A'; x.fillRect(0,sy-3,W,3);
+  // clear stream with pebbles
+  for(var y=sy;y<H;y++){ var k=(y-sy)/(H-sy); x.fillStyle='rgb('+Math.round(58+20*(1-k))+','+Math.round(122+30*(1-k))+','+Math.round(118+20*(1-k))+')'; x.fillRect(0,y,W,1); }
+  for(i=0;i<46;i++){ var px=Math.floor((i*37.7)%W), py=H-3-Math.floor((i*13)%7); x.fillStyle=['#8A7A5A','#6A6A5A','#A08A6A','#5A6A4A'][i%4]; x.fillRect(px,py,2+(i%3),2); }
+  // current lines drifting right
+  x.fillStyle='rgba(230,248,255,0.35)'; for(i=0;i<14;i++){ var cx=Math.floor((i*29+t*18*(1+(i%3)*0.3))%(W+20))-10, cy=sy+3+((i*7)%(H-sy-10)); x.fillRect(cx,cy,6+(i%4)*2,1); }
+  x.fillStyle='rgba(240,250,255,0.6)'; x.fillRect(0,sy,W,1);
+  // rise rings
+  st.rings.forEach(function(r){ var a=(t-r.t)/2.2, rad=Math.round((r.small?3:6)+a*(r.small?6:12)); x.strokeStyle='rgba(235,250,255,'+(0.7*(1-a)).toFixed(2)+')'; x.beginPath(); x.ellipse(r.x+(t-r.t)*6,sy+1,rad,Math.max(1,rad/4),0,0,Math.PI*2); x.stroke(); });
+  // the trout coming up under the fly before it bites
+  var fxp=flyX(), toBite=st.bite-root.NET.now();
+  if(st.phase==='work'&&toBite<2600&&toBite>-2500){ var up=Math.max(0,Math.min(1,1-toBite/2600)); x.globalAlpha=0.35+0.3*up; root.ART.drawSprite(x,['...kk.....','.kkkkkk.kk','kkkkkkkkk.','.kkkkkk.kk','...kk.....'],{k:'#1A3A3A'},fxp-12,Math.round(H-10-(H-sy-12)*up)); x.globalAlpha=1; }
+  // fly line from the rod (upper left); taut and straight when dragging, a soft upstream belly after a mend
+  var sag=Math.max(0,1-st.drag)*10; x.strokeStyle='rgba(255,236,170,0.85)'; x.beginPath(); x.moveTo(0,2); x.quadraticCurveTo(fxp*0.45,sy-2+sag,fxp-2,sy); x.stroke();
+  if(st.drag>0.72&&st.phase==='work'){ x.strokeStyle='rgba(240,250,255,0.7)'; x.beginPath(); x.moveTo(fxp-1,sy+1); x.lineTo(fxp-10,sy+4); x.moveTo(fxp-1,sy+1); x.lineTo(fxp-10,sy-1); x.stroke(); }
+  var art=root.ART.BAIT_ART.fly; root.ART.drawSprite(x,art.rows,art.map,fxp-4,sy-6+Math.round(Math.sin(t*3)*0.6));
+  if(st.phase==='strike'&&Math.floor(t*6)%2===0){ x.fillStyle='rgba(255,255,255,0.9)'; x.fillRect(fxp-6,sy-1,2,2); x.fillRect(fxp+6,sy-1,2,2); }
+  // drag meter
+  var mx=W-58, my=3, mw=52; x.fillStyle='rgba(20,30,40,0.6)'; x.fillRect(mx-1,my-1,mw+2,7); x.fillStyle=st.drag>0.72?'#E5484D':st.drag>0.5?'#FFC94A':'#5CF08A'; x.fillRect(mx,my,Math.round(mw*st.drag),5);
+  x.fillStyle='#3A2A1A'; x.font='6px monospace'; x.fillText('DRAG',mx-22,my+5);
+  $('lureDist').style.width=Math.max(0,st.dist)+'%';
+}
 function draw(){
   if(!st) return; var c=$('lureCanvas'), x=c.getContext('2d'), W=c.width, H=c.height; x.imageSmoothingEnabled=false;
   if(st.phase==='fight'&&st.fight){ drawFight(x,W,H); return; }
+  if(st.bait==='fly'){ drawFly(x,W,H); return; }
   x.fillStyle='#0D2A4A'; x.fillRect(0,0,W,H);
   for(var y=0;y<H;y+=2){ x.fillStyle='rgba(95,178,207,'+(0.05+0.08*(1-y/H))+')'; x.fillRect(0,y,W,1); }
   x.fillStyle='#3A2A1C'; x.fillRect(0,H-6,W,6); // bottom
@@ -160,6 +211,6 @@ function bind(){
   $('lureQuit').onclick=function(){ if(!st) return; st.phase='done'; finish('You reeled the lure in.'); };
 }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',bind); else bind();
-L._state=function(){ return st&&{fight:st.fight&&{d:st.fight.d,meter:+st.fight.meter.toFixed(2),inside:st.fight.inside,fx:Math.round(st.fight.fx),zx:Math.round(st.fight.zx),zw:st.fight.zw},phase:st.phase,t:+st.t.toFixed(1),dist:+st.dist.toFixed(1),speed:+st.speed.toFixed(2),toBite:Math.round((st.bite-root.NET.now())/100)/10}; };
+L._state=function(){ return st&&{drag:+st.drag.toFixed(2),fight:st.fight&&{d:st.fight.d,meter:+st.fight.meter.toFixed(2),inside:st.fight.inside,fx:Math.round(st.fight.fx),zx:Math.round(st.fight.zx),zw:st.fight.zw},phase:st.phase,t:+st.t.toFixed(1),dist:+st.dist.toFixed(1),speed:+st.speed.toFixed(2),toBite:Math.round((st.bite-root.NET.now())/100)/10}; };
 root.LURE=L;
 })(typeof window!=='undefined'?window:this);

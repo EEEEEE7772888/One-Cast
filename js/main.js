@@ -108,7 +108,7 @@ function aAn(n){ return (/^[aeiou]/i.test(n)?'An ':'A ')+n; }
 function sizeWord(max){ return max<5?'small':max<30?'medium-sized':max<150?'big':'huge'; }
 G.renderStatus=function(){
   var l=G.line(), sp=G.spot(), per=G.period(sp), clock=$('clock'), st=$('status');
-  if(l&&D.isLure(l.bait)){ clock.textContent=G.clockAt(sp); clock.classList.remove('ready'); st.innerHTML='Working a <span class="n">'+D.BAIT_BY_ID[l.bait].name.toLowerCase().replace(/s$/,'')+'</span> at '+sp.name+'. '+todLine(sp,per); return; }
+  if(l&&D.isLure(l.bait)){ clock.textContent=G.clockAt(sp); clock.classList.remove('ready'); st.innerHTML='Working a <span class="n">'+(l.bait==='fly'?'dry fly':D.BAIT_BY_ID[l.bait].name.toLowerCase().replace(/s$/,''))+'</span> at '+sp.name+'. '+todLine(sp,per); return; }
   if(l){ var sec=(N.now()-Date.parse(l.castAt))/1000; clock.textContent=D.fmtClock(sec); clock.classList.toggle('ready',G.hooked(l));
     if(G.hooked(l)) st.innerHTML='<span class="n">FISH ON!</span> Something took the '+D.BAIT_BY_ID[l.bait].name.toLowerCase()+'. Reel it in.';
     else st.innerHTML=D.BAIT_BY_ID[l.bait].name+' in the water at <span class="n">'+sp.name+'</span>. '+todLine(sp,per); }

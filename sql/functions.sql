@@ -349,7 +349,7 @@ begin
   if crewed then mult := mult * 0.9; end if;
 end $$;
 
-create or replace function public.oc_is_lure(p_bait text) returns boolean language sql immutable as $$ select p_bait in ('crank', 'jig') $$;
+create or replace function public.oc_is_lure(p_bait text) returns boolean language sql immutable as $$ select p_bait in ('crank', 'jig', 'fly') $$;
 
 -- Crankbait hook-set: starts the fight. Returns how hard the fish fights (0-1): bigger and more valuable fish are harder.
 create or replace function public.lure_strike(p_pid uuid, p_secret text, p_idx int) returns jsonb language plpgsql security definer set search_path = public as $$
@@ -398,7 +398,7 @@ begin
   if mins is null then perform oc_fail('nothing here bites on that'); end if;
   -- Lures and jigs are fished actively: the strike comes within seconds while the player works the lure.
   -- The fish is rolled as if the lure had fished for `mins` (same size rules), so cast_at is set that far back.
-  bite := case when oc_is_lure(p_bait) then now() + ((case when p_bait = 'crank' then 6 + random() * 16 else 8 + random() * 20 end) * interval '1 second')
+  bite := case when oc_is_lure(p_bait) then now() + ((case when p_bait = 'crank' then 6 + random() * 16 when p_bait = 'fly' then 9 + random() * 16 else 8 + random() * 20 end) * interval '1 second')
                else now() + (mins * interval '1 minute') end;
   per := oc_period(bite, sp.tz);
   select * into r from oc_roll(p.spot, p_bait, mins, per, ac.small);

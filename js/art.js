@@ -13,6 +13,8 @@ A.spriteCanvas=function(rows,map,cls){ var c=document.createElement('canvas'); c
 var L={
  bluegill:{b:'#3E7F86',d:'#24525A',bel:'#F0A23A',fin:'#2E6168',spot:'#1B2E3A',pat:'bars',ht:.6,ear:1},
  pumpkinseed:{b:'#6A9A5A',d:'#3E6A3A',bel:'#F0B040',fin:'#4E7A48',spot:'#E06A3A',pat:'spots',ht:.6,ear:1},
+ brook:{b:'#4A6A3A',d:'#2A3E22',bel:'#E8742A',fin:'#E06A2A',spot:'#F2E07A',pat:'lightspots',ht:.3},
+ chub:{b:'#9AA088',d:'#5A6250',bel:'#E8E4D0',fin:'#B8A070',spot:'#3A3A2A',pat:'stripe',ht:.27},
  reddrum:{b:'#C8763A',d:'#8A4A22',bel:'#F2E2CC',fin:'#B06A3A',spot:'#141414',pat:'none',ht:.3},
  bluefish:{b:'#5A8AA0',d:'#2E5A72',bel:'#E8EEF2',fin:'#4A7A90',spot:'#1A2A34',pat:'none',ht:.28},
  spot:{b:'#A8B0B8',d:'#6A7480',bel:'#F4F0E0',fin:'#C8B060',spot:'#2A2A2A',pat:'bars',ht:.45,ear:1},
@@ -215,7 +217,8 @@ A.BAIT_ART={
   squid:{rows:["...ww...","..wWWw..","..wWWw..","..wwww..",".e.ww.e.","..tttt..",".t.tt.t.","t..tt..t"],map:{w:'#D8C8D8',W:'#F0E8F0',e:'#10161C',t:'#C0A8C0'}},
   mullet:{rows:["........","........","s..ssss.","sssSSSse","s.sSSSs.","...ssss.","........","........"],map:{s:'#7A8A98',S:'#D8E0E8',e:'#10161C'}},
   crank:{rows:["........","..GGGG..",".GkGkGG.","OOOOOOeL",".OOOOO.L","..h..h..",".hh.hh..","........"],map:{G:'#B8E040',k:'#1B1F2A',O:'#F08A30',e:'#10161C',L:'#CFE6F0',h:'#9AA6B6'}},
-  jig:{rows:["........","...hh...","..JJJh..",".JJeJJ..",".JJJJSSS","..JJ.SsS","......SS","....hh.."],map:{h:'#9AA6B6',J:'#E5484D',e:'#10161C',S:'#7A4AC0',s:'#2A1A40'}},
+  fly:{rows:["..w..w..","..ww.ww.","...wkw..","..rRRr..","..RRRR..","...RR...","...hk...","....kk.."],map:{w:'#E8EEF2',k:'#2A2A2A',R:'#B85A2A',r:'#E0A040',h:'#9AA6B6'}},
+ jig:{rows:["........","...hh...","..JJJh..",".JJeJJ..",".JJJJSSS","..JJ.SsS","......SS","....hh.."],map:{h:'#9AA6B6',J:'#E5484D',e:'#10161C',S:'#7A4AC0',s:'#2A1A40'}},
   lure:{rows:["........","..kk....",".kYYk...","kYYYYk..","kYYYYkff","kYYYYkff",".kYYk.f.","..kk...."],map:{k:'#1B1F2A',Y:'#F0C030',f:'#E05A4A'}},
   deepbait:{rows:["..kk....","..kk....",".kkkk...","sskkkss.","sSSSSSse","ssSSSss.","..sss...","........"],map:{k:'#5A6476',s:'#6A8A9A',S:'#B8D0D8',e:'#10161C'}}
 };

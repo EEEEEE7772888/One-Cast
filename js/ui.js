@@ -77,7 +77,7 @@ function renderTackle(){
 /* three little stat bars for a bait: bite rate, how good the fish are, where it works */
 function baitBars(b){ var st=D.baitStats(b.id);
   function bar(n,color){ var h=''; for(var i=1;i<=5;i++) h+='<i'+(i<=n?' style="background:'+color+'"':'')+'></i>'; return '<span class="bb-bar">'+h+'</span>'; }
-  var wait=st.active?'fast, you reel it':st.wait<60?'every ~'+st.wait+' min':'every ~'+Math.round(st.wait/60)+' hr';
+  var wait=st.active?(b.id==='fly'?'a relaxing drift':'fast, you reel it'):st.wait<60?'every ~'+st.wait+' min':'every ~'+Math.round(st.wait/60)+' hr';
   var MN={ice:'ICE',shore:'SHORE',boat:'BOAT',troll:'TROLL',deep:'DEEP'};
   var where=Object.keys(MN).map(function(k){ return '<span class="bb-m'+(st.methods.indexOf(k)>=0?' on':'')+'">'+MN[k]+'</span>'; }).join('');
   var water=b.water==='fresh'?'Freshwater':b.water==='salt'?'Saltwater':b.water==='troll'?'Open ocean':'Deep sea';
