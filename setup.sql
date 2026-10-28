@@ -1249,13 +1249,13 @@ begin
     'fish', (select count(*) from fish), 'legendsCaught', (select count(*) from legends where owner_pid is not null),
     'reports', (select coalesce(jsonb_agg(jsonb_build_object('id', r.id, 'at', r.at, 'reason', r.reason, 'reporter', (select name || '#' || tag from players where pid = r.reporter), 'target', (select name || '#' || tag from players where pid = r.target), 'targetPid', r.target) order by r.at desc), '[]'::jsonb) from reports r where not r.handled),
     'suggestions', (select coalesce(jsonb_agg(jsonb_build_object('id', s.id, 'at', s.at, 'lake', s.lake, 'place', s.place, 'by', (select name || '#' || tag from players where pid = s.pid)) order by s.at desc), '[]'::jsonb) from suggestions s where s.status = 'pending'),
-    'recent', (select coalesce(jsonb_agg(jsonb_build_object('pid', p.pid, 'name', p.name, 'tag', p.tag, 'coins', p.coins, 'catches', p.stats -> 'catches', 'hidden', p.hidden, 'banned', p.banned, 'seen', p.last_seen) order by p.last_seen desc), '[]'::jsonb) from (select * from players order by last_seen desc limit 100) p));
+    'recent', (select coalesce(jsonb_agg(jsonb_build_object('pid', p.pid, 'name', p.name, 'tag', p.tag, 'coins', p.coins, 'catches', p.stats -> 'catches', 'hidden', p.hidden, 'banned', p.banned, 'seen', p.last_seen, 'baits', to_jsonb(p.baits)) order by p.last_seen desc), '[]'::jsonb) from (select * from players order by last_seen desc limit 100) p));
 end $$;
 
 create or replace function public.admin_find(p_key text, p_q text) returns jsonb language plpgsql security definer set search_path = public as $$
 begin
   perform oc_admin(p_key);
-  return (select coalesce(jsonb_agg(jsonb_build_object('pid', p.pid, 'name', p.name, 'tag', p.tag, 'coins', p.coins, 'catches', p.stats -> 'catches', 'hidden', p.hidden, 'banned', p.banned, 'seen', p.last_seen)), '[]'::jsonb)
+  return (select coalesce(jsonb_agg(jsonb_build_object('pid', p.pid, 'name', p.name, 'tag', p.tag, 'coins', p.coins, 'catches', p.stats -> 'catches', 'hidden', p.hidden, 'banned', p.banned, 'seen', p.last_seen, 'baits', to_jsonb(p.baits))), '[]'::jsonb)
     from players p where lower(p.name) like '%' || lower(p_q) || '%' or p.tag = p_q or p.pid::text = p_q limit 50);
 end $$;
 
@@ -1276,6 +1276,10 @@ begin
     when 'givebait' then
       if not exists (select 1 from baits where id = p_value) then perform oc_fail('no such bait'); end if;
       update players set baits = array_append(baits, p_value) where pid = p_pid and not (p_value = any(baits));
+    when 'takebait' then
+      if not exists (select 1 from baits where id = p_value) then perform oc_fail('no such bait'); end if;
+      if p_value = 'worm' then perform oc_fail('worms are free for everyone and cannot be taken'); end if;
+      update players set baits = array_remove(baits, p_value) where pid = p_pid;
     when 'giveboat' then
       if not exists (select 1 from gear where id = p_value and kind = 'boat') then perform oc_fail('no such boat'); end if;
       update players set gear = jsonb_set(jsonb_set(gear, '{boats}', (select to_jsonb(array(select distinct x from jsonb_array_elements_text(coalesce(gear -> 'boats', '["paddle"]'::jsonb) || to_jsonb(p_value)) x)))), '{boat}', to_jsonb(p_value)) where pid = p_pid;

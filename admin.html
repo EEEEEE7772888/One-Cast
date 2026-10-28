@@ -12,9 +12,12 @@ body{overflow:auto;padding:16px}
 .box{display:grid;gap:10px;padding:14px;background:var(--panel);border:4px solid var(--edge)}
 .k{font:9px/1 var(--pixel);color:var(--gold)}
 .stat{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px}
-.line{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 10px;background:var(--panel-lo);border:3px solid var(--edge)}
+.line{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;align-items:center;padding:8px 10px;background:var(--panel-lo);border:3px solid var(--edge)}
 .line .b{display:flex;gap:6px;flex-wrap:wrap}
 .line .pbtn{font-size:8px;padding:7px}
+.baits{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;align-items:center}.baits .bl{font:7px var(--pixel);color:var(--muted)}
+.baits .chip{display:inline-flex;align-items:center;gap:6px;font-size:16px;line-height:1;padding:4px 4px 4px 8px;background:#13234A;border:2px solid #2C5088;white-space:nowrap}
+.baits .chip button{font:7px var(--pixel);color:#FF8A8D;background:none;border:0;padding:2px 3px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -58,8 +61,16 @@ function playerLine(p){ var d=document.createElement('div'); d.className='line';
   window.OC.BAITS.forEach(function(x){ var o=document.createElement('option'); o.value=x.id; o.textContent=x.name; bs.appendChild(o); });
   var gbt=document.createElement('button'); gbt.className='pbtn gold'; gbt.textContent='GIFT BAIT';
   gbt.onclick=function(){ var bt=window.OC.BAITS.filter(function(x){ return x.id===bs.value; })[0];
-    rpc('admin_player',{p_pid:p.pid,p_action:'givebait',p_value:bs.value}).then(function(){ alert(p.name+' now has '+bt.name+'. (If they already had it, nothing changed.)'); }).catch(function(e){ alert(e.message); }); };
+    rpc('admin_player',{p_pid:p.pid,p_action:'givebait',p_value:bs.value}).then(function(){ if(p.baits.indexOf(bt.id)<0) p.baits.push(bt.id); drawBaits(); }).catch(function(e){ alert(e.message); }); };
   b.appendChild(bs); b.appendChild(gbt);
+  /* the baits they own: tap X to take one away (worms are free for everyone, so they stay) */
+  p.baits=p.baits||[]; var chips=document.createElement('div'); chips.className='baits'; d.firstChild.appendChild(chips);
+  function drawBaits(){ chips.innerHTML='<span class="bl">BAITS:</span>';
+    window.OC.BAITS.filter(function(x){ return p.baits.indexOf(x.id)>=0; }).forEach(function(x){ var c=document.createElement('span'); c.className='chip'; c.textContent=x.name;
+      if(x.id!=='worm'){ var rm=document.createElement('button'); rm.type='button'; rm.textContent='X'; rm.title='Take '+x.name+' away'; rm.onclick=function(){ if(!confirm('Take '+x.name+' away from '+p.name+'#'+p.tag+'?')) return;
+          rpc('admin_player',{p_pid:p.pid,p_action:'takebait',p_value:x.id}).then(function(){ p.baits=p.baits.filter(function(y){ return y!==x.id; }); drawBaits(); }).catch(function(e){ alert(e.message); }); }; c.appendChild(rm); }
+      chips.appendChild(c); }); }
+  drawBaits();
   d.appendChild(b); return d; }
 function load(){
   rpc('admin_overview',{}).then(function(o){

@@ -345,6 +345,10 @@ console.log('dev boat and crew rides');
   ok(rpc('admin_player',[K,G1.pid,'givebait','jig']).ok===true&&rpc('get_state',[G1.pid,G1.secret]).baits.includes('jig'),'admin gifts a bait');
   rpc('admin_player',[K,G1.pid,'givebait','jig']); ok(rpc('get_state',[G1.pid,G1.secret]).baits.filter(b=>b==='jig').length===1,'gifting twice does not duplicate it');
   ok(rpc('admin_player',[K,G1.pid,'givebait','dynamite']).error==='no such bait','unknown bait refused');
+  ok(rpc('admin_find',[K,'Guest1'])[0].baits.includes('jig'),'admin sees what baits a player has');
+  ok(rpc('admin_player',[K,G1.pid,'takebait','jig']).ok===true&&!rpc('get_state',[G1.pid,G1.secret]).baits.includes('jig'),'admin takes a bait away');
+  ok(rpc('admin_player',[K,G1.pid,'takebait','worm']).error==='worms are free for everyone and cannot be taken','worms cannot be taken');
+  ok(rpc('admin_player',['wrong-key',G1.pid,'takebait','minnow']).error==='not the admin key','only the admin can take bait');
   ok(rpc('admin_player',['wrong-key',G1.pid,'givebait','jig']).error==='not the admin key','only the admin can gift bait');
   // blocking
   { const X=mk('Blocker'), Z=mk('Pest'); fr(X,Z); const zf=rpc('get_state',[Z.pid,Z.secret]);
