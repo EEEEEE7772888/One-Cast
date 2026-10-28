@@ -378,13 +378,13 @@ UI.profile=function(pid){
   N.rpc('get_profile',{p_pid:pid}).then(function(p){ body.innerHTML=''; if(!p){ body.innerHTML='<div class="empty">This angler is not available.</div>'; return; }
     var head=el('div','profile-head'); var c=A.fisherCanvas(p.outfit||D.DEFAULT_OUTFIT), cc=document.createElement('canvas'); cc.width=c.width; cc.height=c.height; cc.className='px'; cc.getContext('2d').drawImage(c,0,0); head.appendChild(cc);
     head.appendChild(el('div',null,'<div class="pn">'+esc(p.name)+'<small style="color:#93B2D2">#'+p.tag+'</small>'+(p.founder?'<span class="tag gold">FOUNDER</span>':'')+(p.champ?'<span class="tag gold">CHAMPION x'+p.champ+'</span>':'')+'</div><div class="ps"><span class="dot'+(p.online?' on':'')+'"></span>'+(p.online?'Fishing right now':'Last seen a while ago')+' · '+esc(D.SPOT_BY_ID[p.spot]?D.SPOT_BY_ID[p.spot].name:'')+' · playing since '+new Date(p.since).toLocaleDateString()+'</div>')); body.appendChild(head);
+    if(pid===G.s.pid){ body.appendChild(renameBox()); body.appendChild(logoutBox()); }
     body.appendChild(facts([['CATCHES',String(p.stats.catches||0)],['SPECIES',String(p.stats.species||0)],['BIGGEST',D.fmtWeight(+p.stats.bestlb||0)],['LEGENDS',String(p.stats.legends||0)],['REGIONS',String(p.stats.regions||0)],['RARE',(p.stats.golden||0)+' gold · '+(p.stats.albino||0)+' albino']]));
     if(p.legends.length){ body.appendChild(el('div','gear-group','LEGENDS OWNED')); p.legends.forEach(function(l){ body.appendChild(legendCard(l,l.owner===G.s.pid)); }); }
     if(p.pastLegends.length) body.appendChild(el('p','note','Once owned: '+p.pastLegends.map(function(l){ return esc(l.name); }).join(', ')+'.'));
     if(p.badges.length) body.appendChild(el('p','note','Badges: '+p.badges.map(function(b){ var a=G.ACH.filter(function(x){ return x.id===b; })[0]; return a?esc(a.name):''; }).filter(Boolean).join(' · ')));
     body.appendChild(el('div','gear-group','TROPHY WALL'));
     var grid=el('div','grid'); p.best.slice(0,9).forEach(function(f){ var card=fishCard(f,null); card.onclick=function(){ reactTo(f,p); }; grid.appendChild(card); }); if(!p.best.length) grid.appendChild(el('div','empty','No fish kept yet.')); body.appendChild(grid);
-    if(pid===G.s.pid) body.appendChild(renameBox());
     if(pid!==G.s.pid){ var row=el('div','reset-row'); var isFriend=G.s.friends.some(function(f){ return f.pid===pid&&f.status==='accepted'; }), pending=G.s.friends.some(function(f){ return f.pid===pid; });
       if(!pending){ var add=el('button','pbtn gold','ADD FRIEND'); add.type='button'; add.onclick=function(){ N.me('friend_request',{p_name:p.name,p_tag:p.tag}).then(function(r){ G.toast(r.status==='accepted'?'You are now friends!':'Friend request sent.',2600,'good'); G.refresh(true); }).catch(G.fail); }; row.appendChild(add); }
       if(isFriend){ var tr=el('button','pbtn gold','TRADE'); tr.type='button'; tr.onclick=function(){ openTrade(pid); }; row.appendChild(tr); }
@@ -393,6 +393,16 @@ UI.profile=function(pid){
       if(bl) body.appendChild(el('p','note','You blocked this player.')); body.appendChild(el('p','note',isFriend?'Tap a fish on the wall to send a sticker.':'Friends can react to each other\'s catches with stickers.')); }
   }).catch(function(e){ body.innerHTML='<div class="empty">'+esc(e.message)+'</div>'; });
 };
+/* your own profile: log out of this device. Without a password or the save code there is no way back in, so say so plainly. */
+function logoutBox(){
+  var box=el('div','rename'); box.appendChild(el('div','gear-group','LOG OUT'));
+  box.appendChild(el('p','note',G.s.hasPw?'To log back in, use <b>'+esc(G.s.name)+'#'+G.s.tag+'</b> and your password.':'<b style="color:#FF8A8D">You have no password yet.</b> Set one first, or you will not be able to get this game back.'));
+  var row=el('div','reset-row');
+  if(!G.s.hasPw){ var pw=el('button','pbtn gold','SET A PASSWORD'); pw.type='button'; pw.onclick=function(){ UI.closeAll(); UI.open('saveOv'); }; row.appendChild(pw); }
+  var out=el('button','pbtn danger','LOG OUT'); out.type='button'; out.id='logoutBtn';
+  out.onclick=function(){ UI.confirm({title:'LOG OUT?',note:G.s.hasPw?'You can log back in any time with '+G.s.name+'#'+G.s.tag+' and your password.':'You have no password. If you log out without your save code, this game is gone for good.',yes:G.s.hasPw?'LOG OUT':'LOG OUT ANYWAY',no:'STAY'}).then(function(v){ if(!v) return; N.clearId(); location.reload(); }); };
+  row.appendChild(out); box.appendChild(row); return box;
+}
 /* your own profile: change your name (the server allows it once a week and checks for bad words) */
 function renameBox(){
   var box=el('div','rename'); box.appendChild(el('div','gear-group','CHANGE YOUR NAME'));
