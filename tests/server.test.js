@@ -461,7 +461,7 @@ console.log('hard lures, snags, rods and reels');
   const avg=(rod)=>+sql(`select avg(lb/(select max_lb from species where id=x.species)) from (select (oc_roll('okeechobee','minnow',120,'day',false,${rod})).* from generate_series(1,3000)) x`);
   const a0=avg(0), a6=avg(0.3); ok(a6>a0*1.2,'the best rod catches clearly bigger fish ('+a0.toFixed(3)+' -> '+a6.toFixed(3)+')');
   ok(+sql(`select max(lb) <= (select max_lb from species where id='largemouth') from (select (oc_roll('basslake','minnow',9999,'day',false,0.3)).* from generate_series(1,2000)) x where species='largemouth'`)||sql("select 't'")==='t','rods never go past the biggest fish of a kind');
-  ok(+sql(`select oc_fish_value('largemouth',10,null)`)===10*D.SP_BY_ID.largemouth.rate&&D.SP_BY_ID.largemouth.rate===13,'fish are worth 30% less (largemouth $18 -> $13 a pound)');
+  ok(+sql(`select oc_fish_value('largemouth',10,null)`)===10*D.SP_BY_ID.largemouth.rate&&D.SP_BY_ID.largemouth.rate===11,'fish are worth 40% less (largemouth $18 -> $11 a pound)');
   // admin
   const K='oc-admin-testkey';
   rpc('admin_player',[K,P.pid,'givebait','jerk']); ok(lures().jerk.n>=5,'admin gifts 5 jerkbaits');

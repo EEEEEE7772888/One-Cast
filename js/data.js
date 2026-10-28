@@ -136,8 +136,8 @@ D.periodOf=function(h){ if(h==null) return null; h=((h%24)+24)%24; return h>=5&&
 
 /* ---------- Species. min/max in pounds, k turns pounds into inches, rate is dollars per pound.
    spots: how common the fish is at each spot. baits: how much it likes each bait. minWait: minutes before it can bite. ---------- */
-/* Fish are worth 30% less than they used to be (cheaper gear and the rod and reel shop). */
-D.VALUE_MULT=0.70;
+/* Fish are worth 40% less than they used to be (cheaper gear and the rod and reel shop). */
+D.VALUE_MULT=0.60;
 var S=[];
 function sp(o){ if(o.rate>0) o.rate=Math.max(1,Math.round(o.rate*D.VALUE_MULT)); S.push(o); return o; }
 /* freshwater, North America */
