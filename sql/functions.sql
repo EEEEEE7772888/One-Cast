@@ -521,6 +521,8 @@ begin
   for f in select * from fish where id = any(p_ids) and pid = p_pid for update loop
     if f.legend_id is not null then perform oc_fail('legends cannot be sold'); end if;
     if f.released then continue; end if;
+    -- a fish you offered in an open trade stays put until the trade ends (selling it used to jam the trade)
+    if exists (select 1 from trades t where t.status = 'open' and f.id = any(t.a_fish || t.b_fish)) then continue; end if;
     v := oc_fish_value(f.species, f.lb, f.variant);
     if v <= 0 then perform oc_fail('that fish is catch and release'); end if;
     total := total + v; n := n + 1;
@@ -834,9 +836,13 @@ begin
   if not (t.a_confirm and t.b_confirm) then return oc_trade_json(t, p_pid); end if;
   -- both confirmed: check everything once more and swap in one step
   select * into pa from players where pid = t.a for update; select * into pb from players where pid = t.b for update;
-  if pa.coins < t.a_coins or pb.coins < t.b_coins then update trades set status = 'failed', updated_at = now() where id = p_id; perform oc_fail('someone no longer has the coins'); end if;
-  foreach fid in array t.a_fish loop if not exists (select 1 from fish where id = fid and pid = t.a and not released and (locked_until is null or locked_until < now())) then update trades set status = 'failed', updated_at = now() where id = p_id; perform oc_fail('a fish is no longer available'); end if; end loop;
-  foreach fid in array t.b_fish loop if not exists (select 1 from fish where id = fid and pid = t.b and not released and (locked_until is null or locked_until < now())) then update trades set status = 'failed', updated_at = now() where id = p_id; perform oc_fail('a fish is no longer available'); end if; end loop;
+  if pa.coins < t.a_coins or pb.coins < t.b_coins then
+    update trades set status = 'failed', updated_at = now() where id = p_id returning * into t;
+    return oc_trade_json(t, p_pid) || jsonb_build_object('reason', 'someone no longer has the coins they offered'); end if;
+  if exists (select 1 from unnest(t.a_fish) u(x) where not exists (select 1 from fish where id = u.x and pid = t.a and not released and (locked_until is null or locked_until < now())))
+     or exists (select 1 from unnest(t.b_fish) u(x) where not exists (select 1 from fish where id = u.x and pid = t.b and not released and (locked_until is null or locked_until < now()))) then
+    update trades set status = 'failed', updated_at = now() where id = p_id returning * into t;
+    return oc_trade_json(t, p_pid) || jsonb_build_object('reason', 'a fish in the trade is no longer available'); end if;
   select coalesce(jsonb_agg(oc_fish_json(x)), '[]'::jsonb) into ag from fish x where x.id = any(t.a_fish);
   select coalesce(jsonb_agg(oc_fish_json(x)), '[]'::jsonb) into bg from fish x where x.id = any(t.b_fish);
   update fish set pid = t.b, locked_until = now() + interval '24 hours' where id = any(t.a_fish);

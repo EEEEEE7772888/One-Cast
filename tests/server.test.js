@@ -366,6 +366,17 @@ console.log('dev boat and crew rides');
     ok(rpc('block_player',[X.pid,X.secret,X.pid,true]).error==='you cannot block yourself','cannot block yourself');
     ok(rpc('block_player',[X.pid,X.secret,Z.pid,false]).blocked.length===0,'unblock');
     ok(rpc('friend_request',[Z.pid,Z.secret,'Blocker',rpc('get_state',[X.pid,X.secret]).tag]).status==='pending','after unblocking they can add you again'); }
+  // trades cannot get stuck
+  { const P1=mk('TradeA'), P2=mk('TradeB'); fr(P1,P2);
+    sql(`insert into fish (pid,species,lb,inches,spot,bait,caught_at) values ('${P2.pid}','largemouth',5,18,'basslake','minnow',now()-interval '2 days')`); const fid=+sql(`select id from fish where pid='${P2.pid}'`);
+    sql(`update players set coins=3000 where pid='${P1.pid}'`);
+    const t=rpc('trade_open',[P1.pid,P1.secret,P2.pid]); rpc('trade_set',[P1.pid,P1.secret,t.id,[],500]); rpc('trade_set',[P2.pid,P2.secret,t.id,[fid],0]);
+    const sold=rpc('sell_fish',[P2.pid,P2.secret,[fid]]); ok(sold.sold===0&&+sql(`select count(*) from fish where id=${fid}`)===1,'a fish offered in an open trade cannot be sold');
+    rpc('trade_ready',[P1.pid,P1.secret,t.id,true]); rpc('trade_ready',[P2.pid,P2.secret,t.id,true]); rpc('trade_confirm',[P1.pid,P1.secret,t.id]);
+    sql(`update players set coins=0 where pid='${P1.pid}'`);
+    const fail=rpc('trade_confirm',[P2.pid,P2.secret,t.id]); ok(fail.status==='failed'&&/coins/.test(fail.reason),'a trade that cannot finish ends cleanly with a reason');
+    ok(sql(`select status from trades where id=${t.id}`)==='failed'&&sql(`select pid from fish where id=${fid}`)===P2.pid,'nothing was swapped and the trade is not stuck open');
+    const t2=rpc('trade_open',[P1.pid,P1.secret,P2.pid]); ok(t2.id!==t.id&&t2.status==='open','a new trade can start right away'); }
   // other boats still hold 3
   const T=mk('SmallBoat'), q=[mk('Q1'),mk('Q2'),mk('Q3'),mk('Q4')]; q.forEach(x=>fr(T,x));
   q.slice(0,3).forEach(x=>{ rpc('crew_invite',[T.pid,T.secret,x.pid]); rpc('crew_respond',[x.pid,x.secret,T.pid,true]); });
