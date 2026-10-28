@@ -558,6 +558,9 @@ begin
       if gr -> 'boats' ? g.id then perform oc_fail('you already own that boat'); end if;
       if g.lvl > 0 and not exists (select 1 from gear x where x.kind = 'boat' and x.lvl = g.lvl - 1 and gr -> 'boats' ? x.id) then perform oc_fail('buy the boat before this one first'); end if;
       gr := jsonb_set(jsonb_set(gr, '{boats}', coalesce(gr -> 'boats', '["paddle"]'::jsonb) || to_jsonb(g.id)), '{boat}', to_jsonb(g.id));
+    elsif g.kind = 'book' then
+      if coalesce(gr -> 'books', '[]'::jsonb) ? g.id then perform oc_fail('you already own that'); end if;
+      gr := jsonb_set(gr, '{books}', coalesce(gr -> 'books', '[]'::jsonb) || to_jsonb(g.id));
     elsif g.kind = 'method' then
       if gr -> 'methods' ? g.id then perform oc_fail('you already own that'); end if;
       gr := jsonb_set(gr, '{methods}', (gr -> 'methods') || to_jsonb(g.id));
@@ -723,6 +726,19 @@ begin
     where pid = p_pid returning * into p;
   perform oc_news('index', p_pid, p.name || '#' || p.tag || ' caught ' || label || '!', jsonb_build_object('kind', p_kind));
   return jsonb_build_object('ok', true, 'coins', p.coins, 'items', to_jsonb(p.items), 'stats', p.stats, 'reward', prize, 'item', item, 'now', now());
+end $$;
+
+-- ============ guidebooks: the legends chapter (the secret bait, time, soak and line) ============
+create or replace function public.get_guide(p_pid uuid, p_secret text, p_kind text) returns jsonb language plpgsql security definer set search_path = public as $$
+declare p public.players;
+begin
+  p := oc_auth(p_pid, p_secret);
+  if p_kind not in ('fresh', 'salt') then perform oc_fail('no such guidebook'); end if;
+  if not coalesce(p.gear -> 'books', '[]'::jsonb) ? ('book_' || p_kind) then perform oc_fail('buy the guidebook first'); end if;
+  return jsonb_build_object('legends', (select coalesce(jsonb_agg(jsonb_build_object('id', l.id, 'spot', l.spot, 'name', l.name, 'sp', l.species, 'tier', l.tier, 'lb', l.lb,
+      'bait', l.bait, 'period', l.period, 'minWait', l.min_wait, 'minLine', l.min_line, 'clue', l.clue, 'colors', l.colors, 'owner', l.owner_pid,
+      'ownerName', (select o.name || '#' || o.tag from players o where o.pid = l.owner_pid and not o.hidden)) order by s.region, l.name), '[]'::jsonb)
+    from legends l join spots s on s.id = l.spot where l.active and (case when p_kind = 'fresh' then s.water = 'fresh' else s.water <> 'fresh' end)), 'now', now());
 end $$;
 
 -- ============ blocking ============
@@ -1107,7 +1123,7 @@ end $$;
 
 -- ============ permissions ============
 do $$ declare r record; begin
-  for r in select p.proname, pg_get_function_identity_arguments(p.oid) args from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and (p.proname like 'oc\_%' or p.proname in ('login','get_state','set_prefs','set_outfit','set_name','claim_founder','cast_line','reel_line','lure_strike','lure_lose','sell_fish','buy','travel','release_legend','friend_request','friend_respond','trade_open','get_trade','trade_set','trade_ready','trade_confirm','trade_cancel','get_trade_history','react','report_player','block_player','claim_index','suggest_lake','get_board','get_news','get_legends','get_profile','get_season','get_world','set_boat','crew_invite','crew_respond','crew_leave','get_crew','set_password','login_password','delete_account','admin_overview','admin_find','admin_player','admin_report','admin_suggestion','admin_news')) loop
+  for r in select p.proname, pg_get_function_identity_arguments(p.oid) args from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and (p.proname like 'oc\_%' or p.proname in ('login','get_state','set_prefs','set_outfit','set_name','claim_founder','cast_line','reel_line','lure_strike','lure_lose','sell_fish','buy','travel','release_legend','friend_request','friend_respond','trade_open','get_trade','trade_set','trade_ready','trade_confirm','trade_cancel','get_trade_history','react','report_player','block_player','claim_index','get_guide','suggest_lake','get_board','get_news','get_legends','get_profile','get_season','get_world','set_boat','crew_invite','crew_respond','crew_leave','get_crew','set_password','login_password','delete_account','admin_overview','admin_find','admin_player','admin_report','admin_suggestion','admin_news')) loop
     execute format('revoke all on function public.%I(%s) from public, anon, authenticated', r.proname, r.args);
     if r.proname not like 'oc\_%' then execute format('grant execute on function public.%I(%s) to anon, authenticated', r.proname, r.args); end if;
   end loop;

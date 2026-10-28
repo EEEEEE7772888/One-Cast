@@ -5,8 +5,8 @@ var D=window.OC, A=window.ART, N=window.NET, M=window.WMAP, SC=window.SCENE, G=w
 function $(id){ return document.getElementById(id); }
 function el(tag,cls,html){ var e=document.createElement(tag); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e; }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
-var OVERLAYS=['dockOv','menuOv','tackleOv','baitOv','gearOv','shopOv','bucketOv','fishOv','cardOv','journalOv','legendOv','achOv','boardOv','friendsOv','tradeOv','profileOv','newsOv','mapOv','saveOv','helpOv','awayOv','reportOv','suggestOv'];
-var RENDER={dockOv:renderDock,menuOv:renderMenu,tackleOv:renderTackle,baitOv:renderBaitShop,gearOv:renderGear,shopOv:renderShop,bucketOv:renderBucket,journalOv:renderJournal,legendOv:renderLegends,achOv:renderAch,boardOv:renderBoard,friendsOv:renderFriends,newsOv:renderNews,mapOv:renderMap,saveOv:renderSave};
+var OVERLAYS=['dockOv','menuOv','tackleOv','baitOv','gearOv','shopOv','bucketOv','fishOv','cardOv','journalOv','legendOv','achOv','boardOv','friendsOv','tradeOv','profileOv','newsOv','mapOv','guideOv','saveOv','helpOv','awayOv','reportOv','suggestOv'];
+var RENDER={guideOv:renderGuide,dockOv:renderDock,menuOv:renderMenu,tackleOv:renderTackle,baitOv:renderBaitShop,gearOv:renderGear,shopOv:renderShop,bucketOv:renderBucket,journalOv:renderJournal,legendOv:renderLegends,achOv:renderAch,boardOv:renderBoard,friendsOv:renderFriends,newsOv:renderNews,mapOv:renderMap,saveOv:renderSave};
 UI.open=function(id){ OVERLAYS.forEach(function(o){ if(o!==id&&o!=='cardOv') $(o).hidden=true; }); $(id).hidden=false; if(RENDER[id]) RENDER[id](); var f=$(id).querySelector('.x,button,select,input'); if(f&&id!=='mapOv') try{ f.focus({preventScroll:true}); }catch(e){} if(id==='mapOv') G.coachEvent&&G.coachEvent('map'); };
 UI.closeAll=function(){ OVERLAYS.forEach(function(o){ $(o).hidden=true; }); $('resetAsk').hidden=true; $('reset').hidden=false; if(G.tradeId){ stopTradePoll(); } if(G.s){ G.renderAll(); G.checkAch(); } };
 UI.anyOpen=function(){ return OVERLAYS.some(function(o){ return !$(o).hidden; }); };
@@ -39,6 +39,7 @@ function renderMenu(){
     ['spool','GEAR SHOP',gearBlurb(),'gearOv'],
     ['hat','CLOTHES','Dress your angler','shopOv'],
     ['book','FISH JOURNAL',Object.keys(G.s.journal).filter(function(k){ return k.indexOf('legend:')!==0; }).length+' of '+D.SPECIES.length+' species','journalOv'],
+    ['book','GUIDEBOOKS',(G.s.gear.books||[]).length+' of 2 · best times, baits and legend secrets','guideOv'],
     ['trophy','LEADERBOARD','World, region and species boards','boardOv'],
     ['friends','FRIENDS AND TRADING',G.s.friends.filter(function(f){ return f.status==='accepted'; }).length+' friends'+(G.s.trades.length?' · '+G.s.trades.length+' open trade'+(G.s.trades.length>1?'s':''):'')+pendingTxt(),'friendsOv'],
     ['news','WORLD NEWS',unread?unread+' new':'Legends, records and rare fish','newsOv'],
@@ -98,6 +99,46 @@ function renderBaitShop(){
 function buy(kind,id,name){
   return N.me('buy',{p_kind:kind,p_id:id}).then(function(r){ G.s.coins=r.coins; G.s.baits=r.baits; G.s.gear=r.gear; G.s.items=r.items; G.s.regions=r.regions; G.bump(); G.toast('Bought '+name+'.',2000,'good'); G.renderAll();
     if(kind==='bait'){ renderBaitShop(); if(G.baitWorksHere(id)) G.setBait(id); } if(kind==='gear'){ renderGear(); } if(kind==='item'){ renderShop(); } return r; }).catch(G.fail);
+}
+/* ---------- guidebooks: best times, baits and spots for every fish, and the secret of every legend ---------- */
+var guideKind=null, guideCache={}, guideQ='';
+var BOOK={fresh:{id:'book_fresh',title:'FRESHWATER GUIDEBOOK',color:'#2E7D3A'},salt:{id:'book_salt',title:'SALTWATER GUIDEBOOK',color:'#1E5AA8'}};
+function fmtWait(m){ return m>=60?(Math.round(m/6)/10)+' hours':m+' minutes'; }
+function renderGuide(){
+  if(!guideKind) guideKind=G.spot().water==='fresh'?'fresh':'salt';
+  var tabs=$('guideTabs'); tabs.innerHTML=''; ['fresh','salt'].forEach(function(k){ var b=el('button',null,k==='fresh'?'FRESHWATER':'SALTWATER'); b.type='button'; b.setAttribute('aria-pressed',String(k===guideKind)); b.onclick=function(){ guideKind=k; guideQ=''; renderGuide(); }; tabs.appendChild(b); });
+  var box=$('guideBody'); box.innerHTML=''; var bk=BOOK[guideKind], g=D.GEAR_BY_ID[bk.id], own=(G.s.gear.books||[]).indexOf(bk.id)>=0, fish=D.indexSection(guideKind);
+  if(!own){ // the cover and what is inside
+    var cover=el('div','g-cover'); cover.style.setProperty('--book',bk.color); cover.appendChild(el('div','g-book','<span>'+bk.title.replace(' ','<br>')+'</span>'));
+    var info=el('div','g-info','<p>'+esc(g.desc)+'</p><ul><li><b>'+fish.length+' fish</b>: the best time of day, the best baits and the best spots for each</li><li>How long to soak, and which fish only bite after a long wait</li><li><b>The Legends chapter</b>: the exact bait, time of day, soak time and line strength for every '+(guideKind==='fresh'?'freshwater':'saltwater')+' legend</li></ul>');
+    var bb=el('button','pbtn buy'+(G.s.coins>=g.price?' gold':''),(G.s.coins>=g.price?'BUY ':'')+D.money(g.price)); bb.type='button'; bb.disabled=G.s.coins<g.price; bb.onclick=function(){ buy('gear',g.id,g.name).then(function(r){ if(r) renderGuide(); }); }; info.appendChild(bb);
+    cover.appendChild(info); box.appendChild(cover); return; }
+  var search=document.createElement('input'); search.className='field g-search'; search.type='search'; search.placeholder='Find a fish or legend...'; search.value=guideQ; box.appendChild(search);
+  var list=el('div','g-list'); box.appendChild(list);
+  function draw(){ list.innerHTML=''; var q=guideQ.trim().toLowerCase(), data=guideCache[guideKind];
+    list.appendChild(el('div','gear-group','THE LEGENDS CHAPTER'));
+    if(!data) list.appendChild(el('p','note','Opening the book...'));
+    else (data.legends||[]).slice().sort(function(a,b){ var ra=(D.REGION_BY_ID[(D.SPOT_BY_ID[a.spot]||{}).region]||{tier:99}).tier, rb=(D.REGION_BY_ID[(D.SPOT_BY_ID[b.spot]||{}).region]||{tier:99}).tier; return ra-rb||a.name.localeCompare(b.name); }).filter(function(l){ return !q||(l.name+' '+(D.SP_BY_ID[l.sp]||{}).name+' '+(D.SPOT_BY_ID[l.spot]||{}).name).toLowerCase().indexOf(q)>=0; }).forEach(function(l){
+      var sp=D.SP_BY_ID[l.sp], spot=D.SPOT_BY_ID[l.spot]||{name:l.spot,region:'home'}, okLine=G.lineTest()>=l.minLine, row=el('div','g-legend'+(l.owner?' taken':''));
+      var pic=el('div','pic'); pic.appendChild(A.fishImg(l.sp,40,false,2,null,l.colors,l.name)); row.appendChild(pic);
+      row.appendChild(el('div','g-txt','<div class="g-n">'+esc(l.name)+' <span class="tier '+l.tier+'">'+l.tier.toUpperCase()+'</span></div><div class="g-s">A '+Math.round(l.lb)+' lb '+esc((sp||{name:'fish'}).name.toLowerCase())+' at '+esc(spot.name)+(spot.region!=='home'?', '+esc(D.REGION_BY_ID[spot.region].name):'')+'</div>'+
+        '<div class="g-facts"><span><b>BAIT</b>'+esc((D.BAIT_BY_ID[l.bait]||{name:l.bait}).name)+'</span><span><b>TIME</b>'+esc(D.PERIOD_NAME[l.period]||l.period)+'</span><span><b>SOAK</b>'+(l.minWait>0?'at least '+fmtWait(l.minWait):'none, work the lure')+'</span><span class="'+(okLine?'ok':'no')+'"><b>LINE</b>'+l.minLine+' lb test'+(okLine?' (yours is strong enough)':' (you need a stronger line)')+'</span></div>'+
+        (l.owner?'<div class="g-own">CAUGHT BY '+esc(l.ownerName||'someone')+'</div>':'<div class="g-own free">STILL OUT THERE</div>')));
+      list.appendChild(row); });
+    list.appendChild(el('div','gear-group','EVERY '+(guideKind==='fresh'?'FRESHWATER':'SALTWATER')+' FISH'));
+    fish.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }).filter(function(sp){ return !q||sp.name.toLowerCase().indexOf(q)>=0; }).forEach(function(sp){
+      var prof=D.ACT_PROFILES[sp.act]||{}, per=Object.keys(prof).sort(function(a,b){ return prof[b]-prof[a]; }), best=per.slice(0,2).map(function(k){ return D.PERIOD_NAME[k]; }).join(' and '), worst=prof[per[per.length-1]]<0.5?D.PERIOD_NAME[per[per.length-1]]:null;
+      var baits=Object.keys(sp.baits).filter(function(b){ return sp.baits[b]>0&&D.BAIT_BY_ID[b]; }).sort(function(a,b){ return sp.baits[b]-sp.baits[a]; }).slice(0,3).map(function(b){ return '<span class="'+(G.s.baits.indexOf(b)>=0?'have':'')+'">'+esc(D.BAIT_BY_ID[b].name)+'</span>'; }).join(', ');
+      var spots=Object.keys(sp.spots).filter(function(k){ var s2=D.SPOT_BY_ID[k]; return sp.spots[k]>0&&s2&&(guideKind==='fresh'?s2.water==='fresh':s2.water!=='fresh'); }).sort(function(a,b){ return sp.spots[b]-sp.spots[a]; }).slice(0,3).map(function(k){ var s2=D.SPOT_BY_ID[k]; return '<span class="'+(G.s.regions.indexOf(s2.region)>=0?'have':'')+'">'+esc(s2.name)+'</span>'; }).join(', ');
+      var caught=!!G.s.journal[sp.id], row=el('div','g-fish');
+      var pic=el('div','pic'); pic.appendChild(A.fishImg(sp.id,Math.min(40,A.sceneLen(sp.max)+12),false,2,null,null,sp.name)); row.appendChild(pic);
+      row.appendChild(el('div','g-txt','<div class="g-n">'+esc(sp.name)+(caught?' <span class="tag green">CAUGHT</span>':'')+'</div><div class="g-s">'+D.fmtWeight(sp.min)+' to '+D.fmtWeight(sp.max)+(sp.protected?' · catch and release only':'')+'</div>'+
+        '<div class="g-facts"><span><b>BEST</b>'+best+(worst?' (slow at '+worst.toLowerCase()+')':'')+'</span><span><b>BAIT</b>'+baits+'</span><span><b>WHERE</b>'+spots+'</span>'+(sp.minWait>=30?'<span><b>SOAK</b>bites after '+fmtWait(sp.minWait)+'</span>':'')+'</div>'));
+      list.appendChild(row); });
+  }
+  search.addEventListener('input',function(){ guideQ=this.value; draw(); });
+  draw();
+  if(!guideCache[guideKind]) N.me('get_guide',{p_kind:guideKind}).then(function(r){ guideCache[guideKind]=r; if(!$('guideOv').hidden) draw(); }).catch(function(e){ guideCache[guideKind]={legends:[]}; draw(); G.fail(e); });
 }
 function renderGear(){
   var box=$('gearRows'); box.innerHTML='';
@@ -453,6 +494,24 @@ function renderMapKey(){
       list.appendChild(b); }); });
   box.appendChild(list);
 }
+/* ---- map search: any lake, river, ocean, region, place or fish name ---- */
+function mapSearch(q){
+  var box=$('mapSearchRes'); q=(q||'').trim().toLowerCase(); box.innerHTML=''; if(q.length<2){ box.hidden=true; return; }
+  var res=[];
+  D.SPOTS.forEach(function(s){ var rg=D.REGION_BY_ID[s.region], hay=[s.name,s.where||'',rg.name,s.known||'',s.desc||''].join(' ').toLowerCase();
+    var i=s.name.toLowerCase().indexOf(q), score=i===0?0:i>0?1:hay.indexOf(q)>=0?2:-1; if(score>=0) res.push({s:s,score:score,why:score<2?'':(s.where||rg.name)}); });
+  D.SPECIES.forEach(function(sp){ if(sp.name.toLowerCase().indexOf(q)<0) return; Object.keys(sp.spots).filter(function(k){ return sp.spots[k]>0&&D.SPOT_BY_ID[k]; }).sort(function(a,b){ return sp.spots[b]-sp.spots[a]; }).slice(0,4).forEach(function(k){ if(!res.some(function(r){ return r.s.id===k; })) res.push({s:D.SPOT_BY_ID[k],score:3,why:sp.name+' live here'}); }); });
+  res.sort(function(a,b){ return a.score-b.score||a.s.name.localeCompare(b.s.name); }); res=res.slice(0,8);
+  if(!res.length){ box.appendChild(el('div','ms-none','Nothing found. Try a lake, a state or a fish.')); box.hidden=false; return; }
+  res.forEach(function(r){ var s=r.s, own=G.s.regions.indexOf(s.region)>=0, t=D.spotTier(s.id);
+    var b=el('button','ms-row'+(own?' have':''),'<i style="background:'+t.color+'"></i><span class="ms-n">'+esc(s.name)+'<small>'+esc(r.why||D.REGION_BY_ID[s.region].name)+'</small></span>'+(own?'<span class="mk-own">HAVE</span>':'<span class="mk-price"><small>TICKET</small>$'+D.REGION_BY_ID[s.region].ticket.toLocaleString()+'</span>'));
+    b.type='button'; b.setAttribute('role','option'); b.onclick=function(){ $('mapSearch').value=''; box.hidden=true; pickedSpot=s.id; footOpen=true; view=regionView(s.region); drawMap(); renderMapFoot(); };
+    box.appendChild(b); });
+  box.hidden=false;
+}
+$('mapSearch').addEventListener('input',function(){ mapSearch(this.value); });
+$('mapSearch').addEventListener('keydown',function(e){ if(e.key==='Enter'){ var f=$('mapSearchRes').querySelector('.ms-row'); if(f) f.click(); } if(e.key==='Escape'){ this.value=''; mapSearch(''); } });
+$('mapSearch').addEventListener('pointerdown',function(e){ e.stopPropagation(); });
 $('mapKeyBtn').onclick=function(){ keyOpen=!keyOpen; if(keyOpen&&window.innerWidth<700){ footOpen=false; renderMapFoot(); if(tixOpen){ tixOpen=false; renderMapTix(); } } renderMapKey(); };
 /* ---- my tickets: a small corner panel listing the regions you can travel to, and their waters ---- */
 var tixOpen=false;
@@ -468,7 +527,7 @@ function renderMapTix(){
   var left=D.REGIONS.length-mine.length; list.appendChild(el('p','mt-note',left?left+' more region'+(left>1?'s':'')+' to unlock. Tap a locked flag to see the ticket price.':'You have every ticket in the game!'));
   box.appendChild(list);
 }
-function renderMap(){ view=view?clampView(view):(G.s.regions.length<=1?regionView(G.spot().region):worldView()); /* new players start zoomed on Home waters */ mapList=false; pickedSpot=pickedSpot||G.s.spot; footOpen=isZoomed(); renderMapKey(); renderMapTix(); drawMap(); renderMapFoot(); clearInterval(mapTimer); mapTimer=setInterval(function(){ if($('mapOv').hidden){ clearInterval(mapTimer); return; } drawMap(); },60000);
+function renderMap(){ if($('mapSearch')){ $('mapSearch').value=''; $('mapSearchRes').hidden=true; } view=view?clampView(view):(G.s.regions.length<=1?regionView(G.spot().region):worldView()); /* new players start zoomed on Home waters */ mapList=false; pickedSpot=pickedSpot||G.s.spot; footOpen=isZoomed(); renderMapKey(); renderMapTix(); drawMap(); renderMapFoot(); clearInterval(mapTimer); mapTimer=setInterval(function(){ if($('mapOv').hidden){ clearInterval(mapTimer); return; } drawMap(); },60000);
   loadWorld().then(function(){ drawPins(); renderMapFoot(); }).catch(function(){}); }
 function isZoomed(){ var r=$('mapWrap').getBoundingClientRect(); return r.width/(view.lon1-view.lon0)>9; }
 function toXY(lon,lat,w,h){ return [(lon-view.lon0)/(view.lon1-view.lon0)*w,(view.lat0-lat)/(view.lat0-view.lat1)*h]; }

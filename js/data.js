@@ -273,6 +273,8 @@ D.GEAR=[
  {id:'trawler',name:'Expedition trawler',price:250000,kind:'boat',lvl:6,perk:{deep:0.8,polar:0.8,troll:0.85},desc:'An ice-class steel boat with a crane. Deep-drop and polar bites come 20% sooner.'},
  {id:'yacht',name:'Golden mega yacht',price:1500000,kind:'boat',lvl:7,perk:{all:0.78},desc:'The flex. Bites come 22% sooner everywhere, and everyone can see it.'},
  {id:'devboat',name:'Dev Flagship',price:0,kind:'boat',lvl:8,perk:{all:0.7},secret:true,crew:12,desc:'One of one. Only the maker of One Cast has it. Fishes every water on Earth with a deep-drop rig built in, bites come 30% sooner, and it carries a crew of 12.'},
+ {id:'book_fresh',name:'Freshwater guidebook',price:2000,kind:'book',lvl:1,desc:'Every freshwater fish: when they bite, what they eat and where to find them, plus the secret of every freshwater legend.'},
+ {id:'book_salt',name:'Saltwater guidebook',price:12000,kind:'book',lvl:1,desc:'Every saltwater fish: when they bite, what they eat and where to find them, plus the secret of every saltwater legend.'},
  {id:'deeprig',name:'Deep-drop rig',price:150000,kind:'method',lvl:1,desc:'An electric reel and 1,000 feet of braided line. Without it, deep-drop spots only give you small fish near the surface.'}
 ];
 

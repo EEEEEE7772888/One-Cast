@@ -390,6 +390,17 @@ console.log('dev boat and crew rides');
     const all=rpc('claim_index',[I.pid,I.secret,'all']); ok(all.reward===1000000&&all.items.includes('hat_master'),'the whole index pays $1,000,000 and the Master Angler crown');
     ok(+sql(`select count(*) from news where kind='index' and pid='${I.pid}'`)===3,'finishing a section makes world news');
     ok(rpc('claim_index',[I.pid,I.secret,'gold']).error==='no such reward','unknown reward refused'); }
+  // guidebooks
+  { const R=mk('Reader'); sql(`update players set coins=20000 where pid='${R.pid}'`);
+    ok(rpc('get_guide',[R.pid,R.secret,'fresh']).error==='buy the guidebook first','the legend secrets are only for book owners');
+    ok(rpc('buy',[R.pid,R.secret,'gear','book_fresh']).gear.books.includes('book_fresh'),'buy the freshwater guidebook');
+    ok(rpc('buy',[R.pid,R.secret,'gear','book_fresh']).error==='you already own that','only once');
+    const g=rpc('get_guide',[R.pid,R.secret,'fresh']); const bl=g.legends.find(l=>l.spot==='basslake');
+    ok(g.legends.length>5&&bl&&bl.bait==='minnow'&&bl.period==='dawn'&&bl.minLine===30,'the guidebook reveals each freshwater legend\'s bait, time and line');
+    ok(g.legends.every(l=>sql(`select water from spots where id='${l.spot}'`)==='fresh'),'freshwater book only covers fresh water');
+    ok(rpc('get_guide',[R.pid,R.secret,'salt']).error==='buy the guidebook first','the saltwater book is separate');
+    ok(rpc('buy',[R.pid,R.secret,'gear','book_salt']).coins===20000-2000-12000,'saltwater guidebook costs $12,000');
+    ok(rpc('get_guide',[R.pid,R.secret,'salt']).legends.some(l=>l.spot==='hatteras'&&l.bait==='cut'),'saltwater book covers Old Hatteras'); }
   // other boats still hold 3
   const T=mk('SmallBoat'), q=[mk('Q1'),mk('Q2'),mk('Q3'),mk('Q4')]; q.forEach(x=>fr(T,x));
   q.slice(0,3).forEach(x=>{ rpc('crew_invite',[T.pid,T.secret,x.pid]); rpc('crew_respond',[x.pid,x.secret,T.pid,true]); });
