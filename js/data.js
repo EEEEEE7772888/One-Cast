@@ -390,14 +390,15 @@ D.REPORT_REASONS=[{id:'name',text:'Bad username'},{id:'realname',text:'Uses a re
 D.SP_BY_ID={}; S.forEach(function(s){ D.SP_BY_ID[s.id]=s; });
 D.SPOT_BY_ID={}; D.SPOTS.forEach(function(s){ D.SPOT_BY_ID[s.id]=s; });
 D.REGION_BY_ID={}; D.REGIONS.forEach(function(r){ D.REGION_BY_ID[r.id]=r; });
-/* Fish are worth 15% less, so everything you buy (except hard lures, which cost what they do in real life) costs about 15% less too.
+/* Fish are worth 40% less, so everything you buy costs less too (except hard lures, which cost what they do in real life).
    Prices are rounded to tidy numbers. */
-D.PRICE_MULT=0.85;
-D.tidyPrice=function(x){ if(!x) return 0; var v=x*D.PRICE_MULT, step=v<100?5:v<1000?10:v<10000?50:v<100000?500:5000; return Math.max(step,Math.round(v/step)*step); };
+D.PRICE_MULT=0.75;  // shops: 25% below the original prices
+D.TICKET_MULT=0.6;  // map tickets: 40% below, the same cut as fish
+D.tidyPrice=function(x,mult){ if(!x) return 0; var v=x*(mult||D.PRICE_MULT), step=v<100?5:v<1000?10:v<10000?50:v<100000?500:5000; return Math.max(step,Math.round(v/step)*step); };
 D.BAITS.forEach(function(b){ if(!b.uses) b.price=D.tidyPrice(b.price); });
 D.GEAR.forEach(function(g){ g.price=D.tidyPrice(g.price); });
 D.ITEMS.forEach(function(i){ i.price=D.tidyPrice(i.price); });
-D.REGIONS.forEach(function(r){ r.ticket=D.tidyPrice(r.ticket); });
+D.REGIONS.forEach(function(r){ r.ticket=D.tidyPrice(r.ticket,D.TICKET_MULT); });
 D.BAIT_BY_ID={}; D.BAITS.forEach(function(b){ D.BAIT_BY_ID[b.id]=b; });
 D.GEAR_BY_ID={}; D.GEAR.forEach(function(g){ D.GEAR_BY_ID[g.id]=g; });
 D.BOATS=D.GEAR.filter(function(g){ return g.kind==='boat'&&!g.secret; }); // the Dev Flagship is never in the shop
