@@ -65,7 +65,7 @@ var T={
  japan:{sky:'temperate',back:'mountains',trees:'round',torii:1,ground:'#5A8A4A',water:['#2F84A0','#134262']},
  outback_river:{sky:'dry',back:'flat',trees:'gum',ground:'#B85A3A',water:['#6A6A3A','#2A2A14']},
  reef:{sky:'tropic',back:'open',trees:'palm',island:1,water:['#2AB8C8','#0A5A78']},
- trout_stream:{sky:'autumn',back:'ridges',trees:'autumn',cabin:1,stream:1,gravel:1,shallow:1,ground:'#8A7A5A',water:['#5AA8A0','#22605A']},
+ trout_stream:{sky:'autumn',back:'ridges',trees:'autumn',cabin:1,stream:1,gravel:1,shallow:1,ground:'#8A7A5A',water:['#74CEC6','#5AA48C']},
  beach:{sky:'temperate',back:'open',trees:'none',beach:1,lighthouse:1,ground:'#E2CC8E',water:['#2E86A8','#0C3456']}
 };
 S.themeOf=function(spot){ return T[spot&&spot.scene]||T.pond; };
@@ -234,6 +234,12 @@ function drawCabin(dk,t,night){ var x=Math.round(W*0.76), b=horizonY-21, wall=sh
 /* the stream: current streaks drifting downstream, mossy boulders with riffles, floating leaves */
 function drawStream(t,wt,lt,dkL){
   var a=Math.max(0.3,lt);
+  /* the autumn bank mirrored in the water, rippling */
+  var rh=Math.min(18,Math.max(6,floorY-wt-4)); ctx.save();
+  for(var r=0;r<rh;r++){ var src=horizonY-2-r, off=Math.round(Math.sin(t*1.6+r*0.9)*(1+r*0.12)); if(src<0) break; ctx.globalAlpha=0.34*Math.max(0.35,lt)*Math.pow(1-r/rh,1.4); ctx.drawImage(canvas,0,src,W,1,off,wt+1+r,W,1); }
+  ctx.restore();
+  /* sun glints dancing on the surface */
+  if(lt>0.45) for(var gi=0;gi<22;gi++){ var gx=Math.floor(hash(gi*4.7)*W), gy=wt+1+Math.floor(hash(gi*2.3)*5), on=Math.sin(t*(2.2+hash(gi)*2)+gi*1.9); if(on>0.6) P(gx,gy,'rgba(255,255,240,'+(0.9*(on-0.6)/0.4*lt).toFixed(2)+')'); }
   for(var k2=0;k2<W;k2+=2){ if(((k2+Math.floor(t*12))%11)<3) P(k2,wt+1,'rgba(240,252,248,'+(0.45*a).toFixed(2)+')'); }
   for(var i=0;i<34;i++){ var y=wt+2+Math.round(hash(i*3.9)*Math.max(6,(floorY-wt)*0.7)), len=4+Math.round(hash(i*1.7)*8), x=Math.floor((hash(i*7.1)*W*1.3+t*(10+hash(i)*10))%(W*1.3))-W*0.15; ctx.fillStyle='rgba(225,245,240,'+(0.22*a*(1-(y-wt)/Math.max(8,floorY-wt))).toFixed(3)+')'; ctx.fillRect(Math.round(x),y,len,1); }
   [[0.56,7],[0.8,5],[0.95,9]].forEach(function(r,k){ var cx=Math.round(W*r[0]), rr=r[1], rock=shade('#6A7068',0.15+dkL), moss=shade('#5A7A3A',0.15+dkL);
@@ -241,6 +247,15 @@ function drawStream(t,wt,lt,dkL){
     for(var f=0;f<5;f++){ var fx=cx-Math.floor(rr*1.3)-2-f*2-((Math.floor(t*6)+f)%2); P(fx,wt+((f+Math.floor(t*4))%2),'rgba(255,255,255,'+(0.6*a).toFixed(2)+')'); P(fx-1,wt+1,'rgba(255,255,255,'+(0.35*a).toFixed(2)+')'); } });
   var LC=['#D8742A','#E0A030','#B8402A','#C8902A'];
   for(i=0;i<6;i++){ var lx=Math.floor((hash(i*5.5)*W+t*(7+i))%(W+10))-5; R(lx,wt,2,1,shade(LC[i%4],0.2+dkL)); P(lx+1,wt-1,shade(LC[(i+1)%4],0.2+dkL)); }
+}
+/* clear water: soft dancing light on the stones and in the shallows */
+function drawCaustics(t,fy,lt,wt){
+  var a=0.6*Math.max(0.25,lt);
+  /* pebbles seen through the clear water, just above the bed */
+  for(var q=0;q<W/2;q++){ var qx=Math.round(hash(q*6.1)*W), qy=fy-1-Math.round(hash(q*3.3)*3); ctx.fillStyle=['rgba(176,160,120,0.55)','rgba(140,120,90,0.5)','rgba(200,190,160,0.45)','rgba(120,140,120,0.5)'][q%4]; ctx.fillRect(qx,qy,2+(q%2),2); }
+  for(var x=0;x<W;x+=1){ for(var k=0;k<5;k++){ var y=fy-4+k*3+Math.round(Math.sin(x*0.21+t*1.3+k)*1.2), v=Math.sin(x*0.17+t*1.9+k*2)+Math.sin(x*0.07-t*1.1+k)+Math.sin(x*0.31+t*0.7);
+      if(v>1.3) P(x,y,'rgba(255,252,220,'+(a*(v-1.3)/1.7).toFixed(3)+')'); } }
+  for(var i=0;i<18;i++){ var cx=Math.floor((hash(i*3.1)*W+t*(3+hash(i)*3))%W), cy=Math.round(wt+6+hash(i*5.9)*(fy-wt-12)), on=Math.sin(t*1.4+i*2.2); if(on>0.3){ ctx.fillStyle='rgba(235,255,250,'+(0.12*on*Math.max(0.3,lt)).toFixed(3)+')'; ctx.fillRect(cx,cy,3,1); ctx.fillRect(cx+1,cy+1,2,1); } }
 }
 /* leaves drifting down from the trees, and fireflies along the bank at dusk */
 function drawLeaves(t,wt,dk,h){
@@ -316,6 +331,7 @@ S.draw=function(ms){
     for(x=0;x<W;x++){ var fl2=fy+Math.round(1.5*Math.sin(x*0.13)+Math.sin(x*0.41)); R(x,fl2,1,1,sedHi); R(x,fl2+1,1,H-fl2,sed); }
     for(i=0;i<W/18;i++){ disc(Math.round(hash(i*5.3)*W),fy+1,1+Math.round(hash(i*2.1)*2),rock); }
     if(th.stream){ var PB=['#A08A6A','#8A6A4A','#B8A890','#6A7A6A','#A0705A','#C8B8A0']; for(i=0;i<W*1.2;i++){ var pxb=Math.round(hash(i*2.7)*W), pyb=fy+Math.round(hash(i*4.9)*(H-fy))-1; R(pxb,pyb,2+Math.round(hash(i)*2),2,shade(PB[i%PB.length],0.15+dkL)); } }
+    if(th.stream) drawCaustics(t,fy,lt,wt);
     var wn=Math.round(16*(th.ice?0.6:1)), wmax=Math.max(14,(fy-wt)*0.5);
     for(i=0;i<wn;i++){ var wx=Math.round(hash(i*9.7+sp.id.length)*W), wh=Math.round(6+hash(i*4.4)*wmax), col=i%2?shade('#3F8A47',0.2+dkL):shade('#2E6B3A',0.2+dkL); for(r=0;r<wh;r++){ var sway=Math.round(Math.sin(t*1.2+i+r*0.22)*(r/wh)*2.4); P(wx+sway,fy-r,col); if(r%4===2) P(wx+sway+(i%2?1:-1),fy-r,col); } }
   }
