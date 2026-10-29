@@ -71,7 +71,7 @@ let b=rpc('buy',[A.pid,A.secret,'bait','minnow']); ok(b.baits.includes('minnow')
 ok(rpc('buy',[A.pid,A.secret,'bait','minnow']).error==='you already own that','no double buy');
 b=rpc('buy',[A.pid,A.secret,'gear','hole2']); ok(b.gear.lines===2,'second line');
 b=rpc('buy',[A.pid,A.secret,'gear','line1']); b=rpc('buy',[A.pid,A.secret,'gear','line2']); ok(b.gear.line===2,'line upgrades in order');
-ok(rpc('buy',[A.pid,A.secret,'gear','skiff']).error==='buy the boat before this one first','boats are bought in order');
+{ const Z={pid:uuid(),secret:'z'.repeat(30)}; rpc('login',[Z.pid,Z.secret,'BoatJumper']); sql(`update players set coins=100000 where pid='${Z.pid}'`); const zb=rpc('buy',[Z.pid,Z.secret,'gear','sportfisher']); ok(zb.gear&&zb.gear.boats.includes('sportfisher')&&!zb.gear.boats.includes('kayak'),'boats can be bought in any order (a sportfisher first)'); }
 b=rpc('buy',[A.pid,A.secret,'gear','kayak']); ok(b.gear.boats.includes('kayak')&&b.gear.boat==='kayak','bought a kayak and took it out');
 b=rpc('buy',[A.pid,A.secret,'gear','skiff']); ok(b.gear.boats.includes('skiff')&&b.gear.boat==='skiff','bought a skiff');
 ok(rpc('set_boat',[A.pid,A.secret,'yacht']).error==='you do not own that boat','cannot take out a boat you do not own');
@@ -195,7 +195,7 @@ ok(rpc('react',[A.pid,A.secret,bFish,'noway']).ok===true,'reaction saved');
 ok(rpc('react',[A.pid,A.secret,bFish,'<script>']).error==='bad sticker','only preset stickers');
 ok(rpc('report_player',[A.pid,A.secret,B.pid,'name']).ok===true,'report filed');
 ok(rpc('suggest_lake',[A.pid,A.secret,'Lake Tahoe','California/Nevada']).ok===true,'lake suggestion filed');
-let adm=rpc('admin_overview',['oc-admin-testkey']); ok(adm.reports.length===1&&adm.suggestions.length===1&&adm.players===2,'admin overview');
+let adm=rpc('admin_overview',['oc-admin-testkey']); ok(adm.reports.length===1&&adm.suggestions.length===1&&adm.players===3,'admin overview');
 rpc('admin_player',['oc-admin-testkey',B.pid,'hide','true']);
 ok(rpc('get_profile',[B.pid])===null,'hidden player has no profile');
 ok(!rpc('get_board',['all',null,null]).some(x=>x.pid===B.pid),'hidden player off the board');

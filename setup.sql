@@ -1075,7 +1075,6 @@ begin
       gr := jsonb_set(gr, '{comfort}', 'true'::jsonb);
     elsif g.kind = 'boat' then
       if gr -> 'boats' ? g.id then perform oc_fail('you already own that boat'); end if;
-      if g.lvl > 0 and not exists (select 1 from gear x where x.kind = 'boat' and x.lvl = g.lvl - 1 and gr -> 'boats' ? x.id) then perform oc_fail('buy the boat before this one first'); end if;
       gr := jsonb_set(jsonb_set(gr, '{boats}', coalesce(gr -> 'boats', '["paddle"]'::jsonb) || to_jsonb(g.id)), '{boat}', to_jsonb(g.id));
     elsif g.kind = 'book' then
       if coalesce(gr -> 'books', '[]'::jsonb) ? g.id then perform oc_fail('you already own that'); end if;
