@@ -133,9 +133,9 @@ $$;
 create or replace function public.oc_legend_odds(l public.legends) returns numeric language plpgsql stable as $$
 declare base numeric; d numeric;
 begin
-  base := case l.tier when 'findable' then 2000 when 'rare' then 20000 else 100000 end;
-  -- Only Findable and Rare legends get easier over time. Mythic legends never do.
-  if l.tier = 'mythic' then return base; end if;
+  base := case l.tier when 'findable' then 2000 when 'rare' then 20000 when 'epic' then 50000 else 100000 end;
+  -- Only Findable and Rare legends get easier over time. Epic and Mythic legends never do.
+  if l.tier in ('mythic', 'epic') then return base; end if;
   d := extract(epoch from (now() - l.created_at)) / 86400.0;
   return greatest(50, base / power(2, floor(d / 14)));
 end $$;
@@ -689,7 +689,7 @@ end $$;
 create or replace function public.oc_fmt_lb(lb numeric) returns text language plpgsql immutable as $$
 declare oz int; p int; o int;
 begin
-  if lb >= 100 then return round(lb)::text || ' lb'; end if;
+  if lb >= 100 then return to_char(round(lb), 'FM999,999,999') || ' lb'; end if;
   oz := round(lb * 16); p := oz / 16; o := oz % 16;
   if p = 0 then return o || ' oz'; elsif o = 0 then return p || ' lb'; else return p || ' lb ' || o || ' oz'; end if;
 end $$;

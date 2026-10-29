@@ -710,3 +710,4 @@ body.halloween .dialog{border-color:#4A2A6A}
 .tank-label{font:17px/1.2 var(--term);color:#E8D8B0;text-align:center;min-height:20px}
 .tank-label b{color:var(--gold);font-weight:400}
 .item .ev-tag.dev{background:#3CF0FF;color:#0E1322}
+.tier.epic{border-color:#FF4D5E;color:#FF6A78}

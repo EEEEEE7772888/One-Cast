@@ -87,7 +87,7 @@ ok(rpc('cast_line',[A.pid,A.secret,0,'shrimp']).error==='take out a skiff or big
 rpc('travel',[A.pid,A.secret,'basslake']); ok(rpc('set_boat',[A.pid,A.secret,'skiff']).gear.boat==='skiff','took out the skiff');
 let t=rpc('travel',[A.pid,A.secret,'everglades']); ok(t.spot==='everglades'&&t.legendsHere[0].name==='The Swamp King','traveled to the Everglades, Swamp King waiting');
 ok(rpc('travel',[A.pid,A.secret,'basslake']).spot==='basslake','going home is free'); rpc('travel',[A.pid,A.secret,'everglades']);
-ok(rpc('cast_line',[A.pid,A.secret,0,'worm']).error==='nothing here bites on that','nothing in the Everglades takes worms');
+ok(rpc('cast_line',[A.pid,A.secret,0,'worm']).line,'pinfish take worms in the Everglades now'); sql(`delete from lines where pid='${A.pid}'`); ok(rpc('cast_line',[A.pid,A.secret,0,'fly']).error,'but nothing there takes a dry fly');
 rpc('buy',[A.pid,A.secret,'bait','shrimp']);
 c=rpc('cast_line',[A.pid,A.secret,0,'shrimp']); ok(c.line&&c.line.spot==='everglades','cast shrimp from the boat');
 rpc('reel_line',[A.pid,A.secret,0]);
@@ -564,6 +564,22 @@ console.log('12-hour soak');
   r=soak('worm','bluegill',0.5,13); ok(r.result==='catch'&&(r.soakBonus?r.fish.lb>=20:r.fish.lb==0.5),'worms at Farm Pond: '+(r.soakBonus?'bonus '+r.fish.sp:'no 20 lb fish takes worms there, no bonus'));
   let lbs=[]; sql(`update players set spot='basslake' where pid='${P.pid}'`); for(let i=0;i<20;i++){ const x=soak('cut','channel',3,14); if(x.fish) lbs.push(+x.fish.lb); }
   ok(lbs.length===20&&Math.min(...lbs)>=20,'20 soaks in a row are all 20 lb+ (smallest '+Math.min(...lbs)+', biggest '+Math.max(...lbs)+')');
+}
+
+console.log('new spots, fish and the Megalodon');
+{
+  const meg=JSON.parse(sql(`select row_to_json(l) from legends l where spot='mariana' and active`));
+  ok(meg&&meg.name==='Megalodon'&&meg.species==='megalodon'&&meg.tier==='epic'&&+meg.lb===62000,'the Megalodon lives in the Mariana Trench');
+  const odds=sql(`select name||'='||round(oc_legend_odds(l)) from legends l where active order by oc_legend_odds(l) desc limit 3`).split('\n');
+  ok(odds.length===3&&/^Megalodon=50000$/.test(odds[2])&&/=100000$/.test(odds[0])&&/=100000$/.test(odds[1]),'it is the third rarest legend: '+odds.join(', '));
+  ok(sql(`select count(*) from (select (oc_roll('mariana','deepbait',2000,'night',false)).species from generate_series(1,300)) x where species='megalodon'`)==='0','megalodons never bite as normal fish');
+  ok(+sql(`select count(*) from oc_index_species('all') x where x='megalodon'`)===0,'the Megalodon is not part of the index');
+  for(const sp of ['shannon','danube','lofoten','baikal','kaveri','tokyobay','congo','nasser','mariana']) ok(sql(`select count(*) from legends where spot='${sp}' and active`)==='1','new spot '+sp+' has a legend');
+  const roll=(spot,bait,per)=>sql(`select string_agg(distinct species, ',') from (select (oc_roll('${spot}','${bait}',300,'${per}',false)).species from generate_series(1,400)) x`);
+  ok(/pinfish/.test(roll('hatteras','worm','day'))&&/sheepshead/.test(roll('hatteras','shrimp','day')),'pinfish and sheepshead at Cape Hatteras');
+  ok(/bullshark/.test(roll('keysflats','mullet','dusk')),'bull sharks in the Keys');
+  ok(/longnosegar/.test(roll('mississippi','minnow','day'))&&/spottedgar/.test(roll('mississippi','minnow','day')),'longnose and spotted gar in the Mississippi');
+  ok(/goliathtiger/.test(roll('congo','cut','day'))&&/mahseer/.test(roll('kaveri','sucker','day'))&&/omul/.test(roll('baikal','minnow','day'))&&/zander/.test(roll('danube','minnow','dusk')),'goliath tigerfish, mahseer, omul and zander bite in their new homes');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -14,6 +14,13 @@ function dark(c,t){ return mix(c,'#000000',t); }
 /* Body plans. tail: fork | deepfork | crescent | round | square | shark | eel | fan
    dorsal: soft | spiny | long | back | sail | tiny | none ; adipose: small fin near tail (salmon, catfish) */
 var PLAN={
+ longnosegar:{tail:'round',dorsal:'back',beak:2}, spottedgar:{tail:'round',dorsal:'back',beak:1}, pinfish:{tail:'fork',dorsal:'spiny',mouth:0.05},
+ sheepshead:{tail:'square',dorsal:'spiny',mouth:0.06,teeth:1}, bullshark:{tail:'shark',dorsal:'shark',mouth:0.18,slits:1,blunt:1},
+ bream:{tail:'deepfork',dorsal:'soft',mouth:0.05}, zander:{tail:'fork',dorsal:'spiny',mouth:0.14,fangs:1}, saithe:{tail:'fork',dorsal:'triple'},
+ omul:{tail:'deepfork',dorsal:'soft',adipose:1}, mahseer:{tail:'deepfork',dorsal:'soft',whisk:1}, rohu:{tail:'fork',dorsal:'soft'},
+ suzuki:{tail:'fork',dorsal:'spiny',mouth:0.16,jaw:1}, madai:{tail:'fork',dorsal:'spiny',mouth:0.06}, goliathtiger:{tail:'deepfork',dorsal:'soft',adipose:1,fangs:2,jaw:1,teeth:2,mouth:0.2},
+ sixgill:{tail:'shark',dorsal:'back',mouth:0.14,slits:2}, grenadier:{tail:'eel',dorsal:'spiny',mouth:0.08},
+ megalodon:{tail:'shark',dorsal:'shark',mouth:0.3,jaw:1,slits:1,gape:1},
  ghostcarp:{tail:'fork',dorsal:'long',whisk:1}, pumpkinbass:{tail:'square',dorsal:'spiny',mouth:0.2,jaw:1}, phantomdrum:{tail:'square',dorsal:'spiny',ocellus:1},
  brook:{tail:'square',dorsal:'soft',adipose:1}, chub:{tail:'fork',dorsal:'soft'},
  reddrum:{tail:'square',dorsal:'spiny',ocellus:1}, bluefish:{tail:'fork',dorsal:'spiny',mouth:0.15,jaw:1}, spot:{tail:'fork',dorsal:'spiny',mouth:0.05},
@@ -53,7 +60,7 @@ A.PLAN=PLAN;
 var LEGEND_FX={
  'Old Bucketmouth':['scars','moss'],'Mudbelly':['scars','glow'],'The Texas Hog':['crown','scars'],'The Subway Carp':['shimmer','crown'],
  "Nessie's Shadow":['glow','smoke'],'The Iron Sturgeon':['armor','barnacles'],'The Swamp King':['crown','moss','scars'],'Big Mama':['crown','scars'],
- 'Old Scar':['scars','scars2','glow'],'The Silver Ghost':['shimmer','ghost'],'The Wreck Keeper':['barnacles','moss','glow'],'The River Dragon':['armor','crown','glow'],
+ 'Megalodon':['scars','scars2','glow','abyss'], 'Old Scar':['scars','scars2','glow'],'The Silver Ghost':['shimmer','ghost'],'The Wreck Keeper':['barnacles','moss','glow'],'The River Dragon':['armor','crown','glow'],
  'The Kena King':['crown','shimmer'],'The Kenai King':['crown','shimmer'],'The Kona Ghost':['ghost','shimmer'],'The Blue Emperor':['crown','shimmer'],'The Arapaima Queen':['crown','glow'],
  'Grandfather Redtail':['scars','moss'],'Mputa the Giant':['scars','crown'],'The Striped Devil':['glow','fangs'],'El Monstruo':['glow','moss','scars'],
  'The River Wolf':['scars','glow'],'The Golden Buddha':['shimmer','crown'],'The Biwa Record':['crown'],'The Old Man of the Murray':['moss','scars'],
@@ -196,6 +203,18 @@ A.fishGrid2=function(lk,plan,L,fx){
   var mouthLen=Math.max(1,Math.round(span*(plan.mouth||0.06))), my=Math.round(cy+half*(plan.jaw?0.15:0.25));
   if(!flat&&L>10){ for(k=0;k<mouthLen;k++){ var mx=nose-k; if(get(mx,my)) set(mx,my,'mouth'); } set(nose+1,my,'out'); }
   if(plan.fangs&&L>14){ set(nose-1,my+1,'tooth'); if(plan.fangs>1||L>30) set(nose-3,my+1,'tooth'); }
+  /* a row of teeth along the jaw (sheepshead, goliath tigerfish, and the Megalodon's whole mouthful) */
+  if(plan.teeth&&L>16){ var tn=Math.max(2,Math.round(mouthLen*(plan.teeth>2?1:0.7))); for(k=1;k<tn;k+=2){ var tx=nose-k; if(get(tx,my-1)) set(tx,my-1,'tooth'); if(plan.teeth>1&&get(tx-1,my+1)) set(tx-1,my+1,'tooth'); }
+    if(plan.teeth>2&&L>40){ for(k=2;k<tn;k+=3){ if(get(nose-k,my+2)) set(nose-k,my+2,'tooth'); } } }
+  /* an open mouth full of jagged teeth (the Megalodon) */
+  if(plan.gape&&L>30){ var gL=Math.max(6,Math.round(span*0.2)), gmy=Math.round(cy+half*0.22);
+    for(k=0;k<=gL;k++){ var gxk=nose-k, op=Math.round((1-k/gL)*half*0.55); if(op<1) continue;
+      for(y=gmy-op;y<=gmy+op;y++){ if(get(gxk,y)) set(gxk,y,(y===gmy-op||y===gmy+op)?'gumL':'gum'); }
+      if(k%3===0){ set(gxk,gmy-op,'tooth'); set(gxk,gmy-op+1,'tooth'); if(op>3) set(gxk,gmy-op+2,'tooth'); set(gxk,gmy+op,'tooth'); set(gxk,gmy+op-1,'tooth'); if(op>3) set(gxk,gmy+op-2,'tooth'); }
+      else if(k%3===1){ set(gxk,gmy-op,'tooth'); set(gxk,gmy+op,'tooth'); } }
+    for(x=nose+1;x<=nose+2;x++) for(y=gmy-2;y<=gmy+2;y++) if(get(x,y)) set(x,y,'gum'); }
+  /* shark gill slits */
+  if(plan.slits&&L>18){ var n5=plan.slits>1?6:5, gs=bodyStart+Math.round(span*0.66); for(var gi2=0;gi2<n5;gi2++){ var gxx=gs+gi2*Math.max(1,Math.round(span*0.022)); for(y=Math.round(cy-half*0.35);y<=Math.round(cy+half*0.3);y++){ if(get(gxx,y)&&get(gxx,y)!=='F') set(gxx,y,'dD'); } } }
   var ex=bodyStart+Math.round(span*(lk.blunt?0.84:plan.duck?0.86:0.88)), ey=Math.round(cy-half*(flat?0.55:plan.flathead?0.25:0.32)), glow=has('glow')||has('smoke');
   if(L<16){ set(ex,ey,'eye'); }
   else if(L<34){ set(ex,ey,'eye'); set(ex+1,ey,'eye'); set(ex,ey+1,'eye'); set(ex+1,ey+1,'eye'); set(ex,ey,'hl'); if(lk.bigEye){ set(ex-1,ey,'iris'); set(ex-1,ey+1,'iris'); } }
@@ -230,12 +249,13 @@ function palette(lk,variant,colors,fx){
     S:c.spot, SL:light(c.spot,0.25), band:lk.band||c.spot, bandD:dark(lk.band||c.spot,0.2),
     gill:dark(c.b,0.35), mouth:dark(c.d,0.5), tooth:'#F4F4E8', out:dark(c.d,0.72), outT:mix(c.d,'#FFFFFF',0.22), eye:'#0B0F14', iris:variant==='albino'?'#D04A5A':mix(c.d,'#E8C860',0.55), hl:'#F8F8F0',
     scar:light(c.b,0.55), moss:'#4E7A2E', barn:'#C8C4B0', barnD:'#8A8676', crown:'#FFC94A', crownD:'#C98A12', crownL:'#FFF2B0', gem:'#E5484D', shim:light(c.b,0.6), arm:light(c.d,0.4), gst:'#FFFFFF', frs:'#DFF2FF',
-    glowE:'#FF5A3A', glowC:'#FFE08A', oc:'#E05A2A', ocD:'#0B0F14', aura:'rgba(255,201,74,0.5)', auraO:'rgba(255,201,74,0.18)', auraL:'rgba(255,248,200,0.95)', smoke:'rgba(160,190,220,0.25)'
+    gum:'#4A0A12', gumL:'#8A1A24', glowE:'#FF5A3A', glowC:'#FFE08A', oc:'#E05A2A', ocD:'#0B0F14', aura:'rgba(255,201,74,0.5)', auraO:'rgba(255,201,74,0.18)', auraL:'rgba(255,248,200,0.95)', smoke:'rgba(160,190,220,0.25)'
   };
   if(variant==='albino'){ p.eye='#B0303A'; p.hl='#FFD0D8'; p.band='#F4C8D0'; p.bandD='#E0B0BA'; p.out=dark(c.d,0.45); }
   if(variant==='golden'){ p.bL='#FFF2B0'; p.out='#5A3A00'; }
   if(fx&&fx.length){ var col=(colors&&colors.spot)||'#FFC94A';
     if(fx.indexOf('ghost')>=0||fx.indexOf('frost')>=0){ p.aura='rgba(190,230,255,0.5)'; p.auraO='rgba(190,230,255,0.18)'; p.auraL='rgba(240,250,255,0.95)'; }
+    else if(fx.indexOf('abyss')>=0){ p.aura='rgba(230,40,50,0.5)'; p.auraO='rgba(120,20,60,0.22)'; p.auraL='rgba(255,190,170,0.95)'; p.glowE='#FF2A2A'; p.glowC='#FFE4D8'; p.scar='#C8D0D8'; }
     else if(fx.indexOf('smoke')>=0){ p.aura='rgba(140,100,230,0.5)'; p.auraO='rgba(140,100,230,0.2)'; p.auraL='rgba(220,200,255,0.95)'; p.glowE='#9AF0FF'; p.glowC='#FFFFFF'; }
     else if(fx.indexOf('glow')>=0){ p.aura='rgba(255,120,60,0.45)'; p.auraO='rgba(255,120,60,0.16)'; p.auraL='rgba(255,220,150,0.95)'; } }
   return p;
