@@ -286,7 +286,7 @@ D.GEAR=[
  {id:'rod3',name:'Bass casting rod',price:150,kind:'rod',lvl:3,desc:'Stiff backbone for hook-sets. Fish are 13% bigger.'},
  {id:'rod4',name:'Surf rod',price:250,kind:'rod',lvl:4,desc:'Twelve feet long, casts a mile. Fish are 18% bigger.'},
  {id:'rod5',name:'Graphite pro rod',price:500,kind:'rod',lvl:5,desc:'Feels every bump. Fish are 24% bigger.'},
- {id:'rod6',name:'Custom tournament rod',price:5000,fixed:true,kind:'rod',lvl:6,desc:'Hand-wrapped by a rod builder. Fish are 30% bigger.'},
+ {id:'rod6',name:'Custom tournament rod',price:3000,fixed:true,kind:'rod',lvl:6,desc:'Hand-wrapped by a rod builder. Fish are 30% bigger.'},
  {id:'hole2',name:'Second line',price:400,kind:'lines',lvl:2,desc:'Fish two lines at once.'},
  {id:'hole3',name:'Third line',price:1250,kind:'lines',lvl:3,desc:'Fish three lines at once.'},
  {id:'hole4',name:'Fourth line',price:4250,kind:'lines',lvl:4,desc:'Fish four lines at once, the most allowed.'},
