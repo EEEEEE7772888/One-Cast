@@ -102,7 +102,7 @@ D.BAITS=[
  {id:'shrimp',name:'Live shrimp',price:4000,tau:60,capMax:0.6,minBite:3,biteMean:12,rate:'HIGH',water:'salt',desc:'Fast saltwater action',timing:'Steady bites every 15 minutes. Inshore fish, medium size.'},
  {id:'squid',name:'Squid',price:12000,tau:300,capMax:1,minBite:10,biteMean:90,rate:'OK',water:'salt',desc:'Reef and bottom fish',timing:'A bite every hour or two. Snapper, grouper, cod and halibut.'},
  {id:'mullet',name:'Live mullet',price:30000,tau:600,capMax:1,minBite:15,biteMean:240,rate:'LOW',water:'salt',desc:'Big inshore predators',timing:'A bite every 4 hours. Tarpon, snook, barracuda and giants.'},
- {id:'lure',name:'Trolling lures',price:80000,tau:240,capMax:1,minBite:10,biteMean:60,rate:'OK',water:'troll',desc:'Tuna, marlin, mahi-mahi',timing:'A strike every hour or so while the boat trolls. The longer the troll, the bigger the fish.'},
+ {id:'lure',name:'Trolling lures',price:50000,fixed:true,tau:240,capMax:1,minBite:10,biteMean:60,rate:'OK',water:'troll',desc:'Tuna, marlin, mahi-mahi',timing:'A strike every hour or so while the boat trolls. The longer the troll, the bigger the fish.'},
  {id:'deepbait',name:'Deep-drop rig',price:200000,tau:900,capMax:1,minBite:20,biteMean:480,rate:'VERY LOW',water:'deep',desc:'Bottom monsters',timing:'A bite every 8 hours. The things that live in the dark are enormous.'}
 ];
 /* Which baits each method can use. */
@@ -451,7 +451,7 @@ D.REGION_BY_ID={}; D.REGIONS.forEach(function(r){ D.REGION_BY_ID[r.id]=r; });
 D.PRICE_MULT=0.75;  // shops: 25% below the original prices
 D.TICKET_MULT=0.6;  // map tickets: 40% below, the same cut as fish
 D.tidyPrice=function(x,mult){ if(!x) return 0; var v=x*(mult||D.PRICE_MULT), step=v<100?5:v<1000?10:v<10000?50:v<100000?500:5000; return Math.max(step,Math.round(v/step)*step); };
-D.BAITS.forEach(function(b){ if(!b.uses) b.price=D.tidyPrice(b.price); });
+D.BAITS.forEach(function(b){ if(!b.uses&&!b.fixed) b.price=D.tidyPrice(b.price); });
 D.GEAR.forEach(function(g){ if(!g.fixed) g.price=D.tidyPrice(g.price); }); // fixed: priced on purpose, no discount
 D.ITEMS.forEach(function(i){ i.price=D.tidyPrice(i.price); });
 D.REGIONS.forEach(function(r){ r.ticket=D.tidyPrice(r.ticket,D.TICKET_MULT); });
@@ -494,6 +494,8 @@ D.FISH_TIERS=[
  {id:4,name:'Trophy fish',min:2000,color:'#FF9F3A'},
  {id:5,name:'Monster fish',min:8000,color:'#FF4D6D'}
 ];
+/* the cut-offs follow fish prices, so cheaper fish don't knock spots down a colour on the map */
+D.FISH_TIERS.forEach(function(t){ t.min=Math.round(t.min*D.VALUE_MULT); });
 D.spotValue=function(spotId){ if(D._sv&&D._sv[spotId]!=null) return D._sv[spotId]; D._sv=D._sv||{}; var tw=0,tv=0;
   D.SPECIES.forEach(function(sp){ var w=(sp.spots||{})[spotId]||0; if(!w||sp.protected) return; tw+=w; tv+=w*(sp.min+(sp.max-sp.min)*0.3)*sp.rate; });
   return (D._sv[spotId]=tw?Math.round(tv/tw):0); };
