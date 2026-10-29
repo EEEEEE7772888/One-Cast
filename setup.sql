@@ -833,7 +833,7 @@ begin
 end $$;
 
 create or replace function public.reel_line(p_pid uuid, p_secret text, p_idx int) returns jsonb language plpgsql security definer set search_path = public as $$
-declare p public.players; ln public.lines; sp public.spots; l public.legends; per text; mins numeric; test int; f public.fish; j jsonb; val bigint; nsp boolean; nbest boolean; worldrec boolean := false; prevbest numeric; cnt int; st jsonb; dl jsonb; reward bigint := 0; res jsonb;
+declare soak boolean := false; ac record; pick_id text; cur public.species; p public.players; ln public.lines; sp public.spots; l public.legends; per text; mins numeric; test int; f public.fish; j jsonb; val bigint; nsp boolean; nbest boolean; worldrec boolean := false; prevbest numeric; cnt int; st jsonb; dl jsonb; reward bigint := 0; res jsonb;
 begin
   p := oc_auth(p_pid, p_secret);
   select * into ln from lines where pid = p_pid and idx = p_idx for update;
@@ -864,6 +864,26 @@ begin
     return jsonb_build_object('result', 'legend', 'fish', oc_fish_json(f), 'legend', oc_legend_json((select x from legends x where x.id = l.id)), 'now', now());
   end if;
   if ln.species is null then return jsonb_build_object('result', 'nothing', 'now', now()); end if;
+  -- The 12-hour soak: a bait line left out for 12 hours or more always brings in a fish of at least 20 lb,
+  -- if anything at this spot that takes this bait can grow that big (hand-worked lures and small-fish-only water don't count).
+  if not oc_is_lure(ln.bait) and now() - ln.cast_at >= interval '12 hours' and ln.lb < 20 then
+    select * into ac from oc_access(p, sp);
+    if not ac.small then
+      select * into cur from species where id = ln.species;
+      if cur.max_lb >= 20 then pick_id := null;
+      else
+        select s.id into pick_id from spot_species ss join species s on s.id = ss.species join species_baits sb on sb.species = s.id and sb.bait = ln.bait
+          where ss.spot = ln.spot and ss.w > 0 and sb.w > 0 and s.max_lb >= 20 and (s.event is null or oc_event_on(s.event))
+          order by -log(random()) / (ss.w * sb.w) limit 1;
+      end if;
+      if cur.max_lb >= 20 or pick_id is not null then
+        if pick_id is not null then ln.species := pick_id; select * into cur from species where id = pick_id; end if;
+        ln.lb := round((20 + (least(cur.max_lb, 20 + (cur.max_lb - 20) * 0.35) - 20) * power(random(), 1.5)) * 16) / 16;
+        ln.inches := round(cur.k * cbrt(ln.lb) * 4) / 4;
+        soak := true;
+      end if;
+    end if;
+  end if;
   if ln.lb > test and ln.snap then
     update players set stats = jsonb_set(stats, '{snaps}', to_jsonb(coalesce((stats ->> 'snaps')::int, 0) + 1)) where pid = p_pid;
     return jsonb_build_object('result', 'snap', 'sp', ln.species, 'lb', ln.lb, 'test', test, 'now', now());
@@ -912,6 +932,7 @@ begin
     perform oc_news(ln.variant, p_pid, p.name || '#' || p.tag || ' caught a ' || ln.variant || ' ' || (select name from species where id = ln.species) || '!', jsonb_build_object('sp', ln.species, 'lb', ln.lb, 'variant', ln.variant, 'fish', f.id)); end if;
   res := jsonb_build_object('result', 'catch', 'fish', oc_fish_json(f), 'newSpecies', nsp, 'newBest', nbest, 'worldRecord', worldrec, 'minutes', round(mins), 'daily', dl, 'reward', reward, 'now', now());
   res := res || jsonb_build_object('derby', oc_derby_enter(p_pid, f));
+  if soak then res := res || jsonb_build_object('soakBonus', true); end if;
   return res;
 end $$;
 

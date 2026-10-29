@@ -165,6 +165,7 @@ G.reel=function(){
     G.renderAll(); G.coachEvent('reel');
     setTimeout(function(){ UI.showCard(G.last); },wait+350);
     if(r.derby&&UI.derbyCatch) setTimeout(function(){ UI.derbyCatch(r.derby); },wait+900);
+    if(r.soakBonus) setTimeout(function(){ G.toast('12-HOUR SOAK BONUS! Your bait was out over 12 hours, so you got a fish of 20 lb or more.',4200,'good'); },wait+400);
     if(r.daily) G.s.daily=r.daily;
   }).catch(function(e){ G.fail(e); if(!e.offline) G.refresh(true); }).then(function(){ G.busy=false; G.renderPanel(); });
 };

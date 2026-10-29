@@ -551,5 +551,20 @@ console.log('dev outfit');
   ok(rpc('set_outfit',[P.pid,P.secret,{hat:'hat_dev',coat:'coat_dev',pants:'pants_dev',boots:'boots_dev'}]).hat==='hat_dev','and it can be worn');
 }
 
+console.log('12-hour soak');
+{
+  const P={pid:uuid(),secret:'s'.repeat(10)+uuid().replace(/-/g,'').slice(0,20)}; rpc('login',[P.pid,P.secret,'Soaker']);
+  sql(`update players set baits=baits||'{minnow,cut}', gear=jsonb_set(gear,'{line}','5'), spot='basslake' where pid='${P.pid}'`);
+  const soak=(bait,sp,lb,hours)=>{ rpc('cast_line',[P.pid,P.secret,0,bait]); sql(`update lines set cast_at=now()-interval '${hours} hours', bite_at=now()-interval '1 minute', species='${sp}', lb=${lb}, inches=8, snap=false, legend_roll=0.99 where pid='${P.pid}'`); return rpc('reel_line',[P.pid,P.secret,0]); };
+  let r=soak('minnow','largemouth',2,13); ok(r.result==='catch'&&r.fish.lb>=20&&r.fish.sp==='largemouth'&&r.soakBonus,'13 hours on a minnow: the 2 lb bass becomes a '+(r&&r.fish&&r.fish.lb)+' lb bass');
+  r=soak('minnow','bluegill',0.5,12.2); ok(r.result==='catch'&&r.fish.lb>=20&&r.soakBonus&&D.SP_BY_ID[r.fish.sp].max>=20,'a bluegill turns into a fish that can be 20 lb+ ('+(r.fish&&r.fish.sp)+' '+(r.fish&&r.fish.lb)+' lb)');
+  r=soak('minnow','largemouth',2,11); ok(r.result==='catch'&&r.fish.lb==2&&!r.soakBonus,'11 hours: no bonus');
+  r=soak('minnow','largemouth',25,13); ok(r.result==='catch'&&r.fish.lb==25&&!r.soakBonus,'a fish already 20 lb+ is left alone');
+  sql(`update players set spot='farmpond' where pid='${P.pid}'`);
+  r=soak('worm','bluegill',0.5,13); ok(r.result==='catch'&&(r.soakBonus?r.fish.lb>=20:r.fish.lb==0.5),'worms at Farm Pond: '+(r.soakBonus?'bonus '+r.fish.sp:'no 20 lb fish takes worms there, no bonus'));
+  let lbs=[]; sql(`update players set spot='basslake' where pid='${P.pid}'`); for(let i=0;i<20;i++){ const x=soak('cut','channel',3,14); if(x.fish) lbs.push(+x.fish.lb); }
+  ok(lbs.length===20&&Math.min(...lbs)>=20,'20 soaks in a row are all 20 lb+ (smallest '+Math.min(...lbs)+', biggest '+Math.max(...lbs)+')');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);
