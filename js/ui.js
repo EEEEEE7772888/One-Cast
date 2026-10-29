@@ -231,6 +231,7 @@ function renderShop(){
   D.ITEMS.filter(function(i){ return i.slot===shopTab&&(!i.prize||G.s.items.indexOf(i.id)>=0)&&(!i.event||D.eventOn(i.event)||G.s.items.indexOf(i.id)>=0); }).sort(function(a,b){ return (b.event&&D.eventOn(b.event)?1:0)-(a.event&&D.eventOn(a.event)?1:0); }).forEach(function(it){ var own=G.s.items.indexOf(it.id)>=0, worn=G.s.outfit[it.slot]===it.id, b=el('button','item'+(it.event?' event':'')); b.type='button'; b.setAttribute('aria-pressed',String(shopPreview?shopPreview===it.id:worn));
     var of=Object.assign({},G.s.outfit); of[it.slot]=it.id; var c=A.fisherCanvas(of), cc=document.createElement('canvas'); cc.width=c.width; cc.height=c.height; cc.className='px'; cc.getContext('2d').drawImage(c,0,0); b.appendChild(cc);
     if(it.event) b.appendChild(el('span','ev-tag',esc(D.EVENTS[it.event].name.toUpperCase())));
+    if(it.dev) b.appendChild(el('span','ev-tag dev','1 OF 1'));
     b.appendChild(el('span','in',esc(it.name))); b.appendChild(el('span','ip'+(worn?' worn':own?' own':''),worn?'WEARING':own?'OWNED':D.money(it.price))); b.onclick=function(){ shopPreview=it.id; renderShop(); }; grid.appendChild(b); });
   var pv=$('dressPreview'), src=A.fisherCanvas(previewOutfit()); pv.width=src.width; pv.height=src.height; pv.getContext('2d').drawImage(src,0,0);
   var it=shopPreview?D.ITEM_BY_ID[shopPreview]:null, own=it&&G.s.items.indexOf(it.id)>=0, worn=it&&G.s.outfit[it.slot]===it.id;

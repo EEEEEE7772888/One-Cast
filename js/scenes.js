@@ -411,7 +411,10 @@ S.draw=function(ms){
   /* angler */
   var fX=aX-(fx&&fx.big&&(m==='ice'||m==='shore')?Math.min(12,Math.max(0,Math.round(A.fishCanvas(fx.sp,fx.L,false,fx.variant,fx.colors).height/2)-6)):0), fY=aY;
   drawCrew(m,aX,aY,t,wt,fy,boatInfo);
-  ctx.drawImage(A.fisherCanvas(S.hooks.outfit()),fX,fY);
+  var ofit=S.hooks.outfit(); if(ofit&&ofit.hat==='hat_dev'){ // the Dev outfit: a neon glow and sparkles around the angler
+    var dg=ctx.createRadialGradient(fX+6,fY+10,0,fX+6,fY+10,20); dg.addColorStop(0,'rgba(60,240,255,'+(0.22+0.08*Math.sin(t*3)).toFixed(3)+')'); dg.addColorStop(1,'rgba(60,240,255,0)'); ctx.fillStyle=dg; ctx.fillRect(fX-16,fY-12,44,44);
+    for(var si=0;si<6;si++){ var sa=t*1.6+si*1.047, sr=12+Math.sin(t*2+si)*2, sxp=Math.round(fX+6+Math.cos(sa)*sr), syp=Math.round(fY+9+Math.sin(sa)*sr*0.8); if(Math.floor(t*6+si)%3) P(sxp,syp,si%2?'#3CF0FF':'#FFC94A'); } }
+  ctx.drawImage(A.fisherCanvas(ofit),fX,fY);
   if(lt<0.5){ var g2=ctx.createRadialGradient(fX-3,fY+15,0,fX-3,fY+15,22); g2.addColorStop(0,'rgba(255,200,110,'+(0.35*(1-lt*2)).toFixed(2)+')'); g2.addColorStop(1,'rgba(255,200,110,0)'); ctx.fillStyle=g2; ctx.fillRect(fX-26,fY-8,48,40); }
   A.drawSprite(ctx,[".k.","yYy","yYy","kkk"],{k:'#2A2A2A',y:'#C98A12',Y:'#FFE08A'},fX-4,fY+14);
   /* rod and line for the selected line */

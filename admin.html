@@ -5,7 +5,7 @@
 <meta name="robots" content="noindex">
 <title>One Cast Admin</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
-<link rel="stylesheet" href="css/game.css?v=c69aaafc">
+<link rel="stylesheet" href="css/game.css?v=2a67ed6b">
 <style>
 .bars{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:3px;align-items:end;height:150px;padding:6px;background:#0A1530;border:2px solid #23406E}
 .bars .bar{display:grid;grid-template-rows:auto minmax(0,1fr) auto;height:100%;text-align:center;font:12px/1.1 monospace;color:#93B2D2}
@@ -42,7 +42,7 @@ body{overflow:auto;padding:16px}
     <span class="k">RECENTLY SEEN</span><div id="recent" style="display:grid;gap:6px"></div>
   </div>
 </div>
-<script src="js/data.js?v=a3374324"></script>
+<script src="js/data.js?v=e189aa47"></script>
 <script src="js/net.js?v=387e866f"></script>
 <script>
 (function(){
@@ -66,6 +66,11 @@ function playerLine(p){ var d=document.createElement('div'); d.className='line';
   gb.onclick=function(){ if(!confirm('Give the one-of-one Dev Flagship to '+p.name+'#'+p.tag+'?\n\nOnly give it to your own account.')) return;
     rpc('admin_player',{p_pid:p.pid,p_action:'giveboat',p_value:'devboat'}).then(function(){ alert('Done! '+p.name+' now has the Dev Flagship. Reload the game to see it.'); }).catch(function(e){ alert(e.message); }); };
   b.appendChild(gb);
+  var go=document.createElement('button'); go.className='pbtn gold'; go.textContent='GIVE DEV OUTFIT';
+  go.onclick=function(){ if(!confirm('Give the one-of-one Dev outfit (crown, jacket, pants, gold boots) to '+p.name+'#'+p.tag+'?\n\nOnly give it to your own account.')) return;
+    ['hat_dev','coat_dev','pants_dev','boots_dev'].reduce(function(pr,id){ return pr.then(function(){ return rpc('admin_player',{p_pid:p.pid,p_action:'giveitem',p_value:id}); }); },Promise.resolve())
+      .then(function(){ alert('Done! '+p.name+' has the Dev outfit. In the game: Menu > Clothes to put it on.'); }).catch(function(e){ alert(e.message); }); };
+  b.appendChild(go);
   var bs=document.createElement('select'); bs.className='pbtn'; bs.title='Pick a bait to gift';
   window.OC.BAITS.forEach(function(x){ var o=document.createElement('option'); o.value=x.id; o.textContent=x.name; bs.appendChild(o); });
   var gbt=document.createElement('button'); gbt.className='pbtn gold'; gbt.textContent='GIFT BAIT';

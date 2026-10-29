@@ -709,3 +709,4 @@ body.halloween .dialog{border-color:#4A2A6A}
 .tank-cv{width:100%;height:auto;aspect-ratio:2/1;image-rendering:pixelated;cursor:pointer;display:block}
 .tank-label{font:17px/1.2 var(--term);color:#E8D8B0;text-align:center;min-height:20px}
 .tank-label b{color:var(--gold);font-weight:400}
+.item .ev-tag.dev{background:#3CF0FF;color:#0E1322}

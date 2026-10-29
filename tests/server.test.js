@@ -541,5 +541,15 @@ console.log('halloween event');
   sql(`update config set v = jsonb_set(v,'{halloween}', '${JSON.stringify(D.EVENTS.halloween)}'::jsonb) where k='events'`);
 }
 
+console.log('dev outfit');
+{
+  const K='oc-admin-testkey', P={pid:uuid(),secret:'n'.repeat(10)+uuid().replace(/-/g,'').slice(0,20)}; rpc('login',[P.pid,P.secret,'DevGuy']); sql(`update players set coins=999999 where pid='${P.pid}'`);
+  ok(rpc('buy',[P.pid,P.secret,'item','hat_dev']).error==='no such item','nobody can buy the Dev crown');
+  ok(rpc('admin_player',['wrong',P.pid,'giveitem','hat_dev']).error==='not the admin key','only the admin can give it');
+  ['hat_dev','coat_dev','pants_dev','boots_dev'].forEach(id=>rpc('admin_player',[K,P.pid,'giveitem',id]));
+  const st=rpc('get_state',[P.pid,P.secret]); ok(['hat_dev','coat_dev','pants_dev','boots_dev'].every(i=>st.items.includes(i)),'admin gives the whole Dev outfit');
+  ok(rpc('set_outfit',[P.pid,P.secret,{hat:'hat_dev',coat:'coat_dev',pants:'pants_dev',boots:'boots_dev'}]).hat==='hat_dev','and it can be worn');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);

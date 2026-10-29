@@ -1275,6 +1275,9 @@ begin
       if not exists (select 1 from baits where id = p_value) then perform oc_fail('no such bait'); end if;
       if p_value = 'worm' then perform oc_fail('worms are free for everyone and cannot be taken'); end if;
       update players set baits = array_remove(baits, p_value), gear = case when gear -> 'lures' ? p_value then jsonb_set(gear, array['lures', p_value], '{"n":0,"left":0}'::jsonb) else gear end where pid = p_pid;
+    when 'giveitem' then
+      if not exists (select 1 from items where id = p_value) then perform oc_fail('no such item'); end if;
+      update players set items = array_append(items, p_value) where pid = p_pid and not (p_value = any(items));
     when 'giveboat' then
       if not exists (select 1 from gear where id = p_value and kind = 'boat') then perform oc_fail('no such boat'); end if;
       update players set gear = jsonb_set(jsonb_set(gear, '{boats}', (select to_jsonb(array(select distinct x from jsonb_array_elements_text(coalesce(gear -> 'boats', '["paddle"]'::jsonb) || to_jsonb(p_value)) x)))), '{boat}', to_jsonb(p_value)) where pid = p_pid;

@@ -259,6 +259,7 @@ A.HAT_ROWS={
   captain:["............","....RRRR....","...RRRRRR...","...CCYYCCrr."],
   crown:["............","...Y.Y.Y.Y..","...YYYYYYY..","...yJyUyJy.."],
   champ:["............","....BBBB....","...BBYYBB...","...BBBBBBbb."],
+  devcrown:[".C...C...C..",".CC.CCC.CC..","..YYYYYYYY..","..YJYYYYJY.."],
   witch:["......RR....",".....RRR....","....YYYYY...",".rrrRRRRRrr."],
   pumpkin:[".....g......","...RRRRRR...","..RkRRRRkR..","..RRkkkkRR.."]
 };
