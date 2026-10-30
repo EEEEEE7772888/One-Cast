@@ -366,8 +366,9 @@ function renderLegends(){
   var body=$('legendBody'); body.innerHTML='<div class="empty">Loading the legends...</div>';
   loadLegends().then(function(list){ body.innerHTML=''; var f=$('legendFilter').value;
     var mine=G.s.fish.filter(function(x){ return x.legend&&!x.released; }).map(function(x){ return x.legend; });
-    list=list.filter(function(l){ return f==='all'||(f==='free'&&!l.owner)||(f==='owned'&&l.owner)||(f==='mine'&&mine.indexOf(l.id)>=0); });
-    list.sort(function(a,b){ return D.REGION_BY_ID[D.SPOT_BY_ID[a.spot].region].tier-D.REGION_BY_ID[D.SPOT_BY_ID[b.spot].region].tier; });
+    list=list.filter(function(l){ return D.SPOT_BY_ID[l.spot]&&(f==='all'||(f==='free'&&!l.owner)||(f==='owned'&&l.owner)||(f==='mine'&&mine.indexOf(l.id)>=0)||(f==='epic'&&(l.tier==='epic'||l.tier==='mythic'))||(f==='rare'&&l.tier==='rare')||(f==='findable'&&l.tier==='findable')); });
+    var TR={mythic:0,epic:1,rare:2,findable:3};
+    list.sort(function(a,b){ if(f==='epic') return (TR[a.tier]-TR[b.tier])||(b.odds-a.odds); return D.REGION_BY_ID[D.SPOT_BY_ID[a.spot].region].tier-D.REGION_BY_ID[D.SPOT_BY_ID[b.spot].region].tier; });
     if(!list.length) body.appendChild(el('div','empty','None here.'));
     list.forEach(function(l){ body.appendChild(legendCard(l,mine.indexOf(l.id)>=0)); }); }).catch(function(e){ body.innerHTML='<div class="empty">'+esc(e.message)+'</div>'; });
   $('legendFilter').onchange=renderLegends;
