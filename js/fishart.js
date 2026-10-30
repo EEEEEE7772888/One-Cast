@@ -15,12 +15,12 @@ function dark(c,t){ return mix(c,'#000000',t); }
    dorsal: soft | spiny | long | back | sail | tiny | none ; adipose: small fin near tail (salmon, catfish) */
 var PLAN={
  longnosegar:{tail:'round',dorsal:'back',beak:2}, spottedgar:{tail:'round',dorsal:'back',beak:1}, pinfish:{tail:'fork',dorsal:'spiny',mouth:0.05},
- sheepshead:{tail:'square',dorsal:'spiny',mouth:0.06,teeth:1}, bullshark:{tail:'shark',dorsal:'shark',mouth:0.18,slits:1,blunt:1},
+ sheepshead:{tail:'square',dorsal:'spiny',mouth:0.06,teeth:1}, bullshark:{shark2:1},
  bream:{tail:'deepfork',dorsal:'soft',mouth:0.05}, zander:{tail:'fork',dorsal:'spiny',mouth:0.14,fangs:1}, saithe:{tail:'fork',dorsal:'triple'},
  omul:{tail:'deepfork',dorsal:'soft',adipose:1}, mahseer:{tail:'deepfork',dorsal:'soft',whisk:1}, rohu:{tail:'fork',dorsal:'soft'},
  suzuki:{tail:'fork',dorsal:'spiny',mouth:0.16,jaw:1}, madai:{tail:'fork',dorsal:'spiny',mouth:0.06}, goliathtiger:{tail:'deepfork',dorsal:'soft',adipose:1,fangs:2,jaw:1,teeth:2,mouth:0.2},
  sixgill:{tail:'shark',dorsal:'back',mouth:0.14,slits:2}, grenadier:{tail:'eel',dorsal:'spiny',mouth:0.08},
- megalodon:{tail:'shark',dorsal:'shark',mouth:0.3,jaw:1,slits:1,gape:1},
+ megalodon:{shark2:1,teeth:1},
  ghostcarp:{tail:'fork',dorsal:'long',whisk:1}, pumpkinbass:{tail:'square',dorsal:'spiny',mouth:0.2,jaw:1}, phantomdrum:{tail:'square',dorsal:'spiny',ocellus:1},
  brook:{tail:'square',dorsal:'soft',adipose:1}, chub:{tail:'fork',dorsal:'soft'},
  reddrum:{tail:'square',dorsal:'spiny',ocellus:1}, bluefish:{tail:'fork',dorsal:'spiny',mouth:0.15,jaw:1}, spot:{tail:'fork',dorsal:'spiny',mouth:0.05},
@@ -78,6 +78,63 @@ function legendFx(colors){
 A.legendFx=legendFx;
 
 /* ---------- the grid ---------- */
+/* A real shark silhouette (used for the Megalodon): torpedo body with a pointed snout, a tall triangular dorsal fin,
+   a tail whose top half is longer, long pectoral fins, five gill slits and dark-over-white counter-shading. */
+A.sharkGrid=function(lk,plan,L,fx){
+  fx=fx||[]; function has(k){ return fx.indexOf(k)>=0; }
+  var aura=fx.length?3:0, H=Math.max(3,Math.round(L*0.135)), T=Math.round(L*0.22);
+  var padT=Math.round(H*1.35)+2, padB=Math.round(H*1.0)+2, GW=L+4+aura*2, GH=padT+2*H+padB+aura*2, cy=aura+padT+H;
+  var g=[]; for(var y=0;y<GH;y++) g.push(new Array(GW).fill(null));
+  function set(x,y,c){ if(x>=0&&x<GW&&y>=0&&y<GH) g[y][x]=c; } function get(x,y){ return (x>=0&&x<GW&&y>=0&&y<GH)?g[y][x]:null; }
+  var x0=1+aura, xb=x0+T, xn=x0+L-1, span=xn-xb, x, u, tops=[], bots=[], mids=[];
+  function U(u){ return xb+Math.round(u*span); }
+  function half(u){ return u<0.55?H*(0.3+0.7*Math.sin(Math.PI/2*u/0.55)):H*Math.pow(Math.max(0,Math.cos(Math.PI/2*(u-0.55)/0.45)),0.7); }
+  function mid(u){ return cy-(u>0.72?(u-0.72)/0.28*H*0.4:0); }
+  function tri(px,py,a,b,c){ function sd(p1,p2,p3){ return (p1[0]-p3[0])*(p2[1]-p3[1])-(p2[0]-p3[0])*(p1[1]-p3[1]); } var d1=sd([px,py],a,b), d2=sd([px,py],b,c), d3=sd([px,py],c,a); return !((d1<0||d2<0||d3<0)&&(d1>0||d2>0||d3>0)); }
+  function fillTri(a,b,c,col){ var minx=Math.floor(Math.min(a[0],b[0],c[0])), maxx=Math.ceil(Math.max(a[0],b[0],c[0])), miny=Math.floor(Math.min(a[1],b[1],c[1])), maxy=Math.ceil(Math.max(a[1],b[1],c[1]));
+    for(var yy=miny;yy<=maxy;yy++) for(var xx=minx;xx<=maxx;xx++) if(tri(xx+0.5,yy+0.5,a,b,c)&&!get(xx,yy)) set(xx,yy,col); }
+  /* tail: long upper lobe sweeping up and back, short lower lobe */
+  var pH=half(0);
+  fillTri([xb+1,cy-pH],[x0,cy-H*1.3],[xb+1,cy+pH*0.4],'F'); fillTri([x0,cy-H*1.3],[x0+T*0.35,cy-H*1.05],[xb-T*0.25,cy],'F');
+  fillTri([xb+1,cy],[x0+T*0.35,cy+H*0.95],[xb+1,cy+pH],'F');
+  /* body with counter-shading: dark back, slate sides, white belly with a ragged edge */
+  for(x=xb;x<=xn;x++){ u=(x-xb)/span; var h=half(u), m=mid(u), t=Math.round(m-h*1.05), b=Math.round(m+h*0.9); if(b<t) b=t; tops[x]=t; bots[x]=b; mids[x]=m;
+    for(y=t;y<=b;y++){ var v=(y-t)/Math.max(1,b-t), edge=0.63+0.05*Math.sin(x*0.7)+0.03*Math.sin(x*0.23), c;
+      if(v>edge) c=(y===b)?'belD':'bel'; else if(v<0.22) c='d'; else if(v<0.27&&u>0.15&&u<0.8) c='bL'; else c='b';
+      if(u>0.9&&v<0.5) c='d';
+      set(x,y,c); } }
+  /* tall dorsal fin (straight front edge, curved back edge), a little second dorsal near the tail */
+  var dA=U(0.62), dTip=[U(0.5),tops[U(0.53)]-Math.round(H*1.25)], dB=U(0.47);
+  fillTri([dA,tops[dA]+1],dTip,[dB,tops[dB]+1],'F'); fillTri(dTip,[U(0.47),tops[U(0.47)]+1],[U(0.49),tops[U(0.49)]-Math.round(H*0.5)],'F');
+  fillTri([U(0.14),tops[U(0.14)]+1],[U(0.1),tops[U(0.1)]-Math.round(H*0.35)],[U(0.08),tops[U(0.08)]+1],'F');
+  /* long pectoral fin sweeping back, small pelvic and anal fins */
+  var pR=U(0.66), pB=U(0.58); fillTri([pR,bots[pR]-1],[pB,bots[pB]-1],[U(0.46),bots[pB]+Math.round(H*0.95)],'F');
+  fillTri([U(0.3),bots[U(0.3)]-1],[U(0.25),bots[U(0.25)]-1],[U(0.21),bots[U(0.25)]+Math.round(H*0.4)],'F');
+  fillTri([U(0.14),bots[U(0.14)]-1],[U(0.11),bots[U(0.11)]-1],[U(0.08),bots[U(0.11)]+Math.round(H*0.28)],'F');
+  /* five gill slits */
+  for(var k=0;k<5;k++){ x=U(0.7+k*0.022); var gt=tops[x]+Math.round((bots[x]-tops[x])*0.3), gb=tops[x]+Math.round((bots[x]-tops[x])*0.72); for(y=gt;y<=gb;y++) set(x-Math.round((y-gt)*0.15),y,'dD'); }
+  /* mouth with a row of teeth (open a little on big ones) */
+  var mx0=U(0.83), mx1=U(0.96), gape=L>70?2:L>40?1:0;
+  for(x=mx0;x<=mx1;x++){ u=(x-xb)/span; var my=Math.round(mids[x]+half(u)*0.5);
+    if(get(x,my)){ set(x,my,'mouth'); for(var gg=1;gg<=gape;gg++) if(get(x,my+gg)) set(x,my+gg,gg===gape?'mouth':'gum');
+      if(plan.teeth&&x%2===0&&x<mx1){ if(get(x,my-1)) set(x,my-1,'tooth'); if(gape&&get(x+1,my+gape+1)) set(x+1,my+gape+1,'tooth'); } } }
+  /* eye */
+  x=U(0.87); var ey=Math.round(mids[x]-half((x-xb)/span)*0.3), glow=has('glow')||has('smoke')||has('abyss');
+  set(x,ey,'eye'); if(L>40){ set(x+1,ey,'eye'); set(x,ey+1,'eye'); set(x+1,ey+1,'eye'); set(x,ey,'hl'); }
+  if(glow){ set(x,ey,'glowC'); [[x-1,ey],[x+2,ey],[x,ey-1],[x+1,ey+2]].forEach(function(q){ if(get(q[0],q[1])) set(q[0],q[1],'glowE'); }); }
+  /* battle scars */
+  if(has('scars')||has('scars2')){ var ns=has('scars2')?4:2; for(var si=0;si<ns;si++){ var sx=U(0.3+0.35*hash(si*7.1+L)), sl=Math.max(3,Math.round(H*0.9)); for(k=0;k<sl;k++){ var yy=tops[sx]+2+k, xx=sx+k-Math.round(sl/2); if(get(xx,yy)==='b'||get(xx,yy)==='bL'||get(xx,yy)==='d') set(xx,yy,'scar'); } } }
+  /* fins get a darker edge pattern */
+  for(y=0;y<GH;y++) for(x=0;x<GW;x++){ if(g[y][x]==='F'&&((x+y)%3===0)) g[y][x]='FD'; }
+  /* outline and aura */
+  var out=[]; for(y=0;y<GH;y++) for(x=0;x<GW;x++){ if(g[y][x]) continue; if(get(x-1,y)||get(x+1,y)||get(x,y-1)||get(x,y+1)) out.push([x,y]); }
+  out.forEach(function(q){ g[q[1]][q[0]]='out'; });
+  if(aura){ var ring=[]; for(y=0;y<GH;y++) for(x=0;x<GW;x++){ if(g[y][x]) continue; if(get(x-1,y)==='out'||get(x+1,y)==='out'||get(x,y-1)==='out'||get(x,y+1)==='out') ring.push([x,y]); }
+    ring.forEach(function(q){ g[q[1]][q[0]]='aura'; });
+    var ring2=[]; for(y=0;y<GH;y++) for(x=0;x<GW;x++){ if(g[y][x]) continue; if(get(x-1,y)==='aura'||get(x+1,y)==='aura'||get(x,y-1)==='aura'||get(x,y+1)==='aura') ring2.push([x,y]); }
+    ring2.forEach(function(q){ g[q[1]][q[0]]=hash(q[0]*3.1+q[1]*7.3)<0.06?'auraL':'auraO'; }); }
+  return g;
+};
 A.fishGrid2=function(lk,plan,L,fx){
   plan=plan||{}; fx=fx||[];
   var has=function(k){ return fx.indexOf(k)>=0; };
@@ -268,7 +325,7 @@ A.fishCanvas=function(spId,L,shadow,variant,colors){
   var key=spId+'|'+L+'|'+(shadow||0)+'|'+(variant||'')+'|'+(colors?JSON.stringify(colors):'');
   if(cache[key]) return cache[key];
   var sp=D&&D.SP_BY_ID[spId], lookId=sp?sp.look:spId, lk=A.LOOK[lookId]||A.LOOK.perch, plan=PLAN[lookId]||PLAN[spId]||{};
-  var fx=shadow?null:legendFx(colors), g=A.fishGrid2(lk,plan,L,fx), pal=palette(lk,variant,colors,fx);
+  var fx=shadow?null:legendFx(colors), g=plan.shark2?A.sharkGrid(lk,plan,L,fx):A.fishGrid2(lk,plan,L,fx), pal=palette(lk,variant,colors,fx);
   var c=document.createElement('canvas'); c.width=g[0].length; c.height=g.length; var x2=c.getContext('2d');
   for(var y=0;y<g.length;y++) for(var x=0;x<g[0].length;x++){ var k=g[y][x]; if(!k) continue; if(shadow&&(k==='aura'||k==='auraO'||k==='auraL'||k==='smoke')) continue; x2.fillStyle=shadow?(typeof shadow==='string'?shadow:'#020A16'):(pal[k]||'#FF00FF'); x2.fillRect(x,y,1,1); }
   cache[key]=c; return c;

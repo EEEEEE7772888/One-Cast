@@ -123,7 +123,7 @@ var L={
  goliathtiger:{b:'#A0A8A0',d:'#3A423A',bel:'#E8EDE8',fin:'#C83A2A',spot:'#1A201A',pat:'stripe2',ht:.3},
  sixgill:{b:'#5A5048',d:'#34302A',bel:'#9A9088',fin:'#4A423A',spot:'#2A2620',pat:'none',ht:.24,shark:1,blunt:1},
  grenadier:{b:'#7A6E66',d:'#4A4038',bel:'#B0A69C',fin:'#5A5048',spot:'#3A322A',pat:'none',ht:.22},
- megalodon:{b:'#4A5868',d:'#2A3440',bel:'#E8ECEF',fin:'#3A4654',spot:'#1A222C',pat:'none',ht:.3,shark:1},
+ megalodon:{b:'#5A7088',d:'#34465A',bel:'#EEF2F4',fin:'#46607A',spot:'#1A222C',pat:'none',ht:.3,shark:1},
  /* Halloween */
  ghostcarp:{b:'#D8ECF4',d:'#9AB8C8',bel:'#F4FBFF',fin:'#B8D4E4',spot:'#7FA8C0',pat:'scales',ht:.4},
  pumpkinbass:{b:'#F07A1A',d:'#A84A0A',bel:'#FFD08A',fin:'#3A7A2A',spot:'#1A0E06',pat:'stripe',ht:.4},
