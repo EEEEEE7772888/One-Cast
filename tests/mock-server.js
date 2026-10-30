@@ -1,6 +1,6 @@
 /* A tiny stand-in for Supabase: serves the game files and forwards /rest/v1/rpc/<fn> calls to the local practice database as the anon role. */
 const http=require('http'), fs=require('fs'), path=require('path'), {execFileSync}=require('child_process');
-const ROOT=path.join(__dirname,'..'), DB=process.env.OC_DB||'onecast', PORT=+(process.env.PORT||8787);
+const ROOT=process.env.OC_ROOT||path.join(__dirname,'..'), DB=process.env.OC_DB||'onecast', PORT=+(process.env.PORT||8787);
 function lit(v){ if(v===null||v===undefined) return 'null'; if(typeof v==='number'||typeof v==='boolean') return String(v); if(Array.isArray(v)) return 'array['+v.map(lit).join(',')+']::bigint[]'; if(typeof v==='object') return "'"+JSON.stringify(v).replace(/'/g,"''")+"'::jsonb"; return "'"+String(v).replace(/'/g,"''")+"'"; }
 function call(fn,args){
   if(!/^[a-z_0-9]+$/.test(fn)) throw new Error('bad function');
