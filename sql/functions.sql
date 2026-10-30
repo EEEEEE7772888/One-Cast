@@ -203,7 +203,7 @@ begin
     if exists (select 1 from seasons where key = prev and not prizes_paid) then
       for rec in
         select distinct on (f.pid) f.pid, p.name, p.tag, f.species, f.lb from fish f join players p on p.pid = f.pid
-        where f.legend_id is null and not f.released and not p.hidden
+        where f.legend_id is null and not f.released and not p.hidden and not p.no_board
           and f.caught_at >= date_trunc('month', (now() - interval '1 month') at time zone 'UTC') at time zone 'UTC'
           and f.caught_at <  date_trunc('month', now() at time zone 'UTC') at time zone 'UTC'
         order by f.pid, f.lb desc
@@ -588,8 +588,8 @@ begin
   end if;
   update players set journal = jsonb_set(journal, array[ln.species], j), stats = st, daily = dl, coins = coins + reward where pid = p_pid;
   -- world record news: the biggest of its kind ever kept, once a few have been caught
-  select count(*), max(lb) into cnt, prevbest from fish where species = ln.species and id <> f.id and legend_id is null;
-  if cnt >= 5 and ln.lb > prevbest then worldrec := true;
+  select count(*), max(lb) into cnt, prevbest from fish x where x.species = ln.species and x.id <> f.id and x.legend_id is null and not exists (select 1 from players q where q.pid = x.pid and q.no_board);
+  if cnt >= 5 and ln.lb > prevbest and not p.no_board then worldrec := true;
     perform oc_news('record', p_pid, p.name || '#' || p.tag || ' set a world record: a ' || (select name from species where id = ln.species) || ' of ' || oc_fmt_lb(ln.lb) || '!', jsonb_build_object('sp', ln.species, 'lb', ln.lb, 'fish', f.id)); end if;
   if ln.variant is not null then
     perform oc_news(ln.variant, p_pid, p.name || '#' || p.tag || ' caught a ' || ln.variant || ' ' || (select name from species where id = ln.species) || '!', jsonb_build_object('sp', ln.species, 'lb', ln.lb, 'variant', ln.variant, 'fish', f.id)); end if;
@@ -630,7 +630,7 @@ begin
     res := '[]'::jsonb; rk := 0;
     select name into sp from species where id = d.species;
     for rec in select e.*, p.name, p.tag from derby_entries e join players p on p.pid = e.pid
-               where e.derby = d.key and not p.banned and not p.hidden order by e.lb desc, e.caught_at loop
+               where e.derby = d.key and not p.banned and not p.hidden and not p.no_board order by e.lb desc, e.caught_at loop
       rk := rk + 1;
       prize := coalesce((cfg -> 'prizes' ->> (rk - 1))::bigint, 0) + coalesce((cfg ->> 'entry')::bigint, 0);
       update players set coins = coins + prize,
@@ -659,7 +659,7 @@ begin
       on conflict (derby, pid) do update set lb = excluded.lb, inches = excluded.inches, variant = excluded.variant, spot = excluded.spot, caught_at = excluded.caught_at;
   end if;
   best := greatest(coalesce(prev, 0), f.lb);
-  select count(*) + 1 into rk from derby_entries e join players p on p.pid = e.pid where e.derby = d.key and not p.hidden and not p.banned and (e.lb > best or (e.lb = best and e.pid <> p_pid and e.caught_at < (select caught_at from derby_entries where derby = d.key and pid = p_pid)));
+  select count(*) + 1 into rk from derby_entries e join players p on p.pid = e.pid where e.derby = d.key and not p.hidden and not p.banned and not p.no_board and (e.lb > best or (e.lb = best and e.pid <> p_pid and e.caught_at < (select caught_at from derby_entries where derby = d.key and pid = p_pid)));
   select count(*) into n from derby_entries where derby = d.key;
   return jsonb_build_object('key', d.key, 'sp', d.species, 'lb', f.lb, 'best', best, 'improved', prev is null or f.lb > prev, 'first', prev is null, 'rank', rk, 'entrants', n);
 end $$;
@@ -674,10 +674,10 @@ begin
   if now() >= d.ends_at then d := oc_derby_at(now() + interval '2 days'); end if; -- Monday: show next weekend
   select coalesce(jsonb_agg(x order by x.rank), '[]'::jsonb) into board from (
     select row_number() over (order by e.lb desc, e.caught_at) as rank, e.pid, p.name, p.tag, e.lb, e.inches, e.variant, e.spot, e.caught_at as at
-    from derby_entries e join players p on p.pid = e.pid where e.derby = d.key and not p.hidden and not p.banned order by e.lb desc, e.caught_at limit 10) x;
-  select count(*) into n from derby_entries e join players p on p.pid = e.pid where e.derby = d.key and not p.hidden and not p.banned;
+    from derby_entries e join players p on p.pid = e.pid where e.derby = d.key and not p.hidden and not p.banned and not p.no_board order by e.lb desc, e.caught_at limit 10) x;
+  select count(*) into n from derby_entries e join players p on p.pid = e.pid where e.derby = d.key and not p.hidden and not p.banned and not p.no_board;
   if p_pid is not null then
-    select jsonb_build_object('lb', e.lb, 'inches', e.inches, 'rank', (select count(*) + 1 from derby_entries o join players q on q.pid = o.pid where o.derby = d.key and not q.hidden and not q.banned and (o.lb > e.lb or (o.lb = e.lb and o.caught_at < e.caught_at))))
+    select jsonb_build_object('lb', e.lb, 'inches', e.inches, 'rank', (select count(*) + 1 from derby_entries o join players q on q.pid = o.pid where o.derby = d.key and not q.hidden and not q.banned and not q.no_board and (o.lb > e.lb or (o.lb = e.lb and o.caught_at < e.caught_at))))
       into me from derby_entries e where e.derby = d.key and e.pid = p_pid;
   end if;
   select * into last from derbies where awarded and key < d.key order by key desc limit 1;
@@ -1173,7 +1173,7 @@ begin
     from (
       select distinct on (f.pid, (case when p_species is null then f.species else '' end)) f.*, p.name, p.tag, p.founder, p.champ
       from fish f join players p on p.pid = f.pid
-      where not p.hidden and not p.banned and f.legend_id is null and not f.released and f.caught_at >= since
+      where not p.hidden and not p.banned and not p.no_board and f.legend_id is null and not f.released and f.caught_at >= since
         and (p_species is null or f.species = p_species)
         and (p_region is null or f.spot in (select id from spots where region = p_region))
       order by f.pid, (case when p_species is null then f.species else '' end), f.lb desc, f.id
@@ -1263,13 +1263,13 @@ begin
     'fish', (select count(*) from fish), 'legendsCaught', (select count(*) from legends where owner_pid is not null),
     'reports', (select coalesce(jsonb_agg(jsonb_build_object('id', r.id, 'at', r.at, 'reason', r.reason, 'reporter', (select name || '#' || tag from players where pid = r.reporter), 'target', (select name || '#' || tag from players where pid = r.target), 'targetPid', r.target) order by r.at desc), '[]'::jsonb) from reports r where not r.handled),
     'suggestions', (select coalesce(jsonb_agg(jsonb_build_object('id', s.id, 'at', s.at, 'lake', s.lake, 'place', s.place, 'by', (select name || '#' || tag from players where pid = s.pid)) order by s.at desc), '[]'::jsonb) from suggestions s where s.status = 'pending'),
-    'recent', (select coalesce(jsonb_agg(jsonb_build_object('pid', p.pid, 'name', p.name, 'tag', p.tag, 'coins', p.coins, 'catches', p.stats -> 'catches', 'hidden', p.hidden, 'banned', p.banned, 'seen', p.last_seen, 'baits', to_jsonb(p.baits)) order by p.last_seen desc), '[]'::jsonb) from (select * from players order by last_seen desc limit 100) p));
+    'recent', (select coalesce(jsonb_agg(jsonb_build_object('pid', p.pid, 'name', p.name, 'tag', p.tag, 'coins', p.coins, 'catches', p.stats -> 'catches', 'hidden', p.hidden, 'noBoard', p.no_board, 'banned', p.banned, 'seen', p.last_seen, 'baits', to_jsonb(p.baits)) order by p.last_seen desc), '[]'::jsonb) from (select * from players order by last_seen desc limit 100) p));
 end $$;
 
 create or replace function public.admin_find(p_key text, p_q text) returns jsonb language plpgsql security definer set search_path = public as $$
 begin
   perform oc_admin(p_key);
-  return (select coalesce(jsonb_agg(jsonb_build_object('pid', p.pid, 'name', p.name, 'tag', p.tag, 'coins', p.coins, 'catches', p.stats -> 'catches', 'hidden', p.hidden, 'banned', p.banned, 'seen', p.last_seen, 'baits', to_jsonb(p.baits))), '[]'::jsonb)
+  return (select coalesce(jsonb_agg(jsonb_build_object('pid', p.pid, 'name', p.name, 'tag', p.tag, 'coins', p.coins, 'catches', p.stats -> 'catches', 'hidden', p.hidden, 'noBoard', p.no_board, 'banned', p.banned, 'seen', p.last_seen, 'baits', to_jsonb(p.baits))), '[]'::jsonb)
     from players p where lower(p.name) like '%' || lower(p_q) || '%' or p.tag = p_q or p.pid::text = p_q limit 50);
 end $$;
 
@@ -1285,6 +1285,7 @@ begin
     when 'clearpw' then update players set pw_hash = null, pw_fails = 0, pw_locked_until = null where pid = p_pid;
     when 'rename' then if oc_bad_name(p_value) then perform oc_fail('bad name'); end if; update players set name = p_value where pid = p_pid;
     when 'hide' then update players set hidden = (p_value = 'true') where pid = p_pid;
+    when 'noboard' then update players set no_board = (p_value = 'true') where pid = p_pid;
     when 'ban' then update players set banned = (p_value = 'true') where pid = p_pid;
     when 'coins' then update players set coins = coins + p_value::bigint where pid = p_pid;
     when 'givebait' then

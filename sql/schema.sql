@@ -306,6 +306,11 @@ end $$;
 alter table public.species add column if not exists event text;
 alter table public.items add column if not exists event text;
 
+-- Off the boards: a player (the game's maker) whose catches never show on leaderboards, win prizes or set world records.
+-- Unlike "hidden", their profile and fish tank still show.
+alter table public.players add column if not exists no_board boolean not null default false;
+update public.players set no_board = true where gear -> 'boats' ? 'devboat' and not no_board;
+
 -- Lock everything down. The website only gets the functions.
 do $$ declare t text; begin
   for t in select tablename from pg_tables where schemaname='public' loop

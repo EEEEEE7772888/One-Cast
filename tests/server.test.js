@@ -582,5 +582,19 @@ console.log('new spots, fish and the Megalodon');
   ok(/goliathtiger/.test(roll('congo','cut','day'))&&/mahseer/.test(roll('kaveri','sucker','day'))&&/omul/.test(roll('baikal','minnow','day'))&&/zander/.test(roll('danube','minnow','dusk')),'goliath tigerfish, mahseer, omul and zander bite in their new homes');
 }
 
+console.log('dev account off the boards');
+{
+  const K='oc-admin-testkey', P={pid:uuid(),secret:'q'.repeat(10)+uuid().replace(/-/g,'').slice(0,20)}; rpc('login',[P.pid,P.secret,'TheMaker']);
+  rpc('admin_player',[K,P.pid,'giveboat','devboat']); sql(`update players set no_board = gear -> 'boats' ? 'devboat' where pid='${P.pid}'`);
+  ok(sql(`select no_board from players where pid='${P.pid}'`)==='t','the Dev Flagship owner is off the boards');
+  sql(`update players set baits=baits||'{minnow}', spot='basslake' where pid='${P.pid}'`);
+  rpc('cast_line',[P.pid,P.secret,0,'minnow']); sql(`update lines set bite_at=now()-interval '1 second', species='largemouth', lb=21.9, inches=26, snap=false, legend_roll=0.99 where pid='${P.pid}'`);
+  const r=rpc('reel_line',[P.pid,P.secret,0]); ok(r.result==='catch'&&!r.worldRecord,'a giant catch is kept but sets no world record');
+  ok(!rpc('get_board',['week','largemouth',null]).some(x=>x.pid===P.pid),'it is not on the leaderboard');
+  ok(rpc('get_profile',[P.pid]).best.some(f=>f.sp==='largemouth'),'it is still on the profile (and in the fish tank)');
+  rpc('admin_player',[K,P.pid,'noboard','false']); ok(rpc('get_board',['week','largemouth',null]).some(x=>x.pid===P.pid),'the admin can put them back on the boards');
+  rpc('admin_player',[K,P.pid,'noboard','true']);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);

@@ -71,6 +71,10 @@ function playerLine(p){ var d=document.createElement('div'); d.className='line';
     ['hat_dev','coat_dev','pants_dev','boots_dev'].reduce(function(pr,id){ return pr.then(function(){ return rpc('admin_player',{p_pid:p.pid,p_action:'giveitem',p_value:id}); }); },Promise.resolve())
       .then(function(){ alert('Done! '+p.name+' has the Dev outfit. In the game: Menu > Clothes to put it on.'); }).catch(function(e){ alert(e.message); }); };
   b.appendChild(go);
+  var nb=document.createElement('button'); nb.className='pbtn'; nb.textContent=p.noBoard?'PUT BACK ON LEADERBOARDS':'KEEP OFF LEADERBOARDS';
+  nb.title='Their fish never show on leaderboards, the derby or world records, and never win prizes. Their profile and fish tank still show.';
+  nb.onclick=function(){ rpc('admin_player',{p_pid:p.pid,p_action:'noboard',p_value:String(!p.noBoard)}).then(function(){ p.noBoard=!p.noBoard; nb.textContent=p.noBoard?'PUT BACK ON LEADERBOARDS':'KEEP OFF LEADERBOARDS'; alert(p.noBoard?p.name+' is off the leaderboards.':p.name+' is back on the leaderboards.'); }).catch(function(e){ alert(e.message); }); };
+  b.appendChild(nb);
   var bs=document.createElement('select'); bs.className='pbtn'; bs.title='Pick a bait to gift';
   window.OC.BAITS.forEach(function(x){ var o=document.createElement('option'); o.value=x.id; o.textContent=x.name; bs.appendChild(o); });
   var gbt=document.createElement('button'); gbt.className='pbtn gold'; gbt.textContent='GIFT BAIT';
