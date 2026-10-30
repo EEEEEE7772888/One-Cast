@@ -495,6 +495,9 @@ D.TICKET_MULT=0.6;  // map tickets: 40% below, the same cut as fish
 D.tidyPrice=function(x,mult){ if(!x) return 0; var v=x*(mult||D.PRICE_MULT), step=v<100?5:v<1000?10:v<10000?50:v<100000?500:5000; return Math.max(step,Math.round(v/step)*step); };
 D.BAITS.forEach(function(b){ if(!b.uses&&!b.fixed) b.price=D.tidyPrice(b.price); });
 D.GEAR.forEach(function(g){ if(!g.fixed) g.price=D.tidyPrice(g.price); }); // fixed: priced on purpose, no discount
+/* rods and reels cost a little more (about 25%) */
+D.ROD_REEL_MULT=1.25;
+D.GEAR.forEach(function(g){ if(g.kind==='rod'||g.kind==='reel'){ var v=g.price*D.ROD_REEL_MULT, step=v<100?5:v<1000?10:50; g.price=Math.round(v/step)*step; } });
 D.ITEMS.forEach(function(i){ i.price=D.tidyPrice(i.price); });
 D.REGIONS.forEach(function(r){ r.ticket=D.tidyPrice(r.ticket,D.TICKET_MULT); });
 D.BAIT_BY_ID={}; D.BAITS.forEach(function(b){ D.BAIT_BY_ID[b.id]=b; });
