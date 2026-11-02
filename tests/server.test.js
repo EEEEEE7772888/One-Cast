@@ -269,7 +269,7 @@ console.log('deleting an account');
 
 
 console.log('lures and jigs');
-{ const L={pid:uuid(),secret:'llllllllllllllllllllllllllllll'}; rpc('login',[L.pid,L.secret,'Luremaster']);
+{ const L={pid:uuid(),secret:'llllllllllllllllllllllllllllll'}; rpc('login',[L.pid,L.secret,'Luremaster']); sql(`update players set lure_check_at=1000000 where pid='${L.pid}'`);
   rpc('admin_player',['oc-admin-testkey',L.pid,'coins','5000']);
   ok(rpc('buy',[L.pid,L.secret,'bait','crank']).baits.includes('crank'),'bought crankbaits');
   ok(rpc('buy',[L.pid,L.secret,'bait','jig']).baits.includes('jig'),'bought jigs');
@@ -410,7 +410,7 @@ console.log('dev boat and crew rides');
 
 console.log('hard lures, snags, rods and reels');
 {
-  const P={pid:uuid(),secret:'e'.repeat(10)+uuid().replace(/-/g,'').slice(0,20)}; rpc('login',[P.pid,P.secret,'Snaggy']);
+  const P={pid:uuid(),secret:'e'.repeat(10)+uuid().replace(/-/g,'').slice(0,20)}; rpc('login',[P.pid,P.secret,'Snaggy']); sql(`update players set lure_check_at=1000000 where pid='${P.pid}'`);
   sql(`update players set coins=100000 where pid='${P.pid}'`);
   const lures=()=>rpc('get_state',[P.pid,P.secret]).gear.lures||{};
   ok(rpc('cast_line',[P.pid,P.secret,0,'crank']).error==='you do not own that bait','no crankbaits to start');
@@ -594,6 +594,34 @@ console.log('dev account off the boards');
   ok(rpc('get_profile',[P.pid]).best.some(f=>f.sp==='largemouth'),'it is still on the profile (and in the fish tank)');
   rpc('admin_player',[K,P.pid,'noboard','false']); ok(rpc('get_board',['week','largemouth',null]).some(x=>x.pid===P.pid),'the admin can put them back on the boards');
   rpc('admin_player',[K,P.pid,'noboard','true']);
+}
+
+console.log('still fishing? (autoclicker check)');
+{
+  const P={pid:uuid(),secret:'r'.repeat(10)+uuid().replace(/-/g,'').slice(0,20)}; rpc('login',[P.pid,P.secret,'Clicker']);
+  sql(`update players set baits=baits||'{minnow}', spot='basslake', lure_casts=49, lure_check_at=50 where pid='${P.pid}'`); rpc('buy_lures',[P.pid,P.secret,'jig',0]); sql(`update players set coins=1000 where pid='${P.pid}'`); rpc('buy_lures',[P.pid,P.secret,'jig',10]);
+  ok(rpc('presence_get',[P.pid,P.secret]).needed===false,'no check needed yet');
+  ok(rpc('cast_line',[P.pid,P.secret,0,'jig']).line,'cast 50 is fine'); sql(`delete from lines where pid='${P.pid}'`);
+  ok(rpc('cast_line',[P.pid,P.secret,0,'jig']).error==='still_fishing','after 50 lure casts: STILL FISHING?');
+  ok(rpc('cast_line',[P.pid,P.secret,0,'minnow']).line,'soak baits still work'); sql(`delete from lines where pid='${P.pid}'`);
+  let q=rpc('presence_get',[P.pid,P.secret]); ok(q.needed&&q.cell>=0&&q.cell<16,'the fish is hidden in one of 16 squares');
+  ok(rpc('presence_get',[P.pid,P.secret]).cell===q.cell,'asking again shows the same square (no rerolling)');
+  sql(`update players set presence = jsonb_set(presence,'{issued}', to_jsonb(now()-interval '2 seconds')) where pid='${P.pid}'`);
+  let w=rpc('presence_answer',[P.pid,P.secret,(q.cell+1)%16]); ok(w.result==='wrong'&&w.lockedUntil,'a wrong tap rests the lures');
+  q=rpc('presence_get',[P.pid,P.secret]); ok(rpc('presence_answer',[P.pid,P.secret,q.cell]).result==='locked','even the right square waits out the rest');
+  ok(rpc('cast_line',[P.pid,P.secret,0,'jig']).error==='still_fishing','no lure casts while resting');
+  sql(`update players set presence = presence || jsonb_build_object('lockUntil', now()-interval '1 second','issued', now()-interval '2 seconds') where pid='${P.pid}'`);
+  q=rpc('presence_get',[P.pid,P.secret]); ok(rpc('presence_answer',[P.pid,P.secret,q.cell]).result==='ok','tapping the fish passes the check');
+  ok(rpc('cast_line',[P.pid,P.secret,0,'jig']).line,'and lures work again'); sql(`delete from lines where pid='${P.pid}'`);
+  const th=+sql(`select lure_check_at from players where pid='${P.pid}'`); ok(th>=40&&th<=70,'the next check comes after 40-70 more lure casts ('+th+')');
+  // three misses in a row: 30 minutes
+  sql(`update players set lure_casts=999, presence='{}' where pid='${P.pid}'`);
+  for(let i=0;i<3;i++){ q=rpc('presence_get',[P.pid,P.secret]); sql(`update players set presence = presence || jsonb_build_object('lockUntil', null,'issued', now()-interval '2 seconds') where pid='${P.pid}'`); w=rpc('presence_answer',[P.pid,P.secret,(q.cell+5)%16]); }
+  ok(w.result==='wrong'&&(Date.parse(w.lockedUntil)-Date.now())>25*60e3,'three misses in a row: lures rest for 30 minutes');
+  // an autoclicker always tapping the same square
+  sql(`update players set lure_casts=999, presence='{}' where pid='${P.pid}'`); let passes=0;
+  for(let i=0;i<64;i++){ q=rpc('presence_get',[P.pid,P.secret]); sql(`update players set presence = presence || jsonb_build_object('lockUntil', null,'issued', now()-interval '2 seconds', 'wrong', 0) where pid='${P.pid}'`); if(rpc('presence_answer',[P.pid,P.secret,7]).result==='ok'){ passes++; sql(`update players set lure_casts=999, presence='{}' where pid='${P.pid}'`); } }
+  ok(passes>0&&passes<14,'an autoclicker tapping one spot only gets through about 1 in 16 ('+passes+'/64)');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

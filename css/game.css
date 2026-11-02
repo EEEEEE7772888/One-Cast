@@ -711,3 +711,13 @@ body.halloween .dialog{border-color:#4A2A6A}
 .tank-label b{color:var(--gold);font-weight:400}
 .item .ev-tag.dev{background:#3CF0FF;color:#0E1322}
 .tier.epic{border-color:#FF4D5E;color:#FF6A78}
+/* still fishing? */
+.still-ov{z-index:60}
+.dialog.still{max-width:380px}
+.still-msg{font:19px/1.2 var(--term);color:var(--ice);margin:0}
+.still-msg b{color:var(--gold);font-weight:400}
+.still-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:8px;background:linear-gradient(180deg,#2F7FB0,#14506E);border:3px solid var(--edge)}
+.still-grid.locked{min-height:60px;opacity:.5}
+.still-cell{aspect-ratio:1;display:grid;place-items:center;background:rgba(10,30,60,.35);border:2px solid rgba(255,255,255,.15);cursor:pointer;padding:0}
+.still-cell canvas{width:70%;height:auto;image-rendering:pixelated}
+.still-cell:hover{border-color:var(--gold)}

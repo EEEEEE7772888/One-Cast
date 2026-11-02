@@ -311,6 +311,11 @@ alter table public.items add column if not exists event text;
 alter table public.players add column if not exists no_board boolean not null default false;
 update public.players set no_board = true where gear -> 'boats' ? 'devboat' and not no_board;
 
+-- "Still fishing?": hand-worked lures need a quick human check every so often (stops autoclickers and macros).
+alter table public.players add column if not exists lure_casts int not null default 0;     -- lure casts since the last check
+alter table public.players add column if not exists lure_check_at int not null default 50; -- ask again after this many
+alter table public.players add column if not exists presence jsonb not null default '{}';  -- {cell, issued, lockUntil, wrong}
+
 -- Lock everything down. The website only gets the functions.
 do $$ declare t text; begin
   for t in select tablename from pg_tables where schemaname='public' loop

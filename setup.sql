@@ -314,6 +314,11 @@ alter table public.items add column if not exists event text;
 alter table public.players add column if not exists no_board boolean not null default false;
 update public.players set no_board = true where gear -> 'boats' ? 'devboat' and not no_board;
 
+-- "Still fishing?": hand-worked lures need a quick human check every so often (stops autoclickers and macros).
+alter table public.players add column if not exists lure_casts int not null default 0;     -- lure casts since the last check
+alter table public.players add column if not exists lure_check_at int not null default 50; -- ask again after this many
+alter table public.players add column if not exists presence jsonb not null default '{}';  -- {cell, issued, lockUntil, wrong}
+
 -- Lock everything down. The website only gets the functions.
 do $$ declare t text; begin
   for t in select tablename from pg_tables where schemaname='public' loop
@@ -730,6 +735,42 @@ begin
     stats = jsonb_set(stats, '{snagged}', to_jsonb(coalesce((stats ->> 'snagged')::int, 0) + 1)) where pid = p_pid;
 end $$;
 
+-- "Still fishing?": the server hides a fish in one of 16 squares; the player taps it. Wrong taps lock lures for a while.
+create or replace function public.presence_get(p_pid uuid, p_secret text) returns jsonb language plpgsql security definer set search_path = public as $$
+declare p public.players; pr jsonb;
+begin
+  p := oc_auth(p_pid, p_secret);
+  pr := p.presence;
+  if p.lure_casts < p.lure_check_at then return jsonb_build_object('needed', false, 'now', now()); end if;
+  if pr ->> 'cell' is null then
+    pr := pr || jsonb_build_object('cell', floor(random() * 16)::int, 'issued', now());
+    update players set presence = pr where pid = p_pid;
+  end if;
+  return jsonb_build_object('needed', true, 'cell', (pr ->> 'cell')::int, 'lockedUntil', pr -> 'lockUntil', 'now', now());
+end $$;
+
+create or replace function public.presence_answer(p_pid uuid, p_secret text, p_cell int) returns jsonb language plpgsql security definer set search_path = public as $$
+declare p public.players; pr jsonb; wrong int;
+begin
+  p := oc_auth(p_pid, p_secret);
+  pr := p.presence;
+  if p.lure_casts < p.lure_check_at then return jsonb_build_object('result', 'ok', 'now', now()); end if;
+  if (pr ->> 'lockUntil') is not null and now() < (pr ->> 'lockUntil')::timestamptz then
+    return jsonb_build_object('result', 'locked', 'lockedUntil', pr -> 'lockUntil', 'now', now()); end if;
+  if pr ->> 'cell' is null then perform oc_fail('no check right now'); end if;
+  if p_cell = (pr ->> 'cell')::int and now() > (pr ->> 'issued')::timestamptz + interval '400 milliseconds' then
+    update players set lure_casts = 0, lure_check_at = 40 + floor(random() * 31)::int, presence = '{}'::jsonb,
+      stats = jsonb_set(stats, '{checks}', to_jsonb(coalesce((stats ->> 'checks')::int, 0) + 1)) where pid = p_pid;
+    return jsonb_build_object('result', 'ok', 'now', now());
+  end if;
+  -- wrong: lock lures for 5 minutes (30 after three misses in a row), and hide the fish somewhere new
+  wrong := coalesce((pr ->> 'wrong')::int, 0) + 1;
+  pr := jsonb_build_object('cell', floor(random() * 16)::int, 'issued', now(), 'wrong', wrong,
+    'lockUntil', now() + (case when wrong >= 3 then interval '30 minutes' else interval '5 minutes' end));
+  update players set presence = pr, stats = jsonb_set(stats, '{checkMisses}', to_jsonb(coalesce((stats ->> 'checkMisses')::int, 0) + 1)) where pid = p_pid;
+  return jsonb_build_object('result', 'wrong', 'lockedUntil', pr -> 'lockUntil', 'now', now());
+end $$;
+
 -- Buy hard lures, one or more at a time.
 create or replace function public.buy_lures(p_pid uuid, p_secret text, p_bait text, p_qty int) returns jsonb language plpgsql security definer set search_path = public as $$
 declare p public.players; b public.baits; price bigint;
@@ -802,6 +843,8 @@ begin
   select * into bt from baits where id = p_bait;
   if p_idx < 0 or p_idx >= (p.gear ->> 'lines')::int then perform oc_fail('you do not have that line'); end if;
   if exists (select 1 from lines where pid = p_pid and idx = p_idx) then perform oc_fail('that line is already in the water'); end if;
+  -- hand-worked lures: every 40-70 casts the player has to show they are really there
+  if oc_is_lure(p_bait) and p.lure_casts >= p.lure_check_at then perform oc_fail('still_fishing'); end if;
   if coalesce(bt.uses, 0) > 0 then
     if oc_lure_count(p.gear, p_bait) <= 0 then perform oc_fail(case when p.gear -> 'lures' ? p_bait then 'you are out of ' || lower(bt.name) || '. Buy more at the bait shop' else 'you do not own that bait' end); end if;
   elsif not (p_bait = any(p.baits)) then perform oc_fail('you do not own that bait'); end if;
@@ -830,6 +873,7 @@ begin
       snag := now() + (3 + random() * (extract(epoch from (bite - now())) - 4)) * interval '1 second';
     end if;
   end if;
+  if oc_is_lure(p_bait) then update players set lure_casts = lure_casts + 1 where pid = p_pid; end if;
   insert into lines (pid, idx, spot, bait, cast_at, bite_at, species, lb, inches, variant, snap, legend_roll, snag_at)
     values (p_pid, p_idx, p.spot, p_bait, case when oc_is_lure(p_bait) then bite - (mins * interval '1 minute') else now() end, bite, r.species, r.lb, r.inches, r.variant, random() < oc_reel_snap((p.gear ->> 'reel')::int), random(), snag)
     returning * into ln;

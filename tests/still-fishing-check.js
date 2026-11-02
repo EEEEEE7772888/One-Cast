@@ -1,0 +1,21 @@
+// "Still fishing?" in a browser: after enough lure casts, the popup asks for the fish; a wrong tap rests the lures, the right one lets you cast.
+const {chromium}=require('playwright');const {execFileSync}=require('child_process');
+const DB=process.env.OC_DB||'econ_c1', sql=q=>execFileSync('su',['postgres','-c','psql -X -At -d '+DB],{input:q,encoding:'utf8'}).trim();
+const B='http://localhost:'+(process.env.PORT||8831),Q='/?server='+B+'&key=test', SH='/tmp/claude-0/still-';
+(async()=>{ const br=await chromium.launch(), p=await br.newPage({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true}); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+  await p.route('https://fonts.googleapis.com/**',r=>r.fulfill({status:200,contentType:'text/css',body:''}));
+  await p.goto(B+Q); await p.waitForTimeout(900); await p.fill('#nameIn','RealHuman'); await p.keyboard.press('Enter'); await p.waitForTimeout(2500);
+  const pid=await p.evaluate(()=>G.s.pid); sql(`update players set coins=1000, prefs=prefs||'{"tut":99}' where pid='${pid}'`);
+  await p.evaluate(()=>{ try{ localStorage.setItem('onecast.seenHalloween2026','1'); }catch(e){} UI.closeAll(); return G.refresh(true); }); await p.waitForTimeout(500);
+  await p.evaluate(()=>N_buy=NET.me('buy_lures',{p_bait:'jig',p_qty:5})).catch(()=>{}); await p.waitForTimeout(800); await p.evaluate(()=>G.refresh(true)); await p.waitForTimeout(600);
+  sql(`update players set lure_casts=60, lure_check_at=50 where pid='${pid}'`);
+  await p.evaluate(()=>{ G.bait='jig'; G.renderPanel(); }); await p.click('#goBtn'); await p.waitForTimeout(1200);
+  console.log('popup shown:', await p.isVisible('#stillOv'), '| squares:', await p.$$eval('.still-cell',b=>b.length)); await p.screenshot({path:SH+'ask.png'});
+  const cell=+sql(`select presence->>'cell' from players where pid='${pid}'`);
+  await p.$$eval('.still-cell',(b,c)=>b[(c+3)%16].click(),cell); await p.waitForTimeout(900);
+  console.log('after a wrong tap:', await p.textContent('#stillMsg')); await p.screenshot({path:SH+'locked.png'});
+  sql(`update players set presence = presence || jsonb_build_object('lockUntil', now()-interval '1 second','issued', now()-interval '2 seconds') where pid='${pid}'`);
+  await p.click('#stillBait'); await p.waitForTimeout(400); await p.click('#goBtn'); await p.waitForTimeout(1500); const cell2=+sql(`select presence->>'cell' from players where pid='${pid}'`);
+  await p.$$eval('.still-cell',(b,c)=>b[c].click(),cell2); await p.waitForTimeout(1500);
+  console.log('after the right tap: popup gone', !(await p.isVisible('#stillOv')), '| lure screen open', await p.isVisible('#lureBox'), '| toast', await p.textContent('#toast'));
+  console.log('errors:', errs.length?errs:'none'); await br.close(); })();

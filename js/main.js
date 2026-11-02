@@ -145,7 +145,7 @@ G.cast=function(){
     var b=D.BAIT_BY_ID[r.line.bait], lu=b&&b.uses&&((G.s.gear.lures||{})[b.id]);
     if(lu&&!lu.left) G.toast(lu.n?'This '+b.name.toLowerCase().replace(/s$/,'')+' is worn out after this cast. You have '+lu.n+' more.':'That was the last cast on your last '+b.name.toLowerCase().replace(/s$/,'')+'. Buy more at the bait shop.',3600,'info');
     keepBaitOwned(); SC.cast(); G.renderAll(); G.coachEvent('cast'); if(D.isLure(r.line.bait)) LURE.start(r.line); })
-    .catch(function(e){ G.fail(e); if(!e.offline) G.refresh(true); }).then(function(){ G.busy=false; G.renderPanel(); });
+    .catch(function(e){ if(e&&/still_fishing/.test(e.message||'')){ G.busy=false; G.renderPanel(); UI.stillFishing().then(function(ok){ if(ok) G.cast(); }); return; } G.fail(e); if(!e.offline) G.refresh(true); }).then(function(){ G.busy=false; G.renderPanel(); });
 };
 G.reel=function(){
   var l=G.line(); if(G.busy||!l||SC.busy()) return; G.busy=true; $('goBtn').disabled=true;
