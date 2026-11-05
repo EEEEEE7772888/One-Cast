@@ -288,7 +288,7 @@ console.log('lures and jigs');
   sql(`update lines set bite_at=now()-interval '1 second' where pid='${L.pid}'`);
   let fs=rpc('lure_strike',[L.pid,L.secret,0]); ok(fs.result==='fight'&&fs.difficulty>=0.1&&fs.difficulty<=1,'hook-set starts a fight (difficulty '+fs.difficulty+')');
   sql(`update lines set bite_at=now()-interval '30 seconds' where pid='${L.pid}'`);
-  let before=nFish(), won=rpc('reel_line',[L.pid,L.secret,0]); ok(['catch','snap','nothing'].includes(won.result),'winning a 30 second fight still lands the fish ('+won.result+')');
+  sql(`update lines set fight_min_at=now()-interval '1 second' where pid='${L.pid}'`); let before=nFish(), won=rpc('reel_line',[L.pid,L.secret,0]); ok(['catch','snap','nothing'].includes(won.result),'winning a 30 second fight still lands the fish ('+won.result+')');
   rpc('cast_line',[L.pid,L.secret,0,'crank']); sql(`update lines set bite_at=now()-interval '1 second' where pid='${L.pid}'`); rpc('lure_strike',[L.pid,L.secret,0]);
   before=nFish(); ok(rpc('lure_lose',[L.pid,L.secret,0]).result==='lost'&&nFish()===before&&+sql(`select count(*) from lines where pid='${L.pid}'`)===0,'losing the fight: no fish, line comes back');
   rpc('cast_line',[L.pid,L.secret,0,'crank']); sql(`update lines set bite_at=now()-interval '10 seconds' where pid='${L.pid}'`);
@@ -452,7 +452,7 @@ console.log('hard lures, snags, rods and reels');
   c=rpc('cast_line',[P.pid,P.secret,0,'jerk']); ok(c.line&&c.line.bait==='jerk','jerkbaits cast at Bass Lake');
   sql(`update lines set bite_at=now()-interval '1 second', snag_at=null where pid='${P.pid}'`);
   ok(rpc('lure_strike',[P.pid,P.secret,0]).result==='fight','jerkbait fish fight like crankbait fish');
-  ok(rpc('reel_line',[P.pid,P.secret,0]).result==='catch','and land');
+  sql(`update lines set fight_min_at=now()-interval '1 second' where pid='${P.pid}'`); ok(rpc('reel_line',[P.pid,P.secret,0]).result==='catch','and land');
   // rods and reels: any order, best one counts
   let g=rpc('buy',[P.pid,P.secret,'gear','rod3']); ok(g.gear.rod===3,'bought the bass casting rod first (no need for the cheaper ones)');
   ok(rpc('buy',[P.pid,P.secret,'gear','rod1']).error==='you already have this or a better one','no buying a worse rod');
@@ -634,6 +634,45 @@ console.log('fish finder buff');
   ok(rpc('reel_line',[P.pid,P.secret,0]).minutes===600,'the catch counts the full wait the fish was rolled for');
   ok(+sql(`select oc_finder_luck(3)`)===1.25&&+sql(`select oc_finder_luck(2)`)===1,'the Legend finder makes legends 25% more likely');
   ok(D.SP_BY_ID.toothfish.rate===Math.round(2000*D.VALUE_MULT),'Antarctic toothfish are worth 20% less');
+}
+
+console.log('anti-cheat');
+{
+  const K='oc-admin-testkey', mk=(n)=>{ const P={pid:uuid(),secret:'u'.repeat(10)+uuid().replace(/-/g,'').slice(0,20)}; rpc('login',[P.pid,P.secret,n]); sql(`update players set lure_check_at=1000000, coins=1000 where pid='${P.pid}'`); return P; };
+  // 1. skipping the crankbait fight
+  const H=mk('Hacker'); rpc('buy_lures',[H.pid,H.secret,'crank',5]); sql(`update baits set snag=0 where id='crank'`);
+  rpc('cast_line',[H.pid,H.secret,0,'crank']); sql(`update lines set bite_at=now()-interval '300 milliseconds', snag_at=null where pid='${H.pid}'`);
+  ok(rpc('lure_strike',[H.pid,H.secret,0]).result==='fight','strike');
+  ok(rpc('reel_line',[H.pid,H.secret,0]).result==='missed','reeling straight after the strike (skipping the fight) loses the fish');
+  ok(sql(`select count(*) from cheat_flags where pid='${H.pid}' and kind='skipped_fight'`)==='1','and it is flagged for the admin');
+  const R=mk('RealOne'); rpc('buy_lures',[R.pid,R.secret,'crank',5]);
+  rpc('cast_line',[R.pid,R.secret,0,'crank']); sql(`update lines set bite_at=now()-interval '500 milliseconds', snag_at=null where pid='${R.pid}'`); rpc('lure_strike',[R.pid,R.secret,0]);
+  sql(`update lines set fight_min_at=now()-interval '1 second' where pid='${R.pid}'`);
+  ok(rpc('reel_line',[R.pid,R.secret,0]).result==='catch','a fight that took real time lands the fish');
+  ok(sql(`select count(*) from cheat_flags where pid='${R.pid}'`)==='0','and nothing is flagged for a normal player');
+  // 2. inhuman reactions
+  const B=mk('ScriptBot'); for(let i=0;i<22;i++) sql(`select oc_reaction('${B.pid}', 40)`);
+  ok(sql(`select count(*) from cheat_flags where pid='${B.pid}' and kind='bot_reactions'`)==='1','strikes answered in 40 ms every time are flagged as a script');
+  const Hu=mk('HumanHands'); for(let i=0;i<22;i++) sql(`select oc_reaction('${Hu.pid}', ${250+Math.round(Math.random()*500)})`);
+  ok(sql(`select count(*) from cheat_flags where pid='${Hu.pid}'`)==='0','human reaction times are not flagged');
+  // 3. nonstop speed
+  const S=mk('SpeedBot'); rpc('buy_lures',[S.pid,S.secret,'jig',5]); sql(`update players set stats = stats || jsonb_build_object('hr', to_char(now() at time zone 'UTC','YYYYMMDDHH24'), 'hc', 240) where pid='${S.pid}'`);
+  ok(/nonstop/.test(rpc('cast_line',[S.pid,S.secret,0,'jig']).error),'240 catches in an hour: lures rest until the next hour');
+  sql(`update players set baits=baits||'{minnow}' where pid='${S.pid}'`); ok(rpc('cast_line',[S.pid,S.secret,0,'minnow']).line,'soak baits still work');
+  // 4. alt account feeding
+  const Alt=mk('FreshAlt'), Main=mk('BigMain'); sql(`update players set coins=20000 where pid='${Alt.pid}'`);
+  rpc('friend_request',[Alt.pid,Alt.secret,'BigMain',sql(`select tag from players where pid='${Main.pid}'`)]); rpc('friend_respond',[Main.pid,Main.secret,Alt.pid,true]);
+  let tr=rpc('trade_open',[Alt.pid,Alt.secret,Main.pid]); rpc('trade_set',[Alt.pid,Alt.secret,tr.id,[],10000]);
+  rpc('trade_ready',[Alt.pid,Alt.secret,tr.id,true]); rpc('trade_ready',[Main.pid,Main.secret,tr.id,true]); rpc('trade_confirm',[Alt.pid,Alt.secret,tr.id]); tr=rpc('trade_confirm',[Main.pid,Main.secret,tr.id]);
+  ok(tr.status==='done'&&sql(`select count(*) from cheat_flags where pid='${Alt.pid}' and kind='alt_feeding'`)==='1','a brand-new account giving away $10,000 still goes through, but is flagged');
+  // 5. Cheat Watch
+  const cw=rpc('admin_cheats',[K]); ok(Array.isArray(cw)&&cw.some(c=>c.name==='Hacker'&&c.kind==='skipped_fight'),'the admin sees the Cheat Watch list');
+  ok(rpc('admin_cheats',['nope']).error==='not the admin key','only the admin');
+  rpc('admin_clear_flag',[K,cw.find(c=>c.name==='Hacker').id]); ok(!rpc('admin_cheats',[K]).some(c=>c.name==='Hacker'&&c.kind==='skipped_fight'),'a flag can be cleared');
+  // 6. signups per network
+  sql(`delete from signups; insert into signups (ip) select '1.2.3.4' from generate_series(1,60)`);
+  ok(sql(`select count(*) from signups where ip='1.2.3.4'`)==='60','60 signups from one network this hour');
+  sql(`update baits set snag=0.08 where id='crank'`);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -319,6 +319,22 @@ alter table public.players add column if not exists presence jsonb not null defa
 -- How long the fish 'waited' for the bait when it was rolled (fish finders make the real wait shorter).
 alter table public.lines add column if not exists wait_mins numeric;
 
+-- Anti-cheat: suspicious things the server notices, for the admin's Cheat Watch list. Nothing is banned automatically.
+create table if not exists public.cheat_flags (
+  id bigserial primary key,
+  pid uuid references public.players(pid) on delete cascade,
+  kind text not null,
+  detail jsonb not null default '{}',
+  at timestamptz not null default now(),
+  cleared boolean not null default false
+);
+create index if not exists cheat_flags_open on public.cheat_flags (cleared, at desc);
+-- new accounts per network (stops scripts making thousands of accounts)
+create table if not exists public.signups (ip text not null, at timestamptz not null default now());
+create index if not exists signups_ip on public.signups (ip, at);
+alter table public.players add column if not exists signup_ip text;
+alter table public.lines add column if not exists fight_min_at timestamptz; -- a crankbait/jerkbait fight can't be won faster than this
+
 -- Lock everything down. The website only gets the functions.
 do $$ declare t text; begin
   for t in select tablename from pg_tables where schemaname='public' loop

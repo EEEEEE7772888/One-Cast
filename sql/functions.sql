@@ -289,11 +289,18 @@ begin
   select * into p from players where pid = p_pid;
   if p.pid is null then
     if oc_bad_name(p_name) then perform oc_fail('bad name'); end if;
+    -- anti-spam: at most 60 new players an hour from one network (a whole class can still join together)
+    if oc_client_ip() is not null then
+      if (select count(*) from signups where ip = oc_client_ip() and at > now() - interval '1 hour') >= 60 then
+        perform oc_fail('too many new players from your network right now. Try again in an hour'); end if;
+      insert into signups (ip) values (oc_client_ip());
+      delete from signups where at < now() - interval '2 days';
+    end if;
     loop
       t := lpad((floor(random() * 10000))::int::text, 4, '0'); tries := tries + 1;
       exit when not exists (select 1 from players where lower(name) = lower(p_name) and tag = t) or tries > 50;
     end loop;
-    insert into players (pid, secret, name, tag, coins) values (p_pid, p_secret, p_name, t, 50) returning * into p; -- $50 welcome bonus
+    insert into players (pid, secret, name, tag, coins, signup_ip) values (p_pid, p_secret, p_name, t, 50, oc_client_ip()) returning * into p; -- $50 welcome bonus
   end if;
   p := oc_auth(p_pid, p_secret);
   return oc_state(p);
@@ -432,6 +439,47 @@ begin
   return jsonb_build_object('result', 'wrong', 'lockedUntil', pr -> 'lockUntil', 'now', now());
 end $$;
 
+-- ============ anti-cheat ============
+-- Record something suspicious (at most once per kind per player per day).
+create or replace function public.oc_flag(p_pid uuid, p_kind text, p_detail jsonb) returns void language plpgsql as $$
+begin
+  if exists (select 1 from players where pid = p_pid and no_board) then return; end if;
+  if not exists (select 1 from cheat_flags where pid = p_pid and kind = p_kind and at > now() - interval '1 day') then
+    insert into cheat_flags (pid, kind, detail) values (p_pid, p_kind, coalesce(p_detail, '{}'::jsonb));
+  end if;
+end $$;
+-- The network a request came from (Supabase passes it on), for limiting new accounts.
+create or replace function public.oc_client_ip() returns text language plpgsql stable as $$
+declare h json; v text;
+begin
+  begin h := current_setting('request.headers', true)::json; exception when others then return null; end;
+  if h is null then return null; end if;
+  v := coalesce(h ->> 'cf-connecting-ip', split_part(h ->> 'x-forwarded-for', ',', 1), h ->> 'x-real-ip');
+  return nullif(trim(v), '');
+end $$;
+-- How fast a player reacted to a lure strike (ms after the bite). Scripts react faster than any person can see the strike.
+create or replace function public.oc_reaction(p_pid uuid, p_ms numeric) returns void language plpgsql as $$
+declare st jsonb; rx jsonb; n int; fast int;
+begin
+  select stats into st from players where pid = p_pid;
+  rx := coalesce(st -> 'rx', '[]'::jsonb) || to_jsonb(round(p_ms));
+  if jsonb_array_length(rx) > 30 then rx := rx - 0; end if;
+  update players set stats = jsonb_set(stats, '{rx}', rx) where pid = p_pid;
+  n := jsonb_array_length(rx);
+  select count(*) into fast from jsonb_array_elements_text(rx) e where e::numeric < 120;
+  if n >= 20 and fast >= n * 0.6 then perform oc_flag(p_pid, 'bot_reactions', jsonb_build_object('fastStrikes', fast, 'of', n)); end if;
+end $$;
+-- Catches this hour; more than any person can manage pauses lure fishing for the rest of the hour.
+create or replace function public.oc_rate_note(p_pid uuid) returns int language plpgsql as $$
+declare st jsonb; hr text := to_char(now() at time zone 'UTC', 'YYYYMMDDHH24'); n int;
+begin
+  select stats into st from players where pid = p_pid;
+  n := case when st ->> 'hr' = hr then coalesce((st ->> 'hc')::int, 0) + 1 else 1 end;
+  update players set stats = stats || jsonb_build_object('hr', hr, 'hc', n) where pid = p_pid;
+  if n = 200 then perform oc_flag(p_pid, 'too_many_catches', jsonb_build_object('catchesThisHour', n)); end if;
+  return n;
+end $$;
+
 -- Buy hard lures, one or more at a time.
 create or replace function public.buy_lures(p_pid uuid, p_secret text, p_bait text, p_qty int) returns jsonb language plpgsql security definer set search_path = public as $$
 declare p public.players; b public.baits; price bigint;
@@ -481,7 +529,10 @@ begin
   d := greatest(0.1, least(1, 0.15 + 0.55 * power(frac, 0.7) + 0.30 * least(1, log(val) / 4)));
   if ln.variant is not null and ln.variant <> '' then d := least(1, d + 0.1); end if;
   d := greatest(0.1, d - 0.025 * coalesce((p.gear ->> 'reel')::int, 0)); -- a better reel makes the fight easier
-  update lines set fight_until = coalesce(fight_until, now() + interval '90 seconds') where pid = p_pid and idx = p_idx;
+  if ln.fight_until is null then perform oc_reaction(p_pid, extract(epoch from (now() - ln.bite_at)) * 1000); end if;
+  -- the catch meter can't fill faster than this, even when played perfectly
+  update lines set fight_until = coalesce(fight_until, now() + interval '90 seconds'),
+    fight_min_at = coalesce(fight_min_at, now() + (0.55 / (0.22 - 0.08 * d)) * interval '1 second') where pid = p_pid and idx = p_idx;
   return jsonb_build_object('result', 'fight', 'difficulty', round(d, 2), 'now', now());
 end $$;
 
@@ -506,6 +557,8 @@ begin
   if exists (select 1 from lines where pid = p_pid and idx = p_idx) then perform oc_fail('that line is already in the water'); end if;
   -- hand-worked lures: every 40-70 casts the player has to show they are really there
   if oc_is_lure(p_bait) and p.lure_casts >= p.lure_check_at then perform oc_fail('still_fishing'); end if;
+  if oc_is_lure(p_bait) and p.stats ->> 'hr' = to_char(now() at time zone 'UTC', 'YYYYMMDDHH24') and coalesce((p.stats ->> 'hc')::int, 0) >= 240 then
+    perform oc_fail('you have been fishing lures nonstop. Give your arms a rest until the top of the hour (soak baits still work)'); end if;
   if coalesce(bt.uses, 0) > 0 then
     if oc_lure_count(p.gear, p_bait) <= 0 then perform oc_fail(case when p.gear -> 'lures' ? p_bait then 'you are out of ' || lower(bt.name) || '. Buy more at the bait shop' else 'you do not own that bait' end); end if;
   elsif not (p_bait = any(p.baits)) then perform oc_fail('you do not own that bait'); end if;
@@ -554,6 +607,11 @@ begin
   if now() < ln.bite_at then return jsonb_build_object('result', 'early', 'now', now()); end if;
   -- a lure strike has to be answered within a few seconds, or the fish spits the hook
   if oc_is_lure(ln.bait) and now() > ln.bite_at + interval '4 seconds' and not (ln.fight_until is not null and now() <= ln.fight_until) then return jsonb_build_object('result', 'missed', 'now', now()); end if;
+  -- anti-cheat: a fight "won" faster than the meter can fill means the fight was skipped
+  if ln.fight_min_at is not null and now() < ln.fight_min_at - interval '300 milliseconds' then
+    perform oc_flag(p_pid, 'skipped_fight', jsonb_build_object('early_ms', round(extract(epoch from (ln.fight_min_at - now())) * 1000)));
+    return jsonb_build_object('result', 'missed', 'now', now()); end if;
+  if oc_is_lure(ln.bait) and ln.bait in ('jig', 'fly') and now() >= ln.bite_at then perform oc_reaction(p_pid, extract(epoch from (now() - ln.bite_at)) * 1000); end if;
   select * into sp from spots where id = ln.spot;
   per := oc_period(ln.bite_at, sp.tz);
   mins := coalesce(ln.wait_mins, extract(epoch from (ln.bite_at - ln.cast_at)) / 60);
@@ -642,6 +700,7 @@ begin
     perform oc_news(ln.variant, p_pid, p.name || '#' || p.tag || ' caught a ' || ln.variant || ' ' || (select name from species where id = ln.species) || '!', jsonb_build_object('sp', ln.species, 'lb', ln.lb, 'variant', ln.variant, 'fish', f.id)); end if;
   res := jsonb_build_object('result', 'catch', 'fish', oc_fish_json(f), 'newSpecies', nsp, 'newBest', nbest, 'worldRecord', worldrec, 'minutes', round(mins), 'daily', dl, 'reward', reward, 'now', now());
   res := res || jsonb_build_object('derby', oc_derby_enter(p_pid, f));
+  perform oc_rate_note(p_pid);
   if soak then res := res || jsonb_build_object('soakBonus', true); end if;
   return res;
 end $$;
@@ -1145,6 +1204,12 @@ begin
     return oc_trade_json(t, p_pid) || jsonb_build_object('reason', 'a fish in the trade is no longer available'); end if;
   select coalesce(jsonb_agg(oc_fish_json(x)), '[]'::jsonb) into ag from fish x where x.id = any(t.a_fish);
   select coalesce(jsonb_agg(oc_fish_json(x)), '[]'::jsonb) into bg from fish x where x.id = any(t.b_fish);
+  -- anti-cheat: a brand-new account handing over a lot of value is how alt accounts feed a main one
+  perform oc_flag(x.giver, 'alt_feeding', jsonb_build_object('to', x.taker, 'value', x.val))
+    from (select t.a as giver, t.b as taker, coalesce((select sum(oc_fish_value(species, lb, variant)) from fish where id = any(t.a_fish)), 0) + coalesce(t.a_coins, 0) as val
+          union all select t.b, t.a, coalesce((select sum(oc_fish_value(species, lb, variant)) from fish where id = any(t.b_fish)), 0) + coalesce(t.b_coins, 0)) x
+    join players g on g.pid = x.giver
+    where x.val >= 5000 and (g.created_at > now() - interval '3 days' or coalesce((g.stats ->> 'catches')::int, 0) < 30);
   update fish set pid = t.b, locked_until = now() + interval '24 hours' where id = any(t.a_fish);
   update fish set pid = t.a, locked_until = now() + interval '24 hours' where id = any(t.b_fish);
   update players set coins = coins - t.a_coins + t.b_coins, stats = stats || jsonb_build_object('traded', coalesce((stats ->> 'traded')::int, 0) + 1) where pid = t.a;
@@ -1276,6 +1341,23 @@ create or replace function public.oc_admin(p_key text) returns void language plp
 begin if p_key is null or not exists (select 1 from admin where k = p_key) then perform oc_fail('not the admin key'); end if; end $$;
 
 -- Player numbers: who plays each day, new players, and who comes back. "Real" players have caught at least 5 fish (most alt accounts never do).
+-- Cheat Watch: open flags, newest first, with what the player has (coins, catches) so the admin can decide.
+create or replace function public.admin_cheats(p_key text) returns jsonb language plpgsql security definer set search_path = public as $$
+begin
+  perform oc_admin(p_key);
+  return coalesce((select jsonb_agg(x order by x.at desc) from (
+    select c.id, c.kind, c.detail, c.at, p.pid, p.name, p.tag, p.coins, p.banned, p.created_at as joined, coalesce((p.stats ->> 'catches')::int, 0) as catches,
+      (select count(*) from cheat_flags c2 where c2.pid = p.pid and not c2.cleared) as open_flags,
+      (select count(*) from players q where q.signup_ip is not null and q.signup_ip = p.signup_ip) as same_network
+    from cheat_flags c join players p on p.pid = c.pid where not c.cleared order by c.at desc limit 100) x), '[]'::jsonb);
+end $$;
+create or replace function public.admin_clear_flag(p_key text, p_id bigint) returns jsonb language plpgsql security definer set search_path = public as $$
+begin
+  perform oc_admin(p_key);
+  update cheat_flags set cleared = true where id = p_id;
+  return jsonb_build_object('ok', true);
+end $$;
+
 create or replace function public.admin_stats(p_key text) returns jsonb language plpgsql security definer set search_path = public as $$
 declare today date := (now() at time zone 'America/New_York')::date;
 begin
