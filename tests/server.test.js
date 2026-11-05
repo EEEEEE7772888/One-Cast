@@ -42,14 +42,14 @@ ok(r.result==='early','reeling early loses the cast');
 ok(rpc('reel_line',[A.pid,A.secret,0]).error==='no line there','line is gone after early reel');
 // a real catch: cast, then pretend the bite happened
 rpc('cast_line',[A.pid,A.secret,0,'worm']);
-sql(`update lines set cast_at = now() - interval '5 minutes', bite_at = now() - interval '1 minute' where pid='${A.pid}'`);
+sql(`update lines set wait_mins = null, cast_at = now() - interval '5 minutes', bite_at = now() - interval '1 minute' where pid='${A.pid}'`);
 r=rpc('reel_line',[A.pid,A.secret,0]);
 ok(r.result==='catch'&&r.fish&&r.fish.lb>0&&r.newSpecies===true,'caught a fish: '+(r.fish&&(r.fish.sp+' '+r.fish.lb+' lb')));
 sA=rpc('get_state',[A.pid,A.secret]);
 ok(sA.fish.length===1&&sA.stats.catches===1&&sA.journal[r.fish.sp].n===1,'fish in inventory, stats and journal updated');
 ok(sA.daily&&sA.daily.type&&sA.daily.progress>=0,'daily challenge exists: '+sA.daily.type);
 // catch many for money
-for(let i=0;i<30;i++){ rpc('cast_line',[A.pid,A.secret,0,'worm']); sql(`update lines set cast_at = now() - interval '5 minutes', bite_at = now() - interval '1 minute' where pid='${A.pid}'`); rpc('reel_line',[A.pid,A.secret,0]); }
+for(let i=0;i<30;i++){ rpc('cast_line',[A.pid,A.secret,0,'worm']); sql(`update lines set wait_mins = null, cast_at = now() - interval '5 minutes', bite_at = now() - interval '1 minute' where pid='${A.pid}'`); rpc('reel_line',[A.pid,A.secret,0]); }
 sA=rpc('get_state',[A.pid,A.secret]);
 ok(sA.fish.length>=25,'caught a bunch: '+sA.fish.length);
 
@@ -98,12 +98,12 @@ rpc('buy',[A.pid,A.secret,'bait','mullet']);
 c=rpc('cast_line',[A.pid,A.secret,0,'mullet']);
 // find a dusk time at the spot (New York): 18:00 local today or yesterday
 const duskUtc=sql("select (date_trunc('day', now() at time zone 'America/New_York') + interval '18 hours') at time zone 'America/New_York' - interval '1 day'");
-sql(`update lines set cast_at = '${duskUtc}'::timestamptz - interval '400 minutes', bite_at = '${duskUtc}'::timestamptz, legend_roll = 0 where pid='${A.pid}'`);
+sql(`update lines set wait_mins = null, cast_at = '${duskUtc}'::timestamptz - interval '400 minutes', bite_at = '${duskUtc}'::timestamptz, legend_roll = 0 where pid='${A.pid}'`);
 r=rpc('reel_line',[A.pid,A.secret,0]);
 ok(r.result==='legendsnap'&&r.legend.name==='The Swamp King','60 lb line snaps on the Swamp King');
 rpc('buy',[A.pid,A.secret,'gear','line3']);
 c=rpc('cast_line',[A.pid,A.secret,0,'mullet']);
-sql(`update lines set cast_at = '${duskUtc}'::timestamptz - interval '400 minutes', bite_at = '${duskUtc}'::timestamptz, legend_roll = 0 where pid='${A.pid}'`);
+sql(`update lines set wait_mins = null, cast_at = '${duskUtc}'::timestamptz - interval '400 minutes', bite_at = '${duskUtc}'::timestamptz, legend_roll = 0 where pid='${A.pid}'`);
 r=rpc('reel_line',[A.pid,A.secret,0]);
 ok(r.result==='legend'&&r.fish.legend&&r.legend.ownerName===sA.name+'#'+sA.tag,'caught THE SWAMP KING');
 const kingFish=r.fish.id;
@@ -112,7 +112,7 @@ rpc('admin_player',['oc-admin-testkey',B.pid,'coins','900000']);
 rpc('buy',[B.pid,B.secret,'region','everglades']); rpc('buy',[B.pid,B.secret,'gear','kayak']); rpc('buy',[B.pid,B.secret,'gear','skiff']); rpc('buy',[B.pid,B.secret,'bait','mullet']); rpc('buy',[B.pid,B.secret,'gear','line1']); rpc('buy',[B.pid,B.secret,'gear','line2']); rpc('buy',[B.pid,B.secret,'gear','line3']);
 rpc('travel',[B.pid,B.secret,'everglades']);
 c=rpc('cast_line',[B.pid,B.secret,0,'mullet']);
-sql(`update lines set cast_at = '${duskUtc}'::timestamptz - interval '400 minutes', bite_at = '${duskUtc}'::timestamptz, legend_roll = 0 where pid='${B.pid}'`);
+sql(`update lines set wait_mins = null, cast_at = '${duskUtc}'::timestamptz - interval '400 minutes', bite_at = '${duskUtc}'::timestamptz, legend_roll = 0 where pid='${B.pid}'`);
 r=rpc('reel_line',[B.pid,B.secret,0]);
 ok(r.result!=='legend','second player cannot catch an owned legend (got '+r.result+')');
 ok(rpc('sell_fish',[A.pid,A.secret,[kingFish]]).error==='legends cannot be sold','legend cannot be sold');
@@ -129,7 +129,7 @@ ok(rpc('friend_respond',[B.pid,B.secret,A.pid,true]).ok===true,'B accepts');
 sB=rpc('get_state',[B.pid,B.secret]); ok(sB.friends.length===1&&sB.friends[0].status==='accepted','friends list shows A');
 let tr=rpc('trade_open',[A.pid,A.secret,B.pid]); ok(tr.id&&tr.status==='open','trade opened');
 // B catches a fish to trade
-rpc('travel',[B.pid,B.secret,'basslake']); rpc('cast_line',[B.pid,B.secret,0,'worm']); sql(`update lines set cast_at = now() - interval '5 minutes', bite_at = now() - interval '1 minute' where pid='${B.pid}'`); r=rpc('reel_line',[B.pid,B.secret,0]);
+rpc('travel',[B.pid,B.secret,'basslake']); rpc('cast_line',[B.pid,B.secret,0,'worm']); sql(`update lines set wait_mins = null, cast_at = now() - interval '5 minutes', bite_at = now() - interval '1 minute' where pid='${B.pid}'`); r=rpc('reel_line',[B.pid,B.secret,0]);
 const bFish=r.fish.id;
 ok(rpc('trade_set',[A.pid,A.secret,tr.id,[bFish],0]).error==='you cannot trade that fish yet','cannot offer a fish you do not own');
 ok(rpc('trade_set',[A.pid,A.secret,tr.id,[kingFish],99999999]).error==='not enough coins','cannot offer coins you do not have');
@@ -161,11 +161,11 @@ console.log('open water and boats');
 rpc('admin_player',['oc-admin-testkey',A.pid,'coins','3000000']);
 ['shrimp','squid','lure','deepbait'].forEach(b2=>rpc('buy',[A.pid,A.secret,'bait',b2]));
 rpc('buy',[A.pid,A.secret,'region','arctic']); rpc('travel',[A.pid,A.secret,'arcticdeep']);
-for(let i=0;i<40;i++){ rpc('cast_line',[A.pid,A.secret,0,'squid']); sql(`update lines set cast_at=now()-interval '9 hours', bite_at=now()-interval '1 minute' where pid='${A.pid}'`); r=rpc('reel_line',[A.pid,A.secret,0]); if(r.fish&&!D.SP_BY_ID[r.fish.sp].small){ ok(false,'big fish without the rig: '+r.fish.sp); break; } }
+for(let i=0;i<40;i++){ rpc('cast_line',[A.pid,A.secret,0,'squid']); sql(`update lines set wait_mins = null, cast_at=now()-interval '9 hours', bite_at=now()-interval '1 minute' where pid='${A.pid}'`); r=rpc('reel_line',[A.pid,A.secret,0]); if(r.fish&&!D.SP_BY_ID[r.fish.sp].small){ ok(false,'big fish without the rig: '+r.fish.sp); break; } }
 ok(true,'40 casts at the Arctic deep without the rig: only small sea fish');
 ok(rpc('cast_line',[A.pid,A.secret,0,'deepbait']).error==='you need the deep-drop rig to use that','deep-drop bait needs the rig');
 rpc('buy',[A.pid,A.secret,'gear','deeprig']); let big=0;
-for(let i=0;i<30;i++){ rpc('cast_line',[A.pid,A.secret,0,'deepbait']); sql(`update lines set cast_at=now()-interval '9 hours', bite_at=now()-interval '1 minute', legend_roll=0.99 where pid='${A.pid}'`); r=rpc('reel_line',[A.pid,A.secret,0]); if(r.fish&&!D.SP_BY_ID[r.fish.sp].small) big++; }
+for(let i=0;i<30;i++){ rpc('cast_line',[A.pid,A.secret,0,'deepbait']); sql(`update lines set wait_mins = null, cast_at=now()-interval '9 hours', bite_at=now()-interval '1 minute', legend_roll=0.99 where pid='${A.pid}'`); r=rpc('reel_line',[A.pid,A.secret,0]); if(r.fish&&!D.SP_BY_ID[r.fish.sp].small) big++; }
 ok(big>15,'with the rig, the big fish bite ('+big+' of 30)');
 rpc('buy',[A.pid,A.secret,'region','pacific']); rpc('travel',[A.pid,A.secret,'kona']);
 ok(rpc('cast_line',[A.pid,A.secret,0,'lure']).error==='trolling lures need a sportfisher or bigger boat','lures need a sportfisher');
@@ -555,7 +555,7 @@ console.log('12-hour soak');
 {
   const P={pid:uuid(),secret:'s'.repeat(10)+uuid().replace(/-/g,'').slice(0,20)}; rpc('login',[P.pid,P.secret,'Soaker']);
   sql(`update players set baits=baits||'{minnow,cut}', gear=jsonb_set(gear,'{line}','5'), spot='basslake' where pid='${P.pid}'`);
-  const soak=(bait,sp,lb,hours)=>{ rpc('cast_line',[P.pid,P.secret,0,bait]); sql(`update lines set cast_at=now()-interval '${hours} hours', bite_at=now()-interval '1 minute', species='${sp}', lb=${lb}, inches=8, snap=false, legend_roll=0.99 where pid='${P.pid}'`); return rpc('reel_line',[P.pid,P.secret,0]); };
+  const soak=(bait,sp,lb,hours)=>{ rpc('cast_line',[P.pid,P.secret,0,bait]); sql(`update lines set wait_mins = null, cast_at=now()-interval '${hours} hours', bite_at=now()-interval '1 minute', species='${sp}', lb=${lb}, inches=8, snap=false, legend_roll=0.99 where pid='${P.pid}'`); return rpc('reel_line',[P.pid,P.secret,0]); };
   let r=soak('minnow','largemouth',2,13); ok(r.result==='catch'&&r.fish.lb>=20&&r.fish.sp==='largemouth'&&r.soakBonus,'13 hours on a minnow: the 2 lb bass becomes a '+(r&&r.fish&&r.fish.lb)+' lb bass');
   r=soak('minnow','bluegill',0.5,12.2); ok(r.result==='catch'&&r.fish.lb>=20&&r.soakBonus&&D.SP_BY_ID[r.fish.sp].max>=20,'a bluegill turns into a fish that can be 20 lb+ ('+(r.fish&&r.fish.sp)+' '+(r.fish&&r.fish.lb)+' lb)');
   r=soak('minnow','largemouth',2,11); ok(r.result==='catch'&&r.fish.lb==2&&!r.soakBonus,'11 hours: no bonus');
@@ -622,6 +622,18 @@ console.log('still fishing? (autoclicker check)');
   sql(`update players set lure_casts=999, presence='{}' where pid='${P.pid}'`); let passes=0;
   for(let i=0;i<64;i++){ q=rpc('presence_get',[P.pid,P.secret]); sql(`update players set presence = presence || jsonb_build_object('lockUntil', null,'issued', now()-interval '2 seconds', 'wrong', 0) where pid='${P.pid}'`); if(rpc('presence_answer',[P.pid,P.secret,7]).result==='ok'){ passes++; sql(`update players set lure_casts=999, presence='{}' where pid='${P.pid}'`); } }
   ok(passes>0&&passes<14,'an autoclicker tapping one spot only gets through about 1 in 16 ('+passes+'/64)');
+}
+
+console.log('fish finder buff');
+{
+  const mk=(n,f)=>{ const P={pid:uuid(),secret:'t'.repeat(10)+uuid().replace(/-/g,'').slice(0,20)}; rpc('login',[P.pid,P.secret,n]); sql(`update players set baits=baits||'{minnow}', spot='basslake', gear=jsonb_set(gear,'{finder}','${f}') where pid='${P.pid}'`); return P; };
+  const avg=(P)=>{ let real=0, rolled=0; for(let i=0;i<150;i++){ const r=rpc('cast_line',[P.pid,P.secret,0,'minnow']); real+=(Date.parse(r.line.biteAt)-Date.parse(r.line.castAt))/60000; rolled+=+sql(`select wait_mins from lines where pid='${P.pid}'`); sql(`delete from lines where pid='${P.pid}'`); } return [real/150, rolled/150]; };
+  const [r0,w0]=avg(mk('NoFinder',0)), [r1,w1]=avg(mk('Finder1',1)), [r3,w3]=avg(mk('Finder3',3));
+  ok(Math.abs(r0/w0-1)<0.01&&Math.abs(r1/w1-0.85)<0.01&&Math.abs(r3/w3-0.70)<0.01,'finders make bites come sooner: 100% / 85% / 70% of the wait');
+  const P=mk('SoonerSame',2); rpc('cast_line',[P.pid,P.secret,0,'minnow']); sql(`update lines set wait_mins=600, bite_at=now()-interval '1 second', cast_at=now()-interval '450 minutes', species='largemouth', lb=3, inches=14, snap=false, legend_roll=0.99 where pid='${P.pid}'`);
+  ok(rpc('reel_line',[P.pid,P.secret,0]).minutes===600,'the catch counts the full wait the fish was rolled for');
+  ok(+sql(`select oc_finder_luck(3)`)===1.25&&+sql(`select oc_finder_luck(2)`)===1,'the Legend finder makes legends 25% more likely');
+  ok(D.SP_BY_ID.toothfish.rate===Math.round(2000*D.VALUE_MULT),'Antarctic toothfish are worth 20% less');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

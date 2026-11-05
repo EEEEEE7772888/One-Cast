@@ -316,6 +316,9 @@ alter table public.players add column if not exists lure_casts int not null defa
 alter table public.players add column if not exists lure_check_at int not null default 50; -- ask again after this many
 alter table public.players add column if not exists presence jsonb not null default '{}';  -- {cell, issued, lockUntil, wrong}
 
+-- How long the fish 'waited' for the bait when it was rolled (fish finders make the real wait shorter).
+alter table public.lines add column if not exists wait_mins numeric;
+
 -- Lock everything down. The website only gets the functions.
 do $$ declare t text; begin
   for t in select tablename from pg_tables where schemaname='public' loop

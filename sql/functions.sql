@@ -42,6 +42,14 @@ end $$;
 create or replace function public.oc_line_test(lvl int) returns int language sql immutable as $$
   select (array[15,30,60,150,400,1000])[greatest(1, least(6, lvl + 1))];
 $$;
+-- Fish finders find fish sooner: the bite comes after this share of the wait (the fish is still rolled for the full wait).
+create or replace function public.oc_finder_speed(lvl int) returns numeric language sql immutable as $$
+  select (array[1.0, 0.85, 0.75, 0.70])[greatest(1, least(4, coalesce(lvl, 0) + 1))];
+$$;
+-- The Legend finder makes legends 25% more likely to bite.
+create or replace function public.oc_finder_luck(lvl int) returns numeric language sql immutable as $$
+  select case when coalesce(lvl, 0) >= 3 then 1.25 else 1.0 end;
+$$;
 create or replace function public.oc_rod_bonus(lvl int) returns numeric language sql immutable as $$
   select (array[0,0.05,0.09,0.13,0.18,0.24,0.30])[greatest(1, least(7, coalesce(lvl, 0) + 1))];
 $$;
@@ -247,7 +255,7 @@ create or replace function public.oc_line_json(ln public.lines, finder int) retu
   select jsonb_build_object('idx', ln.idx, 'spot', ln.spot, 'bait', ln.bait, 'castAt', ln.cast_at, 'biteAt', ln.bite_at, 'snagAt', ln.snag_at,
     'peekSp', case when finder >= 1 then ln.species end, 'peekLb', case when finder >= 2 then ln.lb end,
     'legendNear', case when finder >= 3 then exists (select 1 from legends l where l.spot = ln.spot and l.active and l.owner_pid is null and l.bait = ln.bait
-        and l.period = oc_period(ln.bite_at, (select tz from spots where id = ln.spot)) and extract(epoch from (ln.bite_at - ln.cast_at)) / 60 >= l.min_wait and ln.legend_roll < 1.0 / oc_legend_odds(l)) else false end);
+        and l.period = oc_period(ln.bite_at, (select tz from spots where id = ln.spot)) and coalesce(ln.wait_mins, extract(epoch from (ln.bite_at - ln.cast_at)) / 60) >= l.min_wait and ln.legend_roll < 1.0 / oc_legend_odds(l)) else false end);
 $$;
 
 create or replace function public.oc_state(p public.players) returns jsonb language plpgsql stable as $$
@@ -512,7 +520,7 @@ begin
   -- Lures and jigs are fished actively: the strike comes within seconds while the player works the lure.
   -- The fish is rolled as if the lure had fished for `mins` (same size rules), so cast_at is set that far back.
   bite := case when oc_is_lure(p_bait) then now() + ((case when p_bait = 'crank' then 6 + random() * 16 when p_bait = 'fly' then 9 + random() * 16 when p_bait = 'jerk' then 6 + random() * 14 else 8 + random() * 20 end) * interval '1 second')
-               else now() + (mins * interval '1 minute') end;
+               else now() + (mins * oc_finder_speed((p.gear ->> 'finder')::int) * interval '1 minute') end;
   per := oc_period(bite, sp.tz);
   select * into r from oc_roll(p.spot, p_bait, mins, per, ac.small, oc_rod_bonus((p.gear ->> 'rod')::int));
   -- hard lures: this cast uses up one cast of the lure tied on (tie on a new one when it is worn out), and it might snag
@@ -527,8 +535,8 @@ begin
     end if;
   end if;
   if oc_is_lure(p_bait) then update players set lure_casts = lure_casts + 1 where pid = p_pid; end if;
-  insert into lines (pid, idx, spot, bait, cast_at, bite_at, species, lb, inches, variant, snap, legend_roll, snag_at)
-    values (p_pid, p_idx, p.spot, p_bait, case when oc_is_lure(p_bait) then bite - (mins * interval '1 minute') else now() end, bite, r.species, r.lb, r.inches, r.variant, random() < oc_reel_snap((p.gear ->> 'reel')::int), random(), snag)
+  insert into lines (pid, idx, spot, bait, cast_at, bite_at, species, lb, inches, variant, snap, legend_roll, snag_at, wait_mins)
+    values (p_pid, p_idx, p.spot, p_bait, case when oc_is_lure(p_bait) then bite - (mins * interval '1 minute') else now() end, bite, r.species, r.lb, r.inches, r.variant, random() < oc_reel_snap((p.gear ->> 'reel')::int), random() / oc_finder_luck((p.gear ->> 'finder')::int), snag, mins)
     returning * into ln;
   select * into p from players where pid = p_pid;
   return jsonb_build_object('line', oc_line_json(ln, (p.gear ->> 'finder')::int), 'small', ac.small, 'baits', to_jsonb(p.baits), 'gear', p.gear, 'now', now());
@@ -548,7 +556,7 @@ begin
   if oc_is_lure(ln.bait) and now() > ln.bite_at + interval '4 seconds' and not (ln.fight_until is not null and now() <= ln.fight_until) then return jsonb_build_object('result', 'missed', 'now', now()); end if;
   select * into sp from spots where id = ln.spot;
   per := oc_period(ln.bite_at, sp.tz);
-  mins := extract(epoch from (ln.bite_at - ln.cast_at)) / 60;
+  mins := coalesce(ln.wait_mins, extract(epoch from (ln.bite_at - ln.cast_at)) / 60);
   test := oc_line_test((p.gear ->> 'line')::int);
   -- a legend?
   select * into l from legends where spot = ln.spot and active and owner_pid is null and bait = ln.bait and period = per and mins >= min_wait and ln.legend_roll < 1.0 / oc_legend_odds(legends) order by id limit 1 for update;
