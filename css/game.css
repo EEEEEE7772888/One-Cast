@@ -721,3 +721,9 @@ body.halloween .dialog{border-color:#4A2A6A}
 .still-cell{aspect-ratio:1;display:grid;place-items:center;background:rgba(10,30,60,.35);border:2px solid rgba(255,255,255,.15);cursor:pointer;padding:0}
 .still-cell canvas{width:70%;height:auto;image-rendering:pixelated}
 .still-cell:hover{border-color:var(--gold)}
+/* "now on the App Store" notice (computers) */
+.app-banner{position:fixed;left:14px;bottom:14px;z-index:55;display:flex;align-items:center;gap:10px;max-width:min(340px,calc(100vw - 24px));padding:8px 8px 8px 12px;background:#0E1E3C;border:3px solid var(--gold);box-shadow:0 4px 0 #050B1C;font:18px/1.2 var(--term);color:var(--ice)}
+.app-banner b{color:var(--gold);font-weight:400}
+.app-banner .ab-ic{font-size:20px}
+.app-banner .ab-x{flex:none;width:32px;height:32px;background:#1D3866;border:2px solid var(--edge);color:var(--ice);font:10px var(--pixel);cursor:pointer}
+@media (max-width:900px){.app-banner{left:50%;bottom:auto;top:96px;transform:translateX(-50%);font-size:16px}}
