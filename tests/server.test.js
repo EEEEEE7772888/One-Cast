@@ -675,5 +675,16 @@ console.log('anti-cheat');
   sql(`update baits set snag=0.08 where id='crank'`);
 }
 
+console.log('admin takes coins');
+{
+  const K='oc-admin-testkey', P={pid:uuid(),secret:'w'.repeat(10)+uuid().replace(/-/g,'').slice(0,20)}; rpc('login',[P.pid,P.secret,'RichKid']); sql(`update players set coins=250000 where pid='${P.pid}'`);
+  const c=()=>rpc('get_state',[P.pid,P.secret]).coins;
+  rpc('admin_player',[K,P.pid,'takecoins','200000']); ok(c()===50000,'take $200,000: $250,000 -> $50,000');
+  rpc('admin_player',[K,P.pid,'takecoins','999999']); ok(c()===0,'taking more than they have stops at $0');
+  rpc('admin_player',[K,P.pid,'setcoins','500']); ok(c()===500,'set coins to exactly $500');
+  rpc('admin_player',[K,P.pid,'coins','-9999']); ok(c()===0,'the old negative +COINS also never goes below $0');
+  ok(rpc('admin_player',['nope',P.pid,'takecoins','5']).error==='not the admin key','only the admin');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);

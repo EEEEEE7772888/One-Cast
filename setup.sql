@@ -1782,7 +1782,13 @@ begin
     when 'hide' then update players set hidden = (p_value = 'true') where pid = p_pid;
     when 'noboard' then update players set no_board = (p_value = 'true') where pid = p_pid;
     when 'ban' then update players set banned = (p_value = 'true') where pid = p_pid;
-    when 'coins' then update players set coins = coins + p_value::bigint where pid = p_pid;
+    when 'coins' then update players set coins = greatest(0, coins + p_value::bigint) where pid = p_pid;
+    when 'takecoins' then
+      if p_value::bigint < 0 then perform oc_fail('enter how much to take (a positive number)'); end if;
+      update players set coins = greatest(0, coins - p_value::bigint) where pid = p_pid;
+    when 'setcoins' then
+      if p_value::bigint < 0 then perform oc_fail('coins cannot be negative'); end if;
+      update players set coins = p_value::bigint where pid = p_pid;
     when 'givebait' then
       if not exists (select 1 from baits where id = p_value) then perform oc_fail('no such bait'); end if;
       if (select uses from baits where id = p_value) > 0 then perform oc_lure_add(p_pid, p_value, 5); end if;
