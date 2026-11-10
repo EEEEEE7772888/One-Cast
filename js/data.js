@@ -255,7 +255,7 @@ sp({id:'polarcod',name:'Polar cod',small:true,min:0.1,max:1.2,k:12.8,rate:120,ac
 sp({id:'opelu',name:'Mackerel scad',small:true,min:0.2,max:2,k:12.5,rate:90,act:'day',look:'opelu',minWait:0,maxWait:240,baits:{worm:2,minnow:3,cut:4,shrimp:5,squid:4},spots:{kona:6,openpacific:5}});
 sp({id:'silverfish',name:'Antarctic silverfish',small:true,min:0.05,max:0.8,k:13,rate:400,act:'deep',look:'silverfish',minWait:0,maxWait:240,baits:{worm:2,minnow:4,cut:3,shrimp:5,squid:4},spots:{rosssea:7}});
 /* Southern Ocean */
-sp({id:'toothfish',name:'Antarctic toothfish',min:20,max:300,k:13.5,rate:2000,act:'deep',look:'toothfish',minWait:300,maxWait:0,baits:{deepbait:6,squid:3},spots:{rosssea:7}});
+sp({id:'toothfish',name:'Antarctic toothfish',min:20,max:300,k:13.5,rate:1500,act:'deep',look:'toothfish',minWait:300,maxWait:0,baits:{deepbait:6,squid:3},spots:{rosssea:7}});
 sp({id:'icefish',name:'Mackerel icefish',min:0.5,max:7,k:14,rate:900,act:'deep',look:'icefish',minWait:20,maxWait:600,baits:{squid:6,deepbait:1},spots:{rosssea:6}});
 /* Added Oct 2026: more US fish */
 sp({id:'longnosegar',name:'Longnose gar',min:1,max:50,k:18,rate:12,act:'day',look:'longnosegar',minWait:20,maxWait:0,baits:{minnow:4,cut:2,crank:1,jerk:1},spots:{mississippi:3,neuse:2,guntersville:1.5,lakefork:1,winnebago:1,okeechobee:1}});
