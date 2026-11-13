@@ -43,7 +43,7 @@ B.superyacht=function(){ var Wd=172, Hd=62, D=46, g=grid(Wd,Hd); hull(g,168,D,14
   rect(g,6,D-6,12,4,'X'); rect(g,4,D-5,2,2,'X'); rect(g,14,D-5,3,2,'w'); line(g,18,D-5,26,D-6,'X'); rect(g,25,D-8,2,3,'X');
   line(g,1,D-8,23,D-8,'k'); put(g,12,D-7,'k'); rect(g,6,D-2,12,1,'k'); put(g,8,D-1,'k'); put(g,15,D-1,'k');
   return {g:g,deck:D,stand:32,big:true,
-    seats:[[44,D-9],[56,D-9],[134,D-9],[146,D-9],[60,D-17],[124,D-17],[76,D-25],[158,deckAt[158]-1]],
+    seats:[[44,D-9],[56,D-9],[134,D-9],[146,D-9],[60,D-17],[124,D-17],[76,D-25],[158,deckAt[158]-1],[70,D-17],[110,D-17],[96,D-25],[112,D-25]],
     map:{R:'#C8D0D8',h:'#4A5462',H:'#3A4450',B:'#1A2028',S:'#8A96A4',C:'#E4E8EC',c:'#A8B2BC',k:'#1A2028',w:'#5FB2CF',W:'#9FD8F0',G:'#C8D0D8',
       D:'#F4F8FA',p:'#9AA6B8',f:'#E5484D',X:'#F0F2F4'}}; };
 /* The Dev Flagship: one of one, only the game's creator owns it. Black hull, neon stripes, gold trim, a sun deck and a

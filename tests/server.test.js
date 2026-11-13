@@ -721,7 +721,12 @@ console.log('big update: topwater and new lures, new spots, the Dilbar superyach
   let by=rpc('buy',[R.pid,R.secret,'gear','superyacht']); ok(!by.error&&by.gear.boat==='superyacht','buy it');
   ok(+sql(`select coins from players where pid='${R.pid}'`)===10000000,'$750 million comes off');
   ok(sql(`select (oc_access(p, s)).rig::text from players p, spots s where p.pid='${R.pid}' and s.id='rosssea'`)==='true','deep-drop rig built in');
-  ok(+sql(`select oc_crew_cap('${R.pid}')`)===8,'carries a crew of 8');
+  ok(+sql(`select oc_crew_cap('${R.pid}')`)===12,'carries a crew of 12');
+  ok(sql(`select perk::text from gear where id='superyacht'`)==='{"all": 0.5, "luck": 2, "size": 0.2}','bites twice as fast, fish 20% bigger, legends twice as likely');
+  // legend luck and bigger fish land on the line it casts
+  sql(`update players set spot='basslake', baits=baits||'{minnow}' where pid='${R.pid}'`);
+  let lr=[]; for(let i=0;i<30;i++){ rpc('cast_line',[R.pid,R.secret,0,'minnow']); lr.push(+sql(`select legend_roll from lines where pid='${R.pid}'`)); sql(`delete from lines where pid='${R.pid}'`); }
+  ok(Math.max(...lr)<=0.5,'the legend roll is halved on the superyacht (legends twice as likely)');
   ok(rpc('buy',[R.pid,R.secret,'gear','devboat']).error==='that boat is not for sale','the Dev Flagship is still not for sale');
 }
 

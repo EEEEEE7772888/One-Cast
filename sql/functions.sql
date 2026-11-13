@@ -578,7 +578,7 @@ begin
 end $$;
 
 create or replace function public.cast_line(p_pid uuid, p_secret text, p_idx int, p_bait text) returns jsonb language plpgsql security definer set search_path = public as $$
-declare p public.players; sp public.spots; mins numeric; r record; per text; ln public.lines; ac record; bite timestamptz; bt public.baits; lu jsonb; ln_n int; ln_left int; snag timestamptz;
+declare p public.players; sp public.spots; mins numeric; r record; per text; ln public.lines; ac record; bite timestamptz; bt public.baits; lu jsonb; ln_n int; ln_left int; snag timestamptz; bperk jsonb;
 begin
   p := oc_auth(p_pid, p_secret);
   select * into sp from spots where id = p.spot;
@@ -605,7 +605,9 @@ begin
   bite := case when oc_is_lure(p_bait) then now() + ((case bt.play when 'crank' then 6 + random() * 16 when 'fly' then 9 + random() * 16 when 'jerk' then 6 + random() * 14 when 'top' then 7 + random() * 14 when 'walk' then 6 + random() * 14 when 'buzz' then 6 + random() * 14 else 8 + random() * 20 end) * interval '1 second')
                else now() + (mins * oc_finder_speed((p.gear ->> 'finder')::int) * interval '1 minute') end;
   per := oc_period(bite, sp.tz);
-  select * into r from oc_roll(p.spot, p_bait, mins, per, ac.small, oc_rod_bonus((p.gear ->> 'rod')::int));
+  -- a boat can make fish bigger (perk size) and legends likelier (perk luck): the Dilbar superyacht does both
+  select perk into bperk from gear where id = ac.boat;
+  select * into r from oc_roll(p.spot, p_bait, mins, per, ac.small, oc_rod_bonus((p.gear ->> 'rod')::int) + coalesce((bperk ->> 'size')::numeric, 0));
   -- hard lures: this cast uses up one cast of the lure tied on (tie on a new one when it is worn out), and it might snag
   if coalesce(bt.uses, 0) > 0 then
     lu := coalesce(p.gear -> 'lures' -> p_bait, '{"n":0,"left":0}'::jsonb); ln_n := coalesce((lu ->> 'n')::int, 0); ln_left := coalesce((lu ->> 'left')::int, 0);
@@ -619,7 +621,7 @@ begin
   end if;
   if oc_is_lure(p_bait) then update players set lure_casts = lure_casts + 1 where pid = p_pid; end if;
   insert into lines (pid, idx, spot, bait, cast_at, bite_at, species, lb, inches, variant, snap, legend_roll, snag_at, wait_mins)
-    values (p_pid, p_idx, p.spot, p_bait, case when oc_is_lure(p_bait) then bite - (mins * interval '1 minute') else now() end, bite, r.species, r.lb, r.inches, r.variant, random() < oc_reel_snap((p.gear ->> 'reel')::int), random() / oc_finder_luck((p.gear ->> 'finder')::int), snag, mins)
+    values (p_pid, p_idx, p.spot, p_bait, case when oc_is_lure(p_bait) then bite - (mins * interval '1 minute') else now() end, bite, r.species, r.lb, r.inches, r.variant, random() < oc_reel_snap((p.gear ->> 'reel')::int), random() / (oc_finder_luck((p.gear ->> 'finder')::int) * coalesce((bperk ->> 'luck')::numeric, 1)), snag, mins)
     returning * into ln;
   select * into p from players where pid = p_pid;
   return jsonb_build_object('line', oc_line_json(ln, (p.gear ->> 'finder')::int), 'small', ac.small, 'baits', to_jsonb(p.baits), 'gear', p.gear, 'now', now());
@@ -985,7 +987,7 @@ begin
 end $$;
 
 create or replace function public.oc_crew_cap(p_host uuid) returns int language sql stable as $$
-  select case (select gear ->> 'boat' from players where pid = p_host) when 'devboat' then 12 when 'superyacht' then 8 else 3 end $$;
+  select case (select gear ->> 'boat' from players where pid = p_host) when 'devboat' then 12 when 'superyacht' then 12 else 3 end $$;
 
 -- a guest hopping off goes back to where they were, unless they have their own ticket for where the boat is
 create or replace function public.oc_crew_home(p_guest uuid) returns void language plpgsql as $$
