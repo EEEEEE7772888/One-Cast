@@ -93,7 +93,7 @@ S.measure=function(){
   if(m==='troll') horizonY=Math.max(Math.round(H*0.42),centerB+18);
   else horizonY=Math.max(Math.round(H*0.24),centerB+22);
   // the Dev Flagship is tall: drop the waterline so its decks sit below the spot text (but keep some water above the panel)
-  if((m==='boat'||m==='troll'||m==='deep')&&S.hooks.boat&&S.hooks.boat()==='devboat') horizonY=Math.max(horizonY,Math.min(centerB+40,panelTop-46));
+  if((m==='boat'||m==='troll'||m==='deep')&&S.hooks.boat&&A.boat(S.hooks.boat()).big) horizonY=Math.max(horizonY,Math.min(centerB+40,panelTop-46));
   floorTarget=panelTop; if(floorTarget<horizonY+40) floorTarget=horizonY+40;
   if(theme().shallow) floorTarget=Math.max(horizonY+40,Math.round(horizonY+(panelTop-horizonY)*0.8)); // a clear, shallow stream: you can see the stones
   if(!floorY) floorY=floorTarget;

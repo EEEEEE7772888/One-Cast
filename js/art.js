@@ -242,6 +242,18 @@ A.BAIT_ART={
   crank:{rows:["........","..GGGG..",".GkGkGG.","OOOOOOeL",".OOOOO.L","..h..h..",".hh.hh..","........"],map:{G:'#B8E040',k:'#1B1F2A',O:'#F08A30',e:'#10161C',L:'#CFE6F0',h:'#9AA6B6'}},
   fly:{rows:["..w..w..","..ww.ww.","...wkw..","..rRRr..","..RRRR..","...RR...","...hk...","....kk.."],map:{w:'#E8EEF2',k:'#2A2A2A',R:'#B85A2A',r:'#E0A040',h:'#9AA6B6'}},
  jig:{rows:["........","...hh...","..JJJh..",".JJeJJ..",".JJJJSSS","..JJ.SsS","......SS","....hh.."],map:{h:'#9AA6B6',J:'#E5484D',e:'#10161C',S:'#7A4AC0',s:'#2A1A40'}},
+  popper:{rows:["........","........",".kYYYY..","kkYYYYYf","kkWWWWff",".kWWWW.f","..h..h..","........"],map:{k:'#1B1F2A',Y:'#F0C030',W:'#F4F4F0',f:'#E5484D',h:'#9AA6B6'}},
+  walker:{rows:["........","........","........",".GGGGGGk","WWWWWWWk",".rWWWW..","..h...h.","........"],map:{G:'#3A9A5A',W:'#F4F4F0',k:'#1B1F2A',r:'#E5484D',h:'#9AA6B6'}},
+  frog:{rows:["........","..e..e..",".gGGGGg.","gGGGGGGg","gYYYYYYg",".gg..gg.","l......l","........"],map:{g:'#2E6A2E',G:'#5AB04A',Y:'#F0E080',e:'#10161C',l:'#2E6A2E'}},
+  buzz:{rows:["..bbb...",".b...b..","..k.....","..k.....",".JJJJ...","JJJJJSSS","..hh.SsS","........"],map:{b:'#D8E0E8',k:'#9AA6B6',J:'#2A2A2A',S:'#F0F0F0',s:'#B8C0C8',h:'#9AA6B6'}},
+  spinnerbait:{rows:[".bb.....","bbb.....","..k.....","...k....","....JJJ.","...JJJSS","....hSSs","........"],map:{b:'#F0C030',k:'#9AA6B6',J:'#B8E040',S:'#F0F0F0',s:'#B8E040',h:'#9AA6B6'}},
+  spinner:{rows:["........","...b....","..bBb...","kkbBbkRR","...b.kRR","......W.",".....hh.","........"],map:{b:'#A0A8B0',B:'#E8EEF4',k:'#9AA6B6',R:'#E5484D',W:'#F4F4F0',h:'#9AA6B6'}},
+  plastic:{rows:["........","......pp","pp...pP.","pPp.pP..",".pPpP...","..pp....","........","........"],map:{p:'#5A2A8A',P:'#8A4AC0'}},
+  swimbait:{rows:["........","..GGG...",".GGGGG.t","eWGGGGtt","WWWWWWtt",".WWWW..t","........","........"],map:{G:'#4A6A3A',W:'#E8E0C8',e:'#10161C',t:'#3A5A2A'}},
+  spoon:{rows:["........","....ss..","...sSSs.","..sSSSs.",".sSSSs..",".sSs....","rh......","........"],map:{s:'#A0A8B0',S:'#E8EEF4',r:'#E5484D',h:'#9AA6B6'}},
+  bucktail:{rows:["........",".hhh....","..WWW...","..WeWBBB","..WWWBBB","...BBBBB","....BBB.","........"],map:{h:'#9AA6B6',W:'#F4F4F0',e:'#E5484D',B:'#E8DCC0'}},
+  saltpopper:{rows:["........","..BBBBB.",".kBBBBBB","kkWWWWWW","kkWWWWWh",".kWWWW..","..h..hh.","........"],map:{B:'#2F7CD8',k:'#1B1F2A',W:'#F4F4F0',h:'#9AA6B6'}},
+  paddletail:{rows:["........","........",".JPPPP..","JePPPPPt","JPWWWWtt",".PWWW..t","........","........"],map:{J:'#C0C0C8',e:'#10161C',P:'#E0A040',W:'#F8E8C0',t:'#E0A040'}},
   lure:{rows:["........","..kk....",".kYYk...","kYYYYk..","kYYYYkff","kYYYYkff",".kYYk.f.","..kk...."],map:{k:'#1B1F2A',Y:'#F0C030',f:'#E05A4A'}},
   deepbait:{rows:["..kk....","..kk....",".kkkk...","sskkkss.","sSSSSSse","ssSSSss.","..sss...","........"],map:{k:'#5A6476',s:'#6A8A9A',S:'#B8D0D8',e:'#10161C'}}
 };

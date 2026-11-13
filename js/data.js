@@ -93,6 +93,23 @@ D.SPOTS=[
  {id:'congo',region:'africa',name:'Congo River, DR Congo',method:'boat',tz:'Africa/Kinshasa',lat:-4.3,lon:15.3,scene:'jungle_river',desc:'The deepest river in the world, and home of the goliath tigerfish: teeth like a dog\'s.'},
  {id:'nasser',region:'africa',name:'Lake Nasser, Egypt',method:'shore',tz:'Africa/Cairo',lat:22.8,lon:32.5,scene:'savanna_lake',desc:'A desert lake on the Nile, near Abu Simbel. Monster Nile perch hunt along the rocky shores.'},
  {id:'mariana',region:'pacific',name:'Mariana Trench',method:'deep',tz:'Pacific/Guam',lat:11.35,lon:142.2,scene:'open_sea',desc:'The deepest place in the ocean. Something enormous is said to live down there.'},
+ /* Even more real spots (Nov 2026) */
+ {id:'santeecooper',region:'home',name:'Santee Cooper Lakes',method:'shore',tz:'America/New_York',lat:33.45,lon:-80.15,scene:'south',famous:true,where:'South Carolina',known:'Giant blue catfish and landlocked striped bass',desc:'Two huge lakes full of flooded cypress trees. Blue cats, stripers, bass and crappie.'},
+ {id:'toledobend',region:'home',name:'Toledo Bend Reservoir',method:'shore',tz:'America/Chicago',lat:31.4,lon:-93.7,scene:'south',famous:true,where:'Texas and Louisiana',known:'One of the best big-bass lakes in America',desc:'Miles of standing timber on the Texas-Louisiana line. Big largemouth and slab crappie.'},
+ {id:'champlain',region:'northwoods',name:'Lake Champlain',method:'ice',tz:'America/New_York',lat:44.5,lon:-73.3,scene:'ice_pines',famous:true,where:'Vermont and New York',known:'Ice fishing for perch, pike and lake trout',desc:'A long, deep lake between the Green Mountains and the Adirondacks. Perch, pike and lake trout under the ice.'},
+ {id:'erie',region:'greatlakes',name:'Lake Erie, Port Clinton',method:'boat',tz:'America/New_York',lat:41.6,lon:-82.9,scene:'bigwater',famous:true,where:'Ohio',known:'The Walleye Capital of the World',desc:'The shallow western basin of Lake Erie. Walleye by the boatload, jumbo perch and smallmouth around the islands.'},
+ {id:'salmonriver',region:'greatlakes',name:'Salmon River, Pulaski',method:'shore',tz:'America/New_York',lat:43.57,lon:-76.13,scene:'river',famous:true,where:'New York, on Lake Ontario',known:'Fall runs of king salmon and steelhead',desc:'Every fall, king and coho salmon from Lake Ontario crowd up this river, with steelhead right behind them.'},
+ {id:'thousandislands',region:'greatlakes',name:'Thousand Islands, St. Lawrence River',method:'boat',tz:'America/New_York',lat:44.3,lon:-76.0,scene:'bigwater',famous:true,where:'New York and Ontario',known:'Giant muskies among more than a thousand islands',desc:'Clear, fast water between hundreds of rocky islands. Smallmouth, pike and huge muskies.'},
+ {id:'kentuckylake',region:'mississippi',name:'Kentucky Lake',method:'boat',tz:'America/Chicago',lat:36.6,lon:-88.05,scene:'river',famous:true,where:'Kentucky and Tennessee',known:'The Crappie Capital of the World',desc:'A giant lake on the Tennessee River. Crappie on every brush pile, plus bass and big catfish.'},
+ {id:'atchafalaya',region:'mississippi',name:'Atchafalaya Basin',method:'boat',tz:'America/Chicago',lat:30.3,lon:-91.7,scene:'swamp',famous:true,where:'Louisiana',known:'The largest river swamp in the United States',desc:'Cypress swamp and bayous off the Mississippi. Bass, bowfin, gar, catfish and crappie.'},
+ {id:'islamorada',region:'keys',name:'Islamorada',method:'boat',tz:'America/New_York',lat:24.92,lon:-80.63,scene:'flats',famous:true,where:'Florida Keys',known:'The Sportfishing Capital of the World',desc:'Shallow flats on one side, the reef on the other. Bonefish, tarpon, permit and barracuda.'},
+ {id:'bocagrande',region:'keys',name:'Boca Grande Pass',method:'boat',tz:'America/New_York',lat:26.72,lon:-82.26,scene:'flats',famous:true,where:'Gulf coast of Florida',known:'The Tarpon Capital of the World',desc:'A deep pass where thousands of tarpon gather every spring and summer. Snook, redfish and sharks too.'},
+ {id:'homer',region:'pnw',name:'Homer, Alaska',method:'boat',tz:'America/Anchorage',lat:59.6,lon:-151.5,scene:'coldsea',famous:true,where:'Kachemak Bay, Alaska',known:'The Halibut Fishing Capital of the World',desc:'Snowy volcanoes over Kachemak Bay. Barn-door halibut, lingcod, rockfish and salmon.'},
+ {id:'fraser',region:'pnw',name:'Fraser River',method:'shore',tz:'America/Vancouver',lat:49.2,lon:-121.9,scene:'river_mountain',famous:true,where:'British Columbia, Canada',known:'White sturgeon over 1,000 pounds',desc:'A huge glacier-gray river. Ancient white sturgeon, salmon and steelhead.'},
+ {id:'cabo',region:'pacific',name:'Cabo San Lucas',method:'troll',tz:'America/Mazatlan',lat:22.7,lon:-109.9,scene:'tropic_sea',famous:true,where:'Baja California, Mexico',known:'The Marlin Capital of the World',desc:'Desert cliffs where the Sea of Cortez meets the Pacific. Marlin, tuna, mahi-mahi and wahoo. Bring a sportfisher.'},
+ {id:'tay',region:'eurasia',name:'River Tay, Scotland',method:'shore',tz:'Europe/London',lat:56.5,lon:-3.45,scene:'europe_river',famous:true,where:'Perthshire, Scotland',known:'Home of the British record salmon: 64 lb, caught in 1922',desc:'Scotland\'s longest river. Atlantic salmon, brown trout and grayling.'},
+ {id:'kariba',region:'africa',name:'Lake Kariba',method:'boat',tz:'Africa/Harare',lat:-16.9,lon:28.2,scene:'savanna_lake',famous:true,where:'Zimbabwe and Zambia',known:'Tigerfish, the fiercest fish in Africa',desc:'A giant lake on the Zambezi with drowned trees and elephants on the shore. Tigerfish, vundu and bream.'},
+ {id:'maryriver',region:'australia',name:'Mary River',method:'shore',tz:'Australia/Darwin',lat:-12.9,lon:131.65,scene:'outback_river',famous:true,where:'Northern Territory',known:'Wild barramundi among the crocodiles',desc:'Billabongs and floodplains in the Top End. Big wild barramundi. Watch out for crocs.'},
  /* Southern */
  {id:'rosssea',region:'southern',name:'Ross Sea, Antarctica',method:'deep',tz:'Antarctica/McMurdo',lat:-75.0,lon:175.0,scene:'antarctic',desc:'The end of the world. Toothfish from the black water.'}
 ];
@@ -103,10 +120,23 @@ D.SPOTS=[
 D.BAITS=[
  {id:'worm',name:'Worms',price:0,tau:10,capMax:0.35,minBite:0.15,biteMean:1,rate:'HIGH',water:'fresh',desc:'Lots of bites, tiny fish',timing:'Bites come fast, about once a minute. Only small fish though.'},
  {id:'minnow',name:'Minnows',price:60,tau:150,capMax:1,minBite:8,biteMean:15,rate:'OK',water:'fresh',desc:'Bass, walleye, trout',timing:'A bite every 20 minutes or so. Later bites bring bigger fish.'},
- {id:'crank',name:'Crankbaits',price:8,uses:25,snag:0.08,tau:90,capMax:0.65,minBite:2,biteMean:8,rate:'HIGH',water:'fresh',desc:'Bass, pike and other hunters. Takes skill',timing:'You fish it yourself: hold to reel at the right speed and tap when a fish strikes. Fast action while you play, nothing while you are away.'},
- {id:'jig',name:'Jigs',price:5,uses:30,snag:0.12,tau:80,capMax:1,minBite:8,biteMean:30,rate:'OK',water:'fresh',desc:'Walleye, smallmouth, lake trout. Takes skill',timing:'You fish it yourself: tap to hop it off the bottom, fish hit it on the way down. Bigger fish than minnows. Great through the ice.'},
- {id:'jerk',name:'Jerkbaits',price:10,uses:20,snag:0.07,tau:50,capMax:1,minBite:6,biteMean:25,rate:'OK',water:'fresh',desc:'Big bass, pike, walleye and trout. Better fish than jigs. Takes skill',timing:'You fish it yourself: twitch it twice, then pause. Fish smash it on the pause. Bigger fish than jigs, and they fight.'},
- {id:'fly',name:'Dry flies',price:150,tau:60,capMax:0.9,minBite:1,biteMean:20,rate:'OK',water:'fresh',desc:'Trout on mountain streams. Relaxing, takes a light touch',timing:'You fish it yourself: let the fly drift down the current, MEND when the line starts to drag, and SET gently when a trout sips it.'},
+ {id:'crank',play:'crank',name:'Crankbaits',price:8,uses:25,snag:0.08,tau:90,capMax:0.65,minBite:2,biteMean:8,rate:'HIGH',water:'fresh',desc:'Bass, pike and other hunters. Takes skill',timing:'You fish it yourself: hold to reel at the right speed and tap when a fish strikes. Fast action while you play, nothing while you are away.'},
+ {id:'jig',play:'jig',name:'Jigs',price:5,uses:30,snag:0.12,tau:80,capMax:1,minBite:8,biteMean:30,rate:'OK',water:'fresh',desc:'Walleye, smallmouth, lake trout. Takes skill',timing:'You fish it yourself: tap to hop it off the bottom, fish hit it on the way down. Bigger fish than minnows. Great through the ice.'},
+ {id:'jerk',play:'jerk',name:'Jerkbaits',price:10,uses:20,snag:0.07,tau:50,capMax:1,minBite:6,biteMean:25,rate:'OK',water:'fresh',desc:'Big bass, pike, walleye and trout. Better fish than jigs. Takes skill',timing:'You fish it yourself: twitch it twice, then pause. Fish smash it on the pause. Bigger fish than jigs, and they fight.'},
+ {id:'fly',play:'fly',name:'Dry flies',price:150,tau:60,capMax:0.9,minBite:1,biteMean:20,rate:'OK',water:'fresh',desc:'Trout on mountain streams. Relaxing, takes a light touch',timing:'You fish it yourself: let the fly drift down the current, MEND when the line starts to drag, and SET gently when a trout sips it.'},
+ /* More hard lures (Nov 2026). play = which way you fish it (see lure.js). Topwater lures: when a fish blows up on it, WAIT, then set the hook. */
+ {id:'popper',play:'top',name:'Poppers',price:9,uses:25,snag:0.02,tau:60,capMax:0.6,minBite:10,biteMean:20,rate:'HIGH',water:'fresh',desc:'Topwater! Bass, peacock bass and snakeheads. Takes skill',timing:'You fish it yourself: pop it, let the rings settle, pop again. When a fish explodes on it, wait a heartbeat before you set the hook.'},
+ {id:'walker',play:'walk',name:'Walking stickbaits',price:12,uses:25,snag:0.02,tau:50,capMax:0.65,minBite:30,biteMean:40,rate:'OK',water:'fresh',desc:'Topwater for big fish: stripers, pike, muskie, taimen. Takes skill',timing:'You fish it yourself: tap in a steady rhythm to walk it side to side on the surface. Big fish blow up on it.'},
+ {id:'frog',play:'top',name:'Hollow-body frogs',price:10,uses:20,snag:0.01,tau:50,capMax:1,minBite:15,biteMean:25,rate:'OK',water:'fresh',desc:'Topwater through the weeds. Big bass, snakeheads and bowfin',timing:'You fish it yourself: hop it across the lily pads with a pause between hops. Almost never snags.'},
+ {id:'buzz',play:'buzz',name:'Buzzbaits',price:7,uses:30,snag:0.03,tau:70,capMax:0.8,minBite:12,biteMean:15,rate:'HIGH',water:'fresh',desc:'Loud topwater. Bass and pike. Takes skill',timing:'You fish it yourself: hold to reel FAST so it gurgles across the top. Too slow and it sinks.'},
+ {id:'spinnerbait',play:'crank',name:'Spinnerbaits',price:7,uses:30,snag:0.04,tau:80,capMax:0.75,minBite:10,biteMean:15,rate:'HIGH',water:'fresh',desc:'Flashy blades. Bass, pike, golden perch and Murray cod',timing:'You fish it yourself: hold to reel at a steady speed. Snags less than a crankbait.'},
+ {id:'spinner',play:'crank',name:'Inline spinners',price:4,uses:20,snag:0.10,tau:60,capMax:0.6,minBite:5,biteMean:15,rate:'VERY HIGH',water:'fresh',desc:'Trout, salmon, perch and grayling. Fast action',timing:'You fish it yourself: hold to reel at a steady speed. Lots of quick bites from smaller fish.'},
+ {id:'plastic',play:'jig',name:'Soft plastic worms',price:3,uses:15,snag:0.03,tau:70,capMax:0.85,minBite:10,biteMean:20,rate:'OK',water:'fresh',desc:'The classic bass bait. Cheap, but they tear',timing:'You fish it yourself like a jig: tap to hop it, fish hit it on the fall. Rigged weedless, so it rarely snags.'},
+ {id:'swimbait',play:'crank',name:'Big swimbaits',price:30,uses:30,snag:0.05,tau:40,capMax:0.6,minBite:45,biteMean:60,rate:'LOW',water:'fresh',desc:'Giant lure, giant fish. Trophy bass, muskie, Murray cod',timing:'You fish it yourself: hold to reel slow and steady. Fewer bites, but they are big.'},
+ {id:'spoon',play:'jig',name:'Jigging spoons',price:5,uses:30,snag:0.08,tau:80,capMax:0.9,minBite:10,biteMean:30,rate:'OK',water:'fresh',desc:'Flashy metal. Lake trout, pike, perch and char. Works through the ice',timing:'You fish it yourself: tap to lift it, it flutters back down and fish hit it on the fall.'},
+ {id:'bucktail',play:'jig',name:'Bucktail jigs',price:12,uses:25,snag:0.10,tau:80,capMax:1,minBite:10,biteMean:25,rate:'OK',water:'salt',desc:'Saltwater jig. Flounder, stripers, cod, lingcod and snapper',timing:'You fish it yourself: hop it off the bottom, fish hit it on the fall.'},
+ {id:'saltpopper',play:'top',name:'Saltwater poppers',price:60,uses:20,snag:0.01,tau:40,capMax:0.8,minBite:45,biteMean:60,rate:'LOW',water:'salt',desc:'Big topwater for giant trevally, barracuda and barramundi',timing:'You fish it yourself: chug it, let the splash settle, chug again. Wait a heartbeat when a fish crashes it.'},
+ {id:'paddletail',play:'crank',name:'Paddle tails',price:10,uses:15,snag:0.04,tau:60,capMax:0.85,minBite:20,biteMean:25,rate:'OK',water:'salt',desc:'Soft swimbait for snook, redfish, barramundi and flounder',timing:'You fish it yourself: hold to reel at a steady speed. Soft, so it tears after a few fish.'},
  {id:'cut',name:'Cut bait',price:400,tau:360,capMax:1,minBite:5,biteMean:120,rate:'LOW',water:'fresh',desc:'Catfish and bottom feeders',timing:'A bite every 2 hours or so. Later bites bring bigger fish.'},
  {id:'sucker',name:'Suckers',price:1500,tau:720,capMax:1,minBite:10,biteMean:360,rate:'VERY LOW',water:'fresh',desc:'Rare bites, giant fish',timing:'A bite every 6 hours or so. Giants only bite late.'},
  {id:'shrimp',name:'Live shrimp',price:4000,tau:60,capMax:0.6,minBite:3,biteMean:12,rate:'HIGH',water:'salt',desc:'Fast saltwater action',timing:'Steady bites every 15 minutes. Inshore fish, medium size.'},
@@ -116,7 +146,7 @@ D.BAITS=[
  {id:'deepbait',name:'Deep-drop rig',price:200000,tau:900,capMax:1,minBite:20,biteMean:480,rate:'VERY LOW',water:'deep',desc:'Bottom monsters',timing:'A bite every 8 hours. The things that live in the dark are enormous.'}
 ];
 /* Which baits each method can use. */
-D.METHOD_BAITS={ice:['worm','minnow','jig','cut','sucker'],shore:['worm','minnow','crank','jig','jerk','fly','cut','sucker','shrimp','mullet'],boat:['worm','minnow','crank','jig','jerk','fly','cut','sucker','shrimp','squid','mullet'],troll:['worm','minnow','cut','shrimp','squid','lure'],deep:['worm','minnow','cut','sucker','shrimp','squid','deepbait']};
+D.METHOD_BAITS={ice:['worm','minnow','jig','spoon','cut','sucker'],shore:['worm','minnow','crank','jig','jerk','fly','popper','walker','frog','buzz','spinnerbait','spinner','plastic','swimbait','spoon','bucktail','saltpopper','paddletail','cut','sucker','shrimp','mullet'],boat:['worm','minnow','crank','jig','jerk','fly','popper','walker','frog','buzz','spinnerbait','spinner','plastic','swimbait','spoon','bucktail','saltpopper','paddletail','cut','sucker','shrimp','squid','mullet'],troll:['worm','minnow','cut','shrimp','squid','lure'],deep:['worm','minnow','cut','sucker','shrimp','squid','deepbait']};
 D.METHOD_NAME={ice:'Ice hole',shore:'Shore',boat:'Small boat',troll:'Ocean trolling',deep:'Deep drop'};
 /* Gear needed to fish each method. */
 D.METHOD_GEAR={ice:null,shore:null,boat:null,troll:null,deep:'deeprig'};
@@ -127,7 +157,7 @@ D.BAIT_GEAR={deepbait:'deeprig'};
 D.BAIT_BOAT={lure:5};
 D.CREW_BONUS=0.9; D.CREW_MAX=3;
 /* What kind of water each spot is, and which boat level you need to fish it. */
-var SALT={lofoten:1,tokyobay:1,hatteras:1,everglades:1,keysflats:1,gulfreefs:1,gbr:1}, WATER_OF={mariana:'deep',kona:'troll',openpacific:'troll',gulfofalaska:'deep',arcticdeep:'deep',rosssea:'deep',greenland:'polar'};
+var SALT={islamorada:1,bocagrande:1,homer:1,lofoten:1,tokyobay:1,hatteras:1,everglades:1,keysflats:1,gulfreefs:1,gbr:1}, WATER_OF={cabo:'troll',mariana:'deep',kona:'troll',openpacific:'troll',gulfofalaska:'deep',arcticdeep:'deep',rosssea:'deep',greenland:'polar'};
 D.SPOTS.forEach(function(s){ s.water=WATER_OF[s.id]||(SALT[s.id]?'salt':'fresh'); s.need=s.method==='boat'?(s.water==='salt'?2:1):s.method==='troll'?5:0; });
 
 /* ---------- Activity by time of day. Dawn and dusk double the trophy chance for every fish. ---------- */
@@ -255,7 +285,7 @@ sp({id:'polarcod',name:'Polar cod',small:true,min:0.1,max:1.2,k:12.8,rate:120,ac
 sp({id:'opelu',name:'Mackerel scad',small:true,min:0.2,max:2,k:12.5,rate:90,act:'day',look:'opelu',minWait:0,maxWait:240,baits:{worm:2,minnow:3,cut:4,shrimp:5,squid:4},spots:{kona:6,openpacific:5}});
 sp({id:'silverfish',name:'Antarctic silverfish',small:true,min:0.05,max:0.8,k:13,rate:400,act:'deep',look:'silverfish',minWait:0,maxWait:240,baits:{worm:2,minnow:4,cut:3,shrimp:5,squid:4},spots:{rosssea:7}});
 /* Southern Ocean */
-sp({id:'toothfish',name:'Antarctic toothfish',min:20,max:300,k:13.5,rate:1500,act:'deep',look:'toothfish',minWait:300,maxWait:0,baits:{deepbait:6,squid:3},spots:{rosssea:7}});
+sp({id:'toothfish',name:'Antarctic toothfish',min:20,max:300,k:13.5,rate:600,act:'deep',look:'toothfish',minWait:300,maxWait:0,baits:{deepbait:6,squid:3},spots:{rosssea:7}});
 sp({id:'icefish',name:'Mackerel icefish',min:0.5,max:7,k:14,rate:900,act:'deep',look:'icefish',minWait:20,maxWait:600,baits:{squid:6,deepbait:1},spots:{rosssea:6}});
 /* Added Oct 2026: more US fish */
 sp({id:'longnosegar',name:'Longnose gar',min:1,max:50,k:18,rate:12,act:'day',look:'longnosegar',minWait:20,maxWait:0,baits:{minnow:4,cut:2,crank:1,jerk:1},spots:{mississippi:3,neuse:2,guntersville:1.5,lakefork:1,winnebago:1,okeechobee:1}});
@@ -275,6 +305,42 @@ sp({id:'madai',name:'Red sea bream',min:1,max:22,k:12.5,rate:95,act:'day',look:'
 sp({id:'goliathtiger',name:'Goliath tigerfish',min:10,max:154,k:13.5,rate:160,act:'day',look:'goliathtiger',minWait:60,maxWait:0,baits:{cut:5,sucker:3,jerk:1,crank:1},spots:{congo:6}});
 sp({id:'sixgill',name:'Bluntnose sixgill shark',min:100,max:1300,k:15,rate:100,act:'deep',look:'sixgill',minWait:360,maxWait:0,baits:{deepbait:5,squid:1},spots:{mariana:4}});
 sp({id:'grenadier',name:'Pacific grenadier',small:true,min:2,max:20,k:13,rate:250,act:'deep',look:'grenadier',minWait:30,maxWait:0,baits:{deepbait:3,squid:5,cut:3,worm:1},spots:{mariana:6}});
+
+/* Which fish take the new lures (Nov 2026), and the fish at the new spots. */
+var LURE_FISH={
+ popper:{largemouth:4,smallmouth:4,spotted:3,peacock:5,pike:2,striper:2,bowfin:1,floridagar:0.5,snook:2,bluefish:2,payara:1,tigerfish:1,barramundi:2,murraycod:0.5,goldenperch:3,suzuki:2,northernsnakehead:3,longnosegar:0.5},
+ walker:{largemouth:4,smallmouth:3,spotted:3,striper:5,pike:3,muskie:2,peacock:4,bluefish:3,snook:3,tigerfish:2,payara:2,taimen:1.5,murraycod:1,goldenperch:3,barramundi:2,suzuki:2,spanish:1,reddrum:2},
+ frog:{largemouth:6,pike:2,northernsnakehead:5,bowfin:3,peacock:1,floridagar:0.5},
+ buzz:{largemouth:5,spotted:3,smallmouth:2,pike:3,muskie:1,bowfin:1,peacock:2,northernsnakehead:2},
+ spinnerbait:{largemouth:5,spotted:4,smallmouth:4,pike:5,muskie:2,walleye:2,peacock:3,goldenperch:3,murraycod:3,bowfin:1,striper:1,zander:1},
+ spinner:{rainbow:5,brown:5,brook:4,perch:2,steelhead:3,coho:4,chinook:2,atlanticsalmon:3,char:3,grayling:3,lenok:4,dolly:4,biwatrout:4,smallmouth:2,pike:1,kokanee:2,tigerfish:1,mahseer:2,taimen:1},
+ plastic:{largemouth:6,smallmouth:4,spotted:5,crappie:1,walleye:2,peacock:2,zander:2,goldenperch:1,channel:0.5},
+ swimbait:{largemouth:2,striper:4,pike:3,muskie:4,peacock:2,snook:2,murraycod:1.5,goldenperch:3,taimen:3,wels:1,zander:2,mahseer:2,goliathtiger:2,nileperch:2,tigerfish:2,barramundi:2,arapaima:0.5,payara:2,laketrout:2,chinook:1,atlanticsalmon:1,bluefish:2,reddrum:1},
+ spoon:{laketrout:5,perch:3,walleye:3,pike:4,char:4,cisco:2,whitefish:1,burbot:2,coho:2,chinook:2,rainbow:2,brown:2,kokanee:3,grayling:1,dolly:2,omul:2,taimen:1,spanish:2,bluefish:2},
+ bucktail:{flounder:5,striper:4,bluefish:4,reddrum:3,snook:3,cod:3,saithe:4,lingcod:3,halibut:2,gag:2,barracuda:1,spanish:2,amberjack:2,rockfish:3,coraltrout:2,snapper:1,madai:2,suzuki:1,bonefish:1,permit:1},
+ saltpopper:{gt:6,tarpon:2,barracuda:3,bluefish:4,amberjack:3,spanish:2,snook:2,striper:3,suzuki:2,barramundi:3,coraltrout:2,reddrum:1},
+ paddletail:{snook:5,reddrum:5,barramundi:5,tarpon:2,flounder:4,suzuki:3,spanish:1,striper:3,bluefish:2,gag:1,coraltrout:1,madai:1}
+};
+var SPOT_FISH={
+ santeecooper:{bluecat:4,channel:4,flathead:2,striper:3,largemouth:4,crappie:4,bluegill:3,bowfin:1,longnosegar:1},
+ toledobend:{largemouth:7,crappie:4,bluegill:4,channel:3,bluecat:1,flathead:1,spottedgar:1,longnosegar:1},
+ champlain:{perch:6,pike:3,laketrout:2,walleye:2,smallmouth:1,whitefish:1,burbot:1},
+ erie:{walleye:8,perch:6,smallmouth:4,drum:3,channel:2,steelhead:1},
+ salmonriver:{chinook:6,coho:4,steelhead:5,brown:3,smallmouth:1},
+ thousandislands:{smallmouth:6,pike:4,muskie:2,perch:4,walleye:2,largemouth:2,drum:1},
+ kentuckylake:{crappie:7,largemouth:3,smallmouth:2,bluecat:3,channel:3,flathead:1,bluegill:3,drum:2},
+ atchafalaya:{largemouth:4,crappie:3,bluegill:3,channel:3,bluecat:2,flathead:2,bowfin:3,gar:2,spottedgar:2,longnosegar:1,drum:2},
+ islamorada:{bonefish:4,permit:1.5,tarpon:3,barracuda:3,snook:1,pinfish:2,sheepshead:2,bullshark:1,snapper:2},
+ bocagrande:{tarpon:6,snook:3,bullshark:2,goliath:1,pinfish:3,sheepshead:2,reddrum:2,gag:1},
+ homer:{halibut:6,lingcod:2,rockfish:3,chinook:2,coho:2,herring:2,sculpin:1,dolly:1},
+ fraser:{whitesturgeon:6,chinook:3,coho:2,steelhead:2},
+ cabo:{marlin:5,yellowfin:4,mahi:5,wahoo:3},
+ tay:{atlanticsalmon:6,brown:4,grayling:2,pike:1,eel:1},
+ kariba:{tigerfish:7,vundu:3,tilapia:4,sharptooth:3},
+ maryriver:{barramundi:7,bullshark:1}
+};
+S.forEach(function(o){ Object.keys(LURE_FISH).forEach(function(b){ if(LURE_FISH[b][o.id]) o.baits[b]=LURE_FISH[b][o.id]; });
+  Object.keys(SPOT_FISH).forEach(function(sp){ if(SPOT_FISH[sp][o.id]) o.spots[sp]=SPOT_FISH[sp][o.id]; }); });
 D.SPECIES=S;
 /* ---------- Events. Limited-time fish, clothes and paint. An event is on from start until end (exact times). ---------- */
 D.EVENTS={halloween:{name:'Halloween',start:'2026-10-28T00:00:00-04:00',end:'2026-11-02T00:00:00-05:00'}};
@@ -335,7 +401,8 @@ D.GEAR=[
  {id:'sportfisher',name:'Sportfisher',price:60000,kind:'boat',lvl:5,perk:{troll:0.8,salt:0.9},desc:'Outriggers and a fighting chair. Needed to troll for tuna and marlin. Trolling bites 20% sooner.'},
  {id:'trawler',name:'Expedition trawler',price:250000,kind:'boat',lvl:6,perk:{deep:0.8,polar:0.8,troll:0.85},desc:'An ice-class steel boat with a crane. Deep-drop and polar bites come 20% sooner.'},
  {id:'yacht',name:'Golden mega yacht',price:1500000,kind:'boat',lvl:7,perk:{all:0.78},desc:'The flex. Bites come 22% sooner everywhere, and everyone can see it.'},
- {id:'devboat',name:'Dev Flagship',price:0,kind:'boat',lvl:8,perk:{all:0.7},secret:true,crew:12,desc:'One of one. Only the maker of One Cast has it. Fishes every water on Earth with a deep-drop rig built in, bites come 30% sooner, and it carries a crew of 12.'},
+ {id:'superyacht',name:'Dilbar superyacht',price:750000000,fixed:true,kind:'boat',lvl:8,perk:{all:0.72},crew:8,desc:'Based on Dilbar, the most expensive yacht in the world (about $750 million). The real one is 512 feet long with two helipads and the biggest indoor pool on any yacht. Bites come 28% sooner everywhere, a deep-drop rig is built in, and it carries a crew of 8.'},
+ {id:'devboat',name:'Dev Flagship',price:0,kind:'boat',lvl:9,perk:{all:0.7},secret:true,crew:12,desc:'One of one. Only the maker of One Cast has it. Fishes every water on Earth with a deep-drop rig built in, bites come 30% sooner, and it carries a crew of 12.'},
  {id:'book_fresh',name:'Freshwater guidebook',price:1700,kind:'book',lvl:1,desc:'Every freshwater fish: when they bite, what they eat and where to find them, plus hints for hunting every freshwater legend.'},
  {id:'book_salt',name:'Saltwater guidebook',price:7500,kind:'book',lvl:1,desc:'Every saltwater fish: when they bite, what they eat and where to find them, plus hints for hunting every saltwater legend.'},
  {id:'deeprig',name:'Deep-drop rig',price:150000,kind:'method',lvl:1,desc:'An electric reel and 1,000 feet of braided line. Without it, deep-drop spots only give you small fish near the surface.'}
@@ -485,6 +552,10 @@ D.STICKERS=[{id:'noway',text:'No way!'},{id:'lucky',text:'Lucky!'},{id:'huge',te
 D.REPORT_REASONS=[{id:'name',text:'Bad username'},{id:'realname',text:'Uses a real name'},{id:'cheat',text:'Cheating'},{id:'scam',text:'Trade scam'},{id:'other',text:'Other'}];
 
 /* ---------- Lookups and the shared math. ---------- */
+/* Things the iPhone app 1.1 has never heard of (it carries its own copy of this file). The server hides them from that
+   app, so it can't crash: a new spot shows as a nearby older spot, a new boat as the mega yacht, new-lure lines are hidden. */
+D.APP12={spots:['santeecooper','toledobend','champlain','erie','salmonriver','thousandislands','kentuckylake','atchafalaya','islamorada','bocagrande','homer','fraser','cabo','tay','kariba','maryriver'],
+  baits:['popper','walker','frog','buzz','spinnerbait','spinner','plastic','swimbait','spoon','bucktail','saltpopper','paddletail'],gear:['superyacht']};
 D.SP_BY_ID={}; D.ALL_SPECIES.forEach(function(s){ D.SP_BY_ID[s.id]=s; });
 D.SPOT_BY_ID={}; D.SPOTS.forEach(function(s){ D.SPOT_BY_ID[s.id]=s; });
 D.REGION_BY_ID={}; D.REGIONS.forEach(function(r){ D.REGION_BY_ID[r.id]=r; });
@@ -550,7 +621,7 @@ D.baitStats=function(id){ D._bs=D._bs||{}; if(D._bs[id]) return D._bs[id]; var b
   var v=tw?tv/tw:0, tier=D.FISH_TIERS[0]; D.FISH_TIERS.forEach(function(x){ if(v>=x.min) tier=x; });
   var m=b.biteMean, speed=m<=2?5:m<=15?4:m<=60?3:m<=150?2:1;
   var methods=Object.keys(D.METHOD_BAITS).filter(function(k){ return D.METHOD_BAITS[k].indexOf(id)>=0; });
-  return (D._bs[id]={speed:speed,wait:m,tier:tier,value:Math.round(v),methods:methods,active:id==='crank'||id==='jig'||id==='jerk'||id==='fly'}); };
+  return (D._bs[id]={speed:speed,wait:m,tier:tier,value:Math.round(v),methods:methods,active:!!(D.BAIT_BY_ID[id]&&D.BAIT_BY_ID[id].play)}); };
 D.indexSection=function(kind){ D._isec=D._isec||{}; if(D._isec[kind]) return D._isec[kind];
   return (D._isec[kind]=D.SPECIES.filter(function(sp){ if(kind==='all') return true; return Object.keys(sp.spots).some(function(k){ var s=D.SPOT_BY_ID[k]; return sp.spots[k]>0&&s&&(kind==='fresh'?s.water==='fresh':s.water!=='fresh'); }); })); };
 D.spotTier=function(spotId){ var v=D.spotValue(spotId), t=D.FISH_TIERS[0]; D.FISH_TIERS.forEach(function(x){ if(v>=x.min) t=x; }); return t; };

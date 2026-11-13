@@ -7,7 +7,9 @@ let out=['-- One Cast server, part 2: game data. Generated from js/data.js; edit
 out.push('delete from spot_species; delete from species_baits; delete from method_baits;');
 out.push('insert into regions (id,name,ticket,tier) values '+D.REGIONS.map(r=>`(${q(r.id)},${q(r.name)},${r.ticket},${r.tier})`).join(',')+' on conflict (id) do update set name=excluded.name, ticket=excluded.ticket, tier=excluded.tier;');
 out.push('insert into spots (id,region,name,method,tz,water,need) values '+D.SPOTS.map(s=>`(${q(s.id)},${q(s.region)},${q(s.name)},${q(s.method)},${q(s.tz)},${q(s.water)},${s.need})`).join(',')+' on conflict (id) do update set region=excluded.region, name=excluded.name, method=excluded.method, tz=excluded.tz, water=excluded.water, need=excluded.need;');
-out.push('insert into baits (id,name,price,tau,cap_max,min_bite,bite_mean,water,uses,snag) values '+D.BAITS.map(b=>`(${q(b.id)},${q(b.name)},${b.price},${b.tau},${b.capMax},${b.minBite},${b.biteMean},${q(b.water)},${b.uses||0},${b.snag||0})`).join(',')+' on conflict (id) do update set name=excluded.name, price=excluded.price, tau=excluded.tau, cap_max=excluded.cap_max, min_bite=excluded.min_bite, bite_mean=excluded.bite_mean, water=excluded.water, uses=excluded.uses, snag=excluded.snag;');
+out.push('insert into baits (id,name,price,tau,cap_max,min_bite,bite_mean,water,uses,snag,play) values '+D.BAITS.map(b=>`(${q(b.id)},${q(b.name)},${b.price},${b.tau},${b.capMax},${b.minBite},${b.biteMean},${q(b.water)},${b.uses||0},${b.snag||0},${b.play?q(b.play):'null'})`).join(',')+' on conflict (id) do update set play=excluded.play, name=excluded.name, price=excluded.price, tau=excluded.tau, cap_max=excluded.cap_max, min_bite=excluded.min_bite, bite_mean=excluded.bite_mean, water=excluded.water, uses=excluded.uses, snag=excluded.snag;');
+// what the iPhone app 1.1 doesn't know: a new spot shows there as the first older spot in its region
+out.push('update spots set app_min=null, app_fallback=null; update baits set app_min=null; update gear set app_min=null;');
 const mb=[]; Object.keys(D.METHOD_BAITS).forEach(m=>D.METHOD_BAITS[m].forEach(b=>mb.push(`(${q(m)},${q(b)})`)));
 out.push('insert into method_baits (method,bait) values '+mb.join(',')+';');
 out.push('delete from gear where id in (\'boat\',\'offshore\');');
@@ -22,6 +24,9 @@ out.push('insert into legend_presets (spot,name,species,tier,lb,bait,period,min_
 out.push('insert into config (k,v) values (\'events\','+j(D.EVENTS)+') on conflict (k) do update set v=excluded.v;');
 out.push('insert into config (k,v) values (\'derby\','+j(D.DERBY)+') on conflict (k) do update set v=excluded.v;');
 out.push("update derbies d set species = (select v -> 'special' -> d.key ->> 'sp' from config where k = 'derby') where not awarded and (select v -> 'special' -> d.key ->> 'sp' from config where k = 'derby') is not null;");
+// what the iPhone app 1.1 doesn't know; a new spot shows there as the first older spot in its region
+out.push(D.APP12.spots.map(id=>{ const s=D.SPOT_BY_ID[id], old=x=>x.region===s.region&&D.APP12.spots.indexOf(x.id)<0, fb=D.SPOTS.find(x=>old(x)&&x.method===s.method)||D.SPOTS.find(old)||D.SPOT_BY_ID.basslake; return `update spots set app_min='1.2', app_fallback=${q(fb.id)} where id=${q(id)};`; }).join('\n'));
+out.push(`update baits set app_min='1.2' where id in (${D.APP12.baits.map(q).join(',')}); update gear set app_min='1.2' where id in (${D.APP12.gear.map(q).join(',')});`);
 const key=process.argv[2]||null;
 out.push('');
 // the public sql/data.sql never contains the admin key; only the private full file (argv[3]) does
@@ -29,5 +34,6 @@ fs.writeFileSync(path.join(__dirname,'../sql/data.sql'),out.join('\n')+"-- inser
 if(key) out.push(`insert into admin (k) select ${q(key)} where not exists (select 1 from admin);`, '');
 const full=['-- ONE CAST: full server setup. Paste the whole file into Supabase: SQL Editor > New query > Run. Safe to run again later.',key?'-- Your admin key (keep it secret, it is for the admin page only): '+key:"-- Admin key: set your own with   insert into admin (k) values ('pick-a-long-secret');   (a private copy of this file may already do it)",'',
  fs.readFileSync(path.join(__dirname,'../sql/schema.sql'),'utf8'), out.join('\n'), fs.readFileSync(path.join(__dirname,'../sql/functions.sql'),'utf8')].join('\n');
-const outPath=process.argv[3]||path.join(__dirname,'../setup.sql'); fs.writeFileSync(outPath,full);
+const outPath=process.argv[3]||path.join(__dirname,'../setup.sql');
+fs.writeFileSync(outPath,full);
 console.log(outPath,'written,',full.length,'chars.',key?'admin key: '+key:'(no admin key; public copy)');

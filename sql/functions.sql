@@ -258,6 +258,34 @@ create or replace function public.oc_line_json(ln public.lines, finder int) retu
         and l.period = oc_period(ln.bite_at, (select tz from spots where id = ln.spot)) and coalesce(ln.wait_mins, extract(epoch from (ln.bite_at - ln.cast_at)) / 60) >= l.min_wait and ln.legend_roll < 1.0 / oc_legend_odds(l)) else false end);
 $$;
 
+-- The iPhone app 1.1 carries its own copy of the game data and crashes on spots, lures or boats it has never heard of.
+-- Its requests come from capacitor://localhost; newer copies of the game say who they are in x-client-info.
+create or replace function public.oc_old_app() returns boolean language plpgsql stable as $$
+declare h json;
+begin
+  begin h := current_setting('request.headers', true)::json; exception when others then return false; end;
+  if h is null then return false; end if;
+  return coalesce(h ->> 'origin', '') like 'capacitor:%' and coalesce(h ->> 'x-client-info', '') not like 'onecast/%';
+end $$;
+-- what the old app is told: a new spot shows as an older spot nearby, a new boat as the mega yacht
+create or replace function public.oc_app_spot(p_spot text) returns text language sql stable as $$
+  select case when oc_old_app() then coalesce((select app_fallback from spots where id = p_spot and app_min is not null), p_spot) else p_spot end $$;
+create or replace function public.oc_app_boat(p_boat text) returns text language sql stable as $$
+  select case when oc_old_app() and exists (select 1 from gear where id = p_boat and app_min is not null) then 'yacht' else p_boat end $$;
+create or replace function public.oc_app_state(st jsonb) returns jsonb language plpgsql stable as $$
+declare g jsonb;
+begin
+  if not oc_old_app() then return st; end if;
+  g := st -> 'gear';
+  if g is not null then
+    g := g || jsonb_build_object('boat', oc_app_boat(g ->> 'boat'));
+    if g ? 'boats' then g := jsonb_set(g, '{boats}', (select coalesce(jsonb_agg(distinct oc_app_boat(b)), '[]'::jsonb) from jsonb_array_elements_text(g -> 'boats') b)); end if;
+  end if;
+  return st || jsonb_build_object('spot', oc_app_spot(st ->> 'spot'), 'gear', g,
+    'baits', (select coalesce(jsonb_agg(b), '[]'::jsonb) from jsonb_array_elements_text(st -> 'baits') b where not exists (select 1 from baits x where x.id = b and x.app_min is not null)),
+    'lines', (select coalesce(jsonb_agg(l), '[]'::jsonb) from jsonb_array_elements(st -> 'lines') l where not exists (select 1 from baits x where x.id = l ->> 'bait' and x.app_min is not null)));
+end $$;
+
 create or replace function public.oc_state(p public.players) returns jsonb language plpgsql stable as $$
 declare st jsonb; fr jsonb; tr jsonb; lg jsonb; season text := oc_season_key(now());
 begin
@@ -277,7 +305,7 @@ begin
     'newsId', (select max(id) from news),
     'crew', oc_crew_json(p.pid),
     'now', now());
-  return st;
+  return oc_app_state(st);
 end $$;
 
 -- ============ account ============
@@ -367,7 +395,7 @@ begin
   if host is not null then select * into h from players where pid = host; g := h.gear; else g := p.gear; end if;
   boat := coalesce(g ->> 'boat', 'paddle');
   select lvl, perk into boat_lvl, pk from gear where id = boat; boat_lvl := coalesce(boat_lvl, 0);
-  rig := coalesce(g -> 'methods' ? 'deeprig', false) or boat = 'devboat';
+  rig := coalesce(g -> 'methods' ? 'deeprig', false) or boat in ('devboat', 'superyacht');
   small := (sp.method = 'troll' and boat_lvl < 5) or (sp.method = 'deep' and not rig);
   mult := (case when coalesce((p.gear ->> 'comfort')::boolean, false) then 0.75 else 1 end)
         * coalesce((pk ->> 'all')::numeric, (pk ->> sp.water)::numeric, (case when sp.region in ('arctic','southern') then (pk ->> 'polar')::numeric end), 1);
@@ -375,7 +403,9 @@ begin
   if crewed then mult := mult * 0.9; end if;
 end $$;
 
-create or replace function public.oc_is_lure(p_bait text) returns boolean language sql immutable as $$ select p_bait in ('crank', 'jig', 'jerk', 'fly') $$;
+create or replace function public.oc_is_lure(p_bait text) returns boolean language sql stable as $$ select coalesce((select play is not null from public.baits where id = p_bait), false) $$;
+-- how a lure is fished: crank, jig, jerk, fly, top, walk or buzz (null for soak baits)
+create or replace function public.oc_play(p_bait text) returns text language sql stable as $$ select play from public.baits where id = p_bait $$;
 
 -- Hard lures in the tackle box: gear.lures.<bait> = {n: spare lures, left: casts left on the one tied on}.
 create or replace function public.oc_lure_count(g jsonb, p_bait text) returns int language sql immutable as $$
@@ -518,7 +548,7 @@ begin
   p := oc_auth(p_pid, p_secret);
   select * into ln from lines where pid = p_pid and idx = p_idx for update;
   if ln.pid is null then perform oc_fail('no line there'); end if;
-  if ln.bait not in ('crank', 'jerk') then perform oc_fail('only crankbaits and jerkbaits fight'); end if;
+  if coalesce(oc_play(ln.bait), '') not in ('crank', 'jerk', 'top', 'walk', 'buzz') then perform oc_fail('that lure does not fight'); end if;
   if ln.snag_at is not null and now() >= ln.snag_at then perform oc_fail('your lure is snagged'); end if;
   if now() < ln.bite_at then perform oc_fail('nothing has hit it yet'); end if;
   if ln.fight_until is null and now() > ln.bite_at + interval '4 seconds' then
@@ -572,7 +602,7 @@ begin
   if mins is null then perform oc_fail('nothing here bites on that'); end if;
   -- Lures and jigs are fished actively: the strike comes within seconds while the player works the lure.
   -- The fish is rolled as if the lure had fished for `mins` (same size rules), so cast_at is set that far back.
-  bite := case when oc_is_lure(p_bait) then now() + ((case when p_bait = 'crank' then 6 + random() * 16 when p_bait = 'fly' then 9 + random() * 16 when p_bait = 'jerk' then 6 + random() * 14 else 8 + random() * 20 end) * interval '1 second')
+  bite := case when oc_is_lure(p_bait) then now() + ((case bt.play when 'crank' then 6 + random() * 16 when 'fly' then 9 + random() * 16 when 'jerk' then 6 + random() * 14 when 'top' then 7 + random() * 14 when 'walk' then 6 + random() * 14 when 'buzz' then 6 + random() * 14 else 8 + random() * 20 end) * interval '1 second')
                else now() + (mins * oc_finder_speed((p.gear ->> 'finder')::int) * interval '1 minute') end;
   per := oc_period(bite, sp.tz);
   select * into r from oc_roll(p.spot, p_bait, mins, per, ac.small, oc_rod_bonus((p.gear ->> 'rod')::int));
@@ -611,7 +641,7 @@ begin
   if ln.fight_min_at is not null and now() < ln.fight_min_at - interval '300 milliseconds' then
     perform oc_flag(p_pid, 'skipped_fight', jsonb_build_object('early_ms', round(extract(epoch from (ln.fight_min_at - now())) * 1000)));
     return jsonb_build_object('result', 'missed', 'now', now()); end if;
-  if oc_is_lure(ln.bait) and ln.bait in ('jig', 'fly') and now() >= ln.bite_at then perform oc_reaction(p_pid, extract(epoch from (now() - ln.bite_at)) * 1000); end if;
+  if oc_play(ln.bait) in ('jig', 'fly') and now() >= ln.bite_at then perform oc_reaction(p_pid, extract(epoch from (now() - ln.bite_at)) * 1000); end if;
   select * into sp from spots where id = ln.spot;
   per := oc_period(ln.bite_at, sp.tz);
   mins := coalesce(ln.wait_mins, extract(epoch from (ln.bite_at - ln.cast_at)) / 60);
@@ -850,7 +880,7 @@ begin
     update players set coins = coins - price, baits = array_append(baits, p_id) where pid = p_pid;
   elsif p_kind = 'gear' then
     select * into g from gear where id = p_id; if g.id is null then perform oc_fail('no such gear'); end if;
-    if g.kind = 'boat' and g.lvl >= 8 then perform oc_fail('that boat is not for sale'); end if;
+    if g.id = 'devboat' then perform oc_fail('that boat is not for sale'); end if;
     price := g.price;
     if g.kind in ('rod','reel') then
       -- rods and reels: buy whichever you like; you fish with the best one you own
@@ -941,20 +971,21 @@ begin
   select * into c from crews where guest = me and status = 'aboard';
   v_host := coalesce(c.host, me);
   return jsonb_build_object(
-    'host', v_host, 'hostName', (select name || '#' || tag from players where pid = v_host), 'boat', (select gear ->> 'boat' from players where pid = v_host),
-    'spot', (select spot from players where pid = v_host), 'guest', c.guest is not null, 'cap', oc_crew_cap(v_host),
+    'host', v_host, 'hostName', (select name || '#' || tag from players where pid = v_host), 'boat', (select oc_app_boat(gear ->> 'boat') from players where pid = v_host),
+    'spot', (select oc_app_spot(spot) from players where pid = v_host), 'guest', c.guest is not null, 'cap', oc_crew_cap(v_host),
     'members', (select coalesce(jsonb_agg(jsonb_build_object('pid', p.pid, 'name', p.name, 'tag', p.tag, 'outfit', p.outfit, 'host', p.pid = v_host, 'online', p.last_seen > now() - interval '5 minutes',
-        'lines', (select coalesce(jsonb_agg(jsonb_build_object('idx', l.idx, 'bait', l.bait, 'castAt', l.cast_at, 'biteAt', l.bite_at) order by l.idx), '[]'::jsonb) from lines l where l.pid = p.pid),
+        'lines', (select coalesce(jsonb_agg(jsonb_build_object('idx', l.idx, 'bait', l.bait, 'castAt', l.cast_at, 'biteAt', l.bite_at) order by l.idx), '[]'::jsonb) from lines l where l.pid = p.pid
+                  and not (oc_old_app() and exists (select 1 from baits x where x.id = l.bait and x.app_min is not null))),
         'recent', (select coalesce(jsonb_agg(jsonb_build_object('id', f.id, 'sp', f.species, 'lb', f.lb, 'variant', f.variant, 'legend', f.legend_id, 'at', f.caught_at) order by f.caught_at desc), '[]'::jsonb)
                    from (select * from fish where pid = p.pid and caught_at > now() - interval '15 minutes' order by caught_at desc limit 5) f)) order by (p.pid = v_host) desc, p.name), '[]'::jsonb)
       from players p where p.pid = v_host or p.pid in (select cc.guest from crews cc where cc.host = v_host and cc.status = 'aboard')),
-    'invites', (select coalesce(jsonb_agg(jsonb_build_object('host', c2.host, 'name', h.name || '#' || h.tag, 'spot', h.spot, 'boat', h.gear ->> 'boat')), '[]'::jsonb)
+    'invites', (select coalesce(jsonb_agg(jsonb_build_object('host', c2.host, 'name', h.name || '#' || h.tag, 'spot', oc_app_spot(h.spot), 'boat', oc_app_boat(h.gear ->> 'boat'))), '[]'::jsonb)
       from crews c2 join players h on h.pid = c2.host where c2.guest = me and c2.status = 'invited' and c2.created_at > now() - interval '1 hour'),
     'now', now());
 end $$;
 
 create or replace function public.oc_crew_cap(p_host uuid) returns int language sql stable as $$
-  select case when (select gear ->> 'boat' from players where pid = p_host) = 'devboat' then 12 else 3 end $$;
+  select case (select gear ->> 'boat' from players where pid = p_host) when 'devboat' then 12 when 'superyacht' then 8 else 3 end $$;
 
 -- a guest hopping off goes back to where they were, unless they have their own ticket for where the boat is
 create or replace function public.oc_crew_home(p_guest uuid) returns void language plpgsql as $$
@@ -1049,7 +1080,7 @@ begin
   return jsonb_build_object('legends', (select coalesce(jsonb_agg(jsonb_build_object('id', l.id, 'spot', l.spot, 'name', l.name, 'sp', l.species, 'tier', l.tier, 'lb', l.lb, 'clue', l.clue, 'colors', l.colors,
       'baitHint', case l.bait when 'worm' then 'something that wriggles' when 'minnow' then 'a small live fish' when 'sucker' then 'a big live fish' when 'cut' then 'something that smells strong'
                     when 'shrimp' then 'something with legs from the shallows' when 'squid' then 'something with tentacles' when 'mullet' then 'a live fish from the salt' when 'lure' then 'something shiny pulled behind a boat'
-                    when 'deepbait' then 'the heaviest rig there is' when 'crank' then 'something that wobbles' when 'jig' then 'something that hops' when 'fly' then 'something that floats' else 'something special' end,
+                    when 'deepbait' then 'the heaviest rig there is' when 'crank' then 'something that wobbles' when 'jig' then 'something that hops' when 'fly' then 'something that floats' else case oc_play(l.bait) when 'top' then 'something on the surface' when 'walk' then 'something on the surface' when 'buzz' then 'something on the surface' else 'something special' end end,
       'timeHint', case l.period when 'dawn' then 'when the light is low' when 'dusk' then 'when the light is low' when 'day' then 'while the sun is up' else 'in the dark' end,
       'soakHint', case when oc_is_lure(l.bait) then 'no wait at all, if you work it right' when l.min_wait < 60 then 'a short wait' when l.min_wait <= 240 then 'a long wait' else 'a very long wait' end,
       'lineHint', case when l.min_line <= 30 then 'a decent line' when l.min_line <= 60 then 'a strong line' when l.min_line <= 150 then 'a very strong line' else 'the strongest line you can get' end,
@@ -1311,7 +1342,7 @@ begin
   if p.pid is null or p.hidden or p.banned then return null; end if;
   return jsonb_build_object('pid', p.pid, 'name', p.name, 'tag', p.tag, 'founder', p.founder, 'champ', p.champ, 'since', p.created_at, 'online', p.last_seen > now() - interval '10 minutes',
     'stats', jsonb_build_object('catches', p.stats -> 'catches', 'legends', p.stats -> 'legends', 'bestlb', p.stats -> 'bestlb', 'golden', p.stats -> 'golden', 'albino', p.stats -> 'albino', 'species', (select count(*) from jsonb_object_keys(p.journal) k where k not like 'legend:%'), 'regions', jsonb_array_length(coalesce(p.stats -> 'regions', '[]'::jsonb))),
-    'outfit', p.outfit, 'spot', p.spot,
+    'outfit', p.outfit, 'spot', oc_app_spot(p.spot),
     'best', (select coalesce(jsonb_agg(oc_fish_json(f) order by f.lb desc), '[]'::jsonb) from (select distinct on (species) * from fish where pid = p_pid and legend_id is null and not released order by species, lb desc) f),
     'legends', (select coalesce(jsonb_agg(oc_legend_json(l)), '[]'::jsonb) from legends l where l.owner_pid = p_pid),
     'pastLegends', (select coalesce(jsonb_agg(jsonb_build_object('name', l.name, 'sp', l.species, 'colors', l.colors, 'lb', l.lb)), '[]'::jsonb) from legends l where l.owner_pid is distinct from p_pid and l.history @> jsonb_build_array(jsonb_build_object('pid', p_pid))),

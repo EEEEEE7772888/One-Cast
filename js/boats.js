@@ -25,6 +25,27 @@ B.console=function(){ var g=grid(54,17); hull(g,54,8,9,{bow:3,stripe:1}); rect(g
 B.sportfisher=function(){ var g=grid(64,25); hull(g,62,14,11,{bow:3,stripe:1}); rect(g,24,9,22,5,'C'); rect(g,26,10,8,2,'w'); rect(g,36,10,8,2,'w'); rect(g,28,6,12,3,'C'); rect(g,29,7,10,1,'w'); rect(g,27,2,13,1,'T'); line(g,28,2,28,6,'p'); line(g,38,2,38,6,'p'); line(g,30,1,4,0,'o'); line(g,36,1,62,0,'o'); line(g,30,1,30,2,'p'); line(g,36,1,36,2,'p'); rect(g,6,11,3,3,'k'); put(g,7,10,'k'); line(g,13,13,13,8,'r'); line(g,18,13,18,8,'r'); return {g:g,deck:14,stand:10,map:{R:'#F4F8FA',h:'#EAF0F4',H:'#DCE4EA',B:'#14294C',S:'#14294C',C:'#F4F8FA',w:'#2A4A6A',T:'#14294C',p:'#9AA6B6',o:'#C8D0D8',k:'#5A3A20',r:'#8A6A3A'}}; };
 B.trawler=function(){ var g=grid(68,27); hull(g,66,15,12,{bow:4,stripe:1}); rect(g,34,8,18,7,'C'); rect(g,36,9,4,2,'w'); rect(g,42,9,4,2,'w'); rect(g,48,9,2,2,'w'); rect(g,38,5,10,3,'C'); rect(g,39,6,8,1,'w'); line(g,44,0,44,5,'p'); rect(g,42,1,5,1,'p'); put(g,44,0,'L'); line(g,8,14,22,3,'Y'); line(g,9,14,23,4,'Y'); line(g,22,3,22,9,'k'); rect(g,6,13,5,2,'Y'); for(var x=2;x<64;x+=6) put(g,x,14,'r'); return {g:g,deck:15,stand:26,map:{R:'#F4F4F4',h:'#C0303A',H:'#A02A30',B:'#2A2A30',S:'#F4F4F4',C:'#F0ECE0',w:'#2A4A6A',p:'#5A6476',L:'#FF5A3A',Y:'#F0C030',k:'#1B1F2A',r:'#5A6476'}}; };
 B.yacht=function(){ var g=grid(82,29); hull(g,80,17,12,{bow:5,stripe:1}); rect(g,18,12,48,5,'C'); for(var x=20;x<64;x+=5) rect(g,x,13,3,2,'w'); rect(g,26,8,32,4,'C'); for(var x2=28;x2<56;x2+=4) rect(g,x2,9,3,1,'w'); rect(g,34,5,16,3,'C'); rect(g,36,6,12,1,'w'); rect(g,38,2,8,3,'D'); line(g,42,0,42,2,'p'); put(g,42,0,'L'); rect(g,16,11,52,1,'G'); rect(g,24,7,36,1,'G'); rect(g,32,4,20,1,'G'); for(var x3=1;x3<78;x3+=2) put(g,x3,17,'G'); return {g:g,deck:17,stand:8,map:{R:'#FFC94A',h:'#F8F8F4',H:'#F0F0EA',B:'#14294C',S:'#FFC94A',C:'#FAFAF6',w:'#1E3A5A',D:'#2A4A6A',G:'#FFC94A',p:'#C8D0D8',L:'#FF5A3A'}}; };
+/* Dilbar superyacht: the most expensive yacht in the world. A long gunmetal hull, four decks of pale superstructure with
+   black window bands, a radar mast, and a helicopter parked on the stern deck. */
+B.superyacht=function(){ var Wd=172, Hd=62, D=46, g=grid(Wd,Hd); hull(g,168,D,14,{bow:8,stripe:1});
+  var deckAt=[]; for(var x=0;x<Wd;x++){ deckAt[x]=-1; for(var yy=0;yy<Hd;yy++) if(g[yy][x]!=='.'){ deckAt[x]=yy; break; } }
+  for(x=10;x<150;x+=6) rect(g,x,D+3,2,1,'w');                                            // portholes
+  rect(g,30,D-9,122,9,'C'); rect(g,32,D-6,118,2,'k'); rect(g,30,D-1,122,1,'c');          // main deck
+  rect(g,40,D-17,102,8,'C'); rect(g,42,D-14,98,2,'k');                                   // upper deck
+  rect(g,52,D-25,78,8,'C'); rect(g,54,D-22,74,2,'k');                                    // owner's deck
+  rect(g,70,D-32,48,7,'C'); rect(g,72,D-30,30,2,'k'); rect(g,104,D-30,13,3,'W');          // bridge deck, wraparound glass
+  [[28,D-10,126],[38,D-18,106],[50,D-26,82],[68,D-33,52]].forEach(function(r){ rect(g,r[0],r[1],r[2],1,'G'); });  // silver rails
+  line(g,90,D-33,90,D-46,'p'); rect(g,84,D-41,13,1,'p'); rect(g,87,D-50,7,4,'D'); rect(g,88,D-51,5,1,'D');        // radar mast and dome
+  rect(g,91,D-45,6,3,'f');                                                               // flag
+  for(x=152;x<170;x++) if(deckAt[x]>0){ put(g,x,deckAt[x]-1,'G'); }                      // bow rail
+  rect(g,0,D-1,28,1,'G');
+  // the helicopter on the stern deck
+  rect(g,6,D-6,12,4,'X'); rect(g,4,D-5,2,2,'X'); rect(g,14,D-5,3,2,'w'); line(g,18,D-5,26,D-6,'X'); rect(g,25,D-8,2,3,'X');
+  line(g,1,D-8,23,D-8,'k'); put(g,12,D-7,'k'); rect(g,6,D-2,12,1,'k'); put(g,8,D-1,'k'); put(g,15,D-1,'k');
+  return {g:g,deck:D,stand:32,big:true,
+    seats:[[44,D-9],[56,D-9],[134,D-9],[146,D-9],[60,D-17],[124,D-17],[76,D-25],[158,deckAt[158]-1]],
+    map:{R:'#C8D0D8',h:'#4A5462',H:'#3A4450',B:'#1A2028',S:'#8A96A4',C:'#E4E8EC',c:'#A8B2BC',k:'#1A2028',w:'#5FB2CF',W:'#9FD8F0',G:'#C8D0D8',
+      D:'#F4F8FA',p:'#9AA6B8',f:'#E5484D',X:'#F0F2F4'}}; };
 /* The Dev Flagship: one of one, only the game's creator owns it. Black hull, neon stripes, gold trim, a sun deck and a
    flybridge with room for a crew of 12. seats = where crew members stand: [x, the row under their feet]. */
 B.devboat=function(){ var Wd=152, Hd=67, D=51, g=grid(Wd,Hd); hull(g,148,D,15,{bow:9,stripe:1});
@@ -49,7 +70,7 @@ B.devboat=function(){ var Wd=152, Hd=67, D=51, g=grid(Wd,Hd); hull(g,148,D,15,{b
   // outriggers and a gold crane at the stern
   line(g,40,D-21,10,D-40,'o'); line(g,124,D-33,146,D-48,'o');
   line(g,3,D-2,10,D-14,'Y'); line(g,4,D-2,11,D-13,'Y'); line(g,10,D-14,10,D-9,'k');
-  return {g:g,deck:D,stand:62,devboat:true,
+  return {g:g,deck:D,stand:62,devboat:true,big:true,
     seats:[[18,D],[28,D],[36,D],[46,D-21],[56,D-21],[66,D-21],[76,D-21],[86,D-21],[104,D-33],[116,D-33],[128,deckAt[128]],[141,deckAt[141]]],
     lights:[[92,D-50,'#FF4D5E'],[0,D-2,'#FF4D5E'],[149,deckAt[149]-2,'#5CF08A'],[124,D-31,'#FFC94A']],
     map:{R:'#FFC94A',h:'#1B2234',H:'#0E1322',B:'#05070D',S:'#3CF0FF',s:'#1E8FB0',C:'#EDF2F8',c:'#9AA8BC',w:'#3CC8F0',W:'#B8F6FF',G:'#FFC94A',

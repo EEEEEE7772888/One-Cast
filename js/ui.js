@@ -185,7 +185,7 @@ function renderRods(){
 
 /* ---------- the dock: boats ---------- */
 function perkText(b){ var p=b.perk||{}, out=[]; if(p.all) out.push('bites '+Math.round((1-p.all)*100)+'% sooner everywhere'); ['fresh','salt','troll','deep','polar'].forEach(function(k){ if(p[k]) out.push(Math.round((1-p[k])*100)+'% sooner on '+{fresh:'freshwater',salt:'salt water',troll:'trolling',deep:'deep drops',polar:'polar water'}[k]); }); return out.join(', '); }
-function waterText(b){ return b.lvl===0?'Shore and ice spots':b.lvl===1?'+ freshwater boat spots':b.lvl===2?'+ salt flats, swamps and reefs':b.lvl<5?'+ everything a skiff can do':b.lvl===5?'+ ocean trolling for tuna and marlin':'everywhere'; }
+function waterText(b){ return b.lvl===0?'Shore and ice spots':b.lvl===1?'+ freshwater boat spots':b.lvl===2?'+ salt flats, swamps and reefs':b.lvl<5?'+ everything a skiff can do':b.lvl===5?'+ ocean trolling for tuna and marlin':b.lvl>=8?'everywhere, deep drops included':'everywhere'; }
 /* paint your boat: swatches, a preview of the boat you have out, buy and use */
 var paintPreview=null;
 function paintBox(cur){

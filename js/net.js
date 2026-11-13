@@ -25,7 +25,9 @@ N.takeMove=function(){ try{ var m=/^#move=(.+)$/.exec(location.hash||''); if(!m)
 N.moved=N.takeMove();
 N.cache=function(state){ try{ localStorage.setItem(CACHE_KEY,JSON.stringify({at:Date.now(),state:state})); }catch(e){} };
 N.cached=function(){ try{ return JSON.parse(localStorage.getItem(CACHE_KEY)||'null'); }catch(e){ return null; } };
-function headers(){ var h={'Content-Type':'application/json',apikey:N.SERVER.key}; if(/^eyJ/.test(N.SERVER.key)) h.Authorization='Bearer '+N.SERVER.key; return h; }
+/* x-client-info tells the server this copy knows the Nov 2026 spots, lures and boats. If the server ever refuses the header, calls retry without it. */
+N.info=true;
+function headers(){ var h={'Content-Type':'application/json',apikey:N.SERVER.key}; if(N.info) h['x-client-info']='onecast/1.2'; if(/^eyJ/.test(N.SERVER.key)) h.Authorization='Bearer '+N.SERVER.key; return h; }
 function setOnline(v){ if(N.online!==v){ N.online=v; N.listeners.forEach(function(f){ try{ f(v); }catch(e){} }); } }
 /* Calls one server function. Resolves with its JSON, or rejects with {message, offline}. */
 N.rpc=function(fn,args,opts){
@@ -34,8 +36,8 @@ N.rpc=function(fn,args,opts){
   return fetch(N.SERVER.url.replace(/\/$/,'')+'/rest/v1/rpc/'+fn,{method:'POST',headers:headers(),body:JSON.stringify(args||{}),signal:ctl?ctl.signal:undefined})
     .then(function(r){ if(timer) clearTimeout(timer); return r.text().then(function(t){ var j=null; try{ j=t?JSON.parse(t):null; }catch(e){}
       if(!r.ok){ var msg=(j&&(j.message||j.hint||j.error))||('Server error '+r.status); if(r.status>=500) setOnline(false); var err=new Error(msg); err.status=r.status; err.offline=r.status>=500; throw err; }
-      setOnline(true); if(j&&j.now){ var srv=Date.parse(j.now); if(!isNaN(srv)) N.offset=srv-Date.now(); } return j; }); })
-    .catch(function(e){ if(timer) clearTimeout(timer); if(!e.status){ setOnline(false); var err=new Error("Can't reach the server"); err.offline=true; throw err; } throw e; });
+      N.infoOk=true; setOnline(true); if(j&&j.now){ var srv=Date.parse(j.now); if(!isNaN(srv)) N.offset=srv-Date.now(); } return j; }); })
+    .catch(function(e){ if(timer) clearTimeout(timer); if(!e.status&&N.info&&!N.infoOk&&!(e&&e.name==='AbortError')){ N.info=false; return N.rpc(fn,args,opts); } if(!e.status){ setOnline(false); var err=new Error("Can't reach the server"); err.offline=true; throw err; } throw e; });
 };
 /* Game calls, all with the player's id and secret. */
 N.me=function(fn,extra){ var a={p_pid:N.id.pid,p_secret:N.id.secret}; Object.keys(extra||{}).forEach(function(k){ a[k]=extra[k]; }); return N.rpc(fn,a); };

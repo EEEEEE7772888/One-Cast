@@ -633,7 +633,7 @@ console.log('fish finder buff');
   const P=mk('SoonerSame',2); rpc('cast_line',[P.pid,P.secret,0,'minnow']); sql(`update lines set wait_mins=600, bite_at=now()-interval '1 second', cast_at=now()-interval '450 minutes', species='largemouth', lb=3, inches=14, snap=false, legend_roll=0.99 where pid='${P.pid}'`);
   ok(rpc('reel_line',[P.pid,P.secret,0]).minutes===600,'the catch counts the full wait the fish was rolled for');
   ok(+sql(`select oc_finder_luck(3)`)===1.25&&+sql(`select oc_finder_luck(2)`)===1,'the Legend finder makes legends 25% more likely');
-  ok(D.SP_BY_ID.toothfish.rate===Math.round(2000*D.VALUE_MULT),'Antarctic toothfish are worth 20% less');
+  ok(D.SP_BY_ID.toothfish.rate===Math.round(600*D.VALUE_MULT)&&+sql(`select rate from species where id='toothfish'`)===360,'Antarctic toothfish are worth 70% less than before ($360 a pound)');
 }
 
 console.log('anti-cheat');
@@ -684,6 +684,45 @@ console.log('admin takes coins');
   rpc('admin_player',[K,P.pid,'setcoins','500']); ok(c()===500,'set coins to exactly $500');
   rpc('admin_player',[K,P.pid,'coins','-9999']); ok(c()===0,'the old negative +COINS also never goes below $0');
   ok(rpc('admin_player',['nope',P.pid,'takecoins','5']).error==='not the admin key','only the admin');
+}
+
+console.log('big update: topwater and new lures, new spots, the Dilbar superyacht');
+{
+  const mk=(n)=>{ const P={pid:uuid(),secret:'n'.repeat(10)+uuid().replace(/-/g,'').slice(0,20)}; rpc('login',[P.pid,P.secret,n]); sql(`update players set coins=100000, lure_check_at=100000 where pid='${P.pid}'`); return P; };
+  const P=mk('Topwater');
+  const NEW=['popper','walker','frog','buzz','spinnerbait','spinner','plastic','swimbait','spoon','bucktail','saltpopper','paddletail'];
+  ok(+sql(`select count(*) from baits where id in (${NEW.map(x=>"'"+x+"'").join(',')}) and play is not null and uses > 0`)===12,'12 new lures, each sold one at a time with a play style');
+  ok(sql(`select string_agg(id||'='||play, ',' order by id) from baits where id in ('crank','jig','jerk','fly')`)==='crank=crank,fly=fly,jerk=jerk,jig=jig','old lures keep their play');
+  ok(sql(`select oc_is_lure('popper')::text||oc_is_lure('lure')::text||oc_is_lure('worm')::text`)==='truefalsefalse','popper is hand-worked; trolling lures and worms are not');
+  // every new lure catches something somewhere
+  NEW.forEach(b=>ok(+sql(`select count(*) from species_baits sb join spot_species ss on ss.species=sb.species join spots s on s.id=ss.spot join method_baits m on m.method=s.method and m.bait=sb.bait where sb.bait='${b}'`)>0,b+' catches fish at some spot'));
+  // a popper at Bass Lake: cast, blow-up, set, fight
+  sql(`update players set spot='basslake' where pid='${P.pid}'`);
+  ok(rpc('buy_lures',[P.pid,P.secret,'popper',2]).coins===100000-18,'buy two $9 poppers');
+  let c=rpc('cast_line',[P.pid,P.secret,0,'popper']); ok(c.line&&c.line.bait==='popper','cast a popper');
+  sql(`update lines set bite_at=now()-interval '800 milliseconds', snag_at=null, species='largemouth', lb=4, legend_roll=0.99 where pid='${P.pid}'`);
+  let st=rpc('lure_strike',[P.pid,P.secret,0]); ok(st.result==='fight','a topwater fish fights after the hook-set');
+  sql(`update lines set fight_min_at=now()-interval '1 second' where pid='${P.pid}'`);
+  ok(rpc('reel_line',[P.pid,P.secret,0]).result==='catch','and lands');
+  ok(+sql(`select count(*) from cheat_flags where pid='${P.pid}'`)===0,'waiting before the set is not flagged');
+  // a jig-style lure does not fight
+  sql(`update players set spot='basslake' where pid='${P.pid}'`); rpc('buy_lures',[P.pid,P.secret,'plastic',1]); rpc('cast_line',[P.pid,P.secret,0,'plastic']);
+  sql(`update lines set bite_at=now()-interval '500 milliseconds', snag_at=null where pid='${P.pid}'`);
+  ok(rpc('lure_strike',[P.pid,P.secret,0]).error==='that lure does not fight','soft plastics land like a jig');
+  sql(`delete from lines where pid='${P.pid}'`);
+  // spoons work through the ice
+  ok(+sql(`select count(*) from method_baits where method='ice' and bait='spoon'`)===1,'jigging spoons work through the ice');
+  // new real spots
+  ok(+sql(`select count(*) from spots where id in ('santeecooper','toledobend','champlain','erie','salmonriver','thousandislands','kentuckylake','atchafalaya','islamorada','bocagrande','homer','fraser','cabo','tay','kariba','maryriver')`)===16,'16 new real spots');
+  ok(sql(`select water||need from spots where id='islamorada'`)==='salt2'&&sql(`select water||need from spots where id='cabo'`)==='troll5','salt spots need a skiff, Cabo needs a sportfisher');
+  // the superyacht
+  const R=mk('Rich'); sql(`update players set coins=760000000 where pid='${R.pid}'`);
+  ok(+sql(`select price from gear where id='superyacht'`)===750000000,'the Dilbar superyacht costs $750 million');
+  let by=rpc('buy',[R.pid,R.secret,'gear','superyacht']); ok(!by.error&&by.gear.boat==='superyacht','buy it');
+  ok(+sql(`select coins from players where pid='${R.pid}'`)===10000000,'$750 million comes off');
+  ok(sql(`select (oc_access(p, s)).rig::text from players p, spots s where p.pid='${R.pid}' and s.id='rosssea'`)==='true','deep-drop rig built in');
+  ok(+sql(`select oc_crew_cap('${R.pid}')`)===8,'carries a crew of 8');
+  ok(rpc('buy',[R.pid,R.secret,'gear','devboat']).error==='that boat is not for sale','the Dev Flagship is still not for sale');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -726,4 +726,4 @@ body.halloween .dialog{border-color:#4A2A6A}
 .app-banner b{color:var(--gold);font-weight:400}
 .app-banner .ab-ic{font-size:20px}
 .app-banner .ab-x{flex:none;width:32px;height:32px;background:#1D3866;border:2px solid var(--edge);color:var(--ice);font:10px var(--pixel);cursor:pointer}
-@media (max-width:900px){.app-banner{left:50%;bottom:auto;top:96px;transform:translateX(-50%);font-size:16px}}
+@media (max-width:900px){.app-banner{left:12px;right:12px;margin:0 auto;bottom:auto;top:96px;font-size:16px}}

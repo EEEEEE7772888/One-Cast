@@ -246,6 +246,13 @@ update public.players set gear = gear
 
 -- Hard lures (crankbaits, jigs, jerkbaits) are bought one at a time and wear out; they can snag and be lost.
 alter table public.baits add column if not exists uses int not null default 0;
+-- hand-worked lures: how you fish it (crank, jig, jerk, fly, top, walk, buzz); null for soak baits
+alter table public.baits add column if not exists play text;
+-- newer than the iPhone app 1.1: hidden from it so it can't crash (see oc_old_app)
+alter table public.baits add column if not exists app_min text;
+alter table public.gear add column if not exists app_min text;
+alter table public.spots add column if not exists app_min text;
+alter table public.spots add column if not exists app_fallback text;
 alter table public.baits add column if not exists snag numeric not null default 0;
 alter table public.lines add column if not exists snag_at timestamptz; -- the lure hangs up on the bottom at this moment
 alter table public.players alter column gear set default '{"line":0,"reel":0,"rod":0,"lines":1,"finder":0,"comfort":false,"methods":[],"boats":["paddle"],"boat":"paddle","lures":{}}';
